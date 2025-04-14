@@ -20,5 +20,12 @@
   "bugs": {
     "url": "https://github.com/BeastxD7/swastify-main/issues"
   },
-  "homepage": "https://github.com/BeastxD7/swastify-main#readme"
+  "homepage": "https://github.com/BeastxD7/swastify-main#readme",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1"
+  }
 }
