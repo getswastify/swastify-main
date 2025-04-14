@@ -20,5 +20,15 @@
   "bugs": {
     "url": "https://github.com/BeastxD7/swastify-main/issues"
   },
-  "homepage": "https://github.com/BeastxD7/swastify-main#readme"
+  "homepage": "https://github.com/BeastxD7/swastify-main#readme",
+  "dependencies": {
+    "@prisma/client": "6.6.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "prisma": "^6.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "tsx": "^4.19.3"
+  }
 }
