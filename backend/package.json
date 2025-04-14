@@ -1,0 +1,24 @@
+{
+  "name": "swastify-backend",
+  "version": "1.0.0",
+  "description": "A Nodejs Express API Server for Swastify.",
+  "main": "server.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/server.js",
+    "dev": "npm run build && npm run start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BeastxD7/swastify-main.git"
+  },
+  "keywords": [
+    "swastifycare"
+  ],
+  "author": "Shashank N Devadiga",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/BeastxD7/swastify-main/issues"
+  },
+  "homepage": "https://github.com/BeastxD7/swastify-main#readme"
+}
