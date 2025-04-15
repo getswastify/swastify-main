@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js" 
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(uuid())
+  email          String           @unique
+  phone          String           @unique
+  password       String
+  firstName      String
+  lastName       String
+  dob            DateTime
+  gender         String
+  role           UserRole
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+  hospitalProfile HospitalProfile?
+  adminProfile   AdminProfile?
+}
+
+enum UserRole {
+  USER        // Patient
+  DOCTOR      // Doctor
+  HOSPITAL    // Hospital
+  ADMIN       // Admin
+}
+
+model PatientProfile {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id])
+  // Add more patient-specific info here
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+
+model DoctorProfile {
+  userId          String         @id
+  user            User           @relation(fields: [userId], references: [id])
+  specialization  String
+  clinicAddress   String
+  availableFrom   DateTime
+  availableTo     DateTime
+  consultationFee Float
+  status          ApprovalStatus @default(PENDING)
+}
+
+model HospitalProfile {
+  userId       String         @id
+  user         User           @relation(fields: [userId], references: [id])
+  hospitalName String
+  location     String
+  services     String
+  status       ApprovalStatus @default(PENDING)
+}
+
+model AdminProfile {
+  userId String     @id
+  user   User       @relation(fields: [userId], references: [id])
+  level  AdminRole  @default(SUPER_ADMIN)
+  // Add more admin-specific info here
+}
+
+
+enum AdminRole {
+  SUPER_ADMIN
+  STAFF_ADMIN
+  SUPPORT_ADMIN
+}
