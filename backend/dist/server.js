@@ -4,13 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const ping_1 = require("./routes/ping");
 const dotenv_1 = __importDefault(require("dotenv"));
+const auth_routes_1 = require("./routes/auth.routes");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 app.use(express_1.default.json());
-app.use('/ping', ping_1.pingRoutes);
+app.get("/", (_req, res) => {
+    res.json({
+        message: "Running"
+    });
+});
+app.use("/auth", auth_routes_1.authRoutes);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
