@@ -1,24 +1,11 @@
-import nodemailer from 'nodemailer';
-import { SESClient } from '@aws-sdk/client-ses';
+import { EmailClient, EmailMessage, EmailContent } from '@azure/communication-email';
 
-// Initialize SES client
-const sesClient = new SESClient({
-  region: 'ap-south-1',  // Update with your AWS SES region
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',  // Ensure it's a string
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',  // Ensure it's a string
-  },
-});
-
-// Create a nodemailer transporter using SES
-const transporter = nodemailer.createTransport({
-  SES: { ses: sesClient, aws: require('@aws-sdk/client-ses') },
-});
+const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING || '';
+const senderEmail = 'donotreply@swastify.life'; 
+const emailClient = new EmailClient(connectionString);
 
 const sendOtpEmail = async (email: string, otp: string) => {
-  const mailOptions = {
-    from: 'no-reply@swastify.life',  // Replace with your verified SES email or domain
-    to: email,
+  const emailContent: EmailContent = {
     subject: 'Your OTP for Registration',
     html: `<!DOCTYPE html>
 <html>
@@ -83,7 +70,6 @@ const sendOtpEmail = async (email: string, otp: string) => {
   <body>
     <div class="container">
       <div class="header">
-        <!-- Replace src with your logo URL -->
         <img class="logo" src="https://www.swastify.life/images/swastify-logo.png" alt="Swastify Logo" />
         <h2>Swastify OTP Verification</h2>
       </div>
@@ -105,13 +91,26 @@ const sendOtpEmail = async (email: string, otp: string) => {
       </div>
     </div>
   </body>
-</html>
-`,
+</html>`,
+  };
+
+  const emailMessage: EmailMessage = {
+    senderAddress: senderEmail,
+    content: emailContent,
+    recipients: {
+      to: [
+        {
+          address: email,
+          displayName: 'Swastify User',
+        },
+      ],
+    },
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('OTP sent successfully');
+    const poller = await emailClient.beginSend(emailMessage);
+    const response = await poller.pollUntilDone();
+    console.log('Email send request sent! Response:', response);
   } catch (error) {
     console.error('Error sending OTP:', error);
     throw new Error('Error sending OTP');

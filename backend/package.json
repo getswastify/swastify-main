@@ -23,6 +23,7 @@
   "homepage": "https://github.com/BeastxD7/swastify-main#readme",
   "dependencies": {
     "@aws-sdk/client-ses": "^3.787.0",
+    "@azure/communication-email": "^1.0.0",
     "@prisma/client": "6.6.0",
     "@types/nodemailer": "^6.4.17",
     "bcryptjs": "^3.0.2",
