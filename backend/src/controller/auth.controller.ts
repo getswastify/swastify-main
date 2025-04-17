@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { prisma } from "../utils/prismaConnection";
 import bcrypt from 'bcryptjs';
 import crypto from "crypto";
-import sendOtpEmail from "../utils/emailService";
 import { redis } from "../utils/redisConnection";
+import jwt from "jsonwebtoken";
+import {sendOtpEmail, sendResetPassEmail} from "../utils/emailConnection";
 
 
 
@@ -218,3 +219,141 @@ export const verifyOtpAndRegister = async (req: Request, res: Response): Promise
   }
 };
 
+export const loginUser = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { email, phone, password } = req.body;
+
+    // 1. Check if the user exists
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { phone }],
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 2. Compare the provided password with the hashed password stored in the database
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // 3. Create a JWT token
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET as string, // Ensure you have a secret in your env variables
+      { expiresIn: "1h" } // Token expiration time
+    );
+
+    // 4. Send response with the token
+    res.status(200).json({
+      message: "Login successful",
+      token,
+    });
+  } catch (err) {
+    console.error("[LOGIN_USER_ERROR]", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const requestPasswordReset = async (req: Request, res:Response ): Promise<any>=> {
+  const { email } = req.body;
+
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { email, purpose: 'reset_password' },
+      process.env.JWT_SECRET || '',
+      { expiresIn: 10 * 60 } //10 minutes
+    );
+
+    // Store token in Redis
+    await redis.set(`reset:${email}`, token, 'EX', 10 * 60);
+
+    const resetLink = `https://swastify.life/reset-password?token=${token}`;
+
+    // Send email
+    await sendResetPassEmail(email, resetLink);
+
+    res.status(200).json({ message: 'Reset password email sent ✅' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Something went wrong 🥲' });
+  }
+};
+
+export const verifyResetToken = async (req: Request, res: Response): Promise<any> => {
+  const { token } = req.query;
+
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ message: 'Invalid token' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as { email: string, purpose: string };
+    if (decoded.purpose !== 'reset_password') {
+      return res.status(400).json({ message: 'Invalid purpose' });
+    }
+
+    // Check Redis
+    const storedToken = await redis.get(`reset:${decoded.email}`);
+    if (!storedToken || storedToken !== token) {
+      return res.status(401).json({ message: 'Token expired or invalid' });
+    }
+
+    // ✅ Token is valid
+    res.status(200).json({ message: 'Token valid', email: decoded.email });
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ message: 'Token expired or invalid' });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<any> => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: 'Token and new password are required' });
+  }
+
+  try {
+    // 1. Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as { email: string, purpose: string };
+    const email = decoded.email;
+
+    if (decoded.purpose !== 'reset_password') {
+      return res.status(400).json({ message: 'Invalid token purpose' });
+    }
+
+    // 2. Check if token exists in Redis
+    const redisToken = await redis.get(`reset:${email}`);
+    if (!redisToken || redisToken !== token) {
+      return res.status(401).json({ message: 'Token is invalid or expired' });
+    }
+
+    // 3. Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update password in DB
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+
+    // 5. Invalidate token
+    await redis.del(`reset:${email}`);
+
+    res.status(200).json({ message: 'Password has been reset successfully 🙌' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(401).json({ message: 'Token is invalid or expired' });
+  }
+};
