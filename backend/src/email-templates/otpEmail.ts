@@ -1,13 +1,6 @@
-import { EmailClient, EmailMessage, EmailContent } from '@azure/communication-email';
-
-const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING || '';
-const senderEmail = 'donotreply@swastify.life'; 
-const emailClient = new EmailClient(connectionString);
-
-const sendOtpEmail = async (email: string, otp: string) => {
-  const emailContent: EmailContent = {
-    subject: 'Your OTP for Registration',
-    html: `<!DOCTYPE html>
+export const otpEmailTemplate =  (otp: string) => {
+    
+    return `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -91,30 +84,5 @@ const sendOtpEmail = async (email: string, otp: string) => {
       </div>
     </div>
   </body>
-</html>`,
-  };
-
-  const emailMessage: EmailMessage = {
-    senderAddress: senderEmail,
-    content: emailContent,
-    recipients: {
-      to: [
-        {
-          address: email,
-          displayName: 'Swastify User',
-        },
-      ],
-    },
-  };
-
-  try {
-    const poller = await emailClient.beginSend(emailMessage);
-    const response = await poller.pollUntilDone();
-    console.log('Email send request sent! Response:', response);
-  } catch (error) {
-    console.error('Error sending OTP:', error);
-    throw new Error('Error sending OTP');
-  }
-};
-
-export default sendOtpEmail;
+</html>`
+}
