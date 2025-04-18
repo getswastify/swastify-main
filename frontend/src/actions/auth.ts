@@ -1,17 +1,19 @@
-"use server"
+import api from "@/lib/axios"
 
-import { cookies } from "next/headers"
-import axiosInstance from "@/lib/axios"
-import { redirect } from "next/navigation"
-import type { AxiosError } from "axios"
+// Types for API responses
+export interface ApiResponse<T = any> {
+  status: boolean
+  message: string
+  data?: T
+  error?: any
+}
 
-// Types for our auth actions
-interface LoginData {
+export interface LoginData {
   email: string
   password: string
 }
 
-interface RegisterData {
+export interface RegisterData {
   email: string
   phone: string
   password: string
@@ -21,209 +23,91 @@ interface RegisterData {
   gender: string
 }
 
-interface PasswordResetRequestData {
-  email: string
-}
-
-interface PasswordResetData {
+export interface ResetPasswordData {
   token: string
   newPassword: string
 }
 
-interface VerifyOTPData {
-  email: string
-  otp: string
-}
-
-interface ResendOTPData {
-  email: string
-}
-
-interface ApiResponse<T = unknown> {
-  success: boolean
-  data?: T
-  error?: string
-  valid?: boolean
-}
-
-// Token expiration time (in seconds)
-const TOKEN_EXPIRY = 60 * 60 * 24 * 7 // 7 days
-
 /**
- * Login action
+ * Login user
  */
-export async function login(data: LoginData): Promise<ApiResponse> {
+export const loginUser = async (data: LoginData): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/login", data)
-
-    // Set the auth token in a secure HTTP-only cookie
-    const token = response.data.token
-    if (token) {
-      const cookieStore = await cookies();
-      cookieStore.set("auth_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: TOKEN_EXPIRY,
-      })
-    } else {
-      console.error("No token received from login response")
-      return { success: false, error: "Authentication failed: No token received" }
-    }
-
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/login", data)
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Login failed",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Register action
+ * Register user
  */
-export async function register(data: RegisterData): Promise<ApiResponse> {
+export const registerUser = async (data: RegisterData): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/register", data)
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/register", data)
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Registration failed",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Verify OTP action
+ * Verify OTP
  */
-export async function verifyOTP(data: VerifyOTPData): Promise<ApiResponse> {
+export const verifyOTP = async (email: string, otp: string): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/verify-otp", data)
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/verify-otp", { email, otp })
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "OTP verification failed",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Resend OTP action
+ * Resend OTP
  */
-export async function resendOTP(data: ResendOTPData): Promise<ApiResponse> {
+export const resendOTP = async (email: string): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/resend-otp", data)
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/resend-otp", { email })
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Failed to resend OTP",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Request password reset action
+ * Request password reset
  */
-export async function requestPasswordReset(data: PasswordResetRequestData): Promise<ApiResponse> {
+export const requestPasswordReset = async (email: string): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/request-password-reset", data)
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/request-password-reset", { email })
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Failed to send reset email",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Verify reset token action
+ * Verify reset token
  */
-export async function verifyResetToken(token: string): Promise<ApiResponse> {
+export const verifyResetToken = async (token: string): Promise<ApiResponse> => {
   try {
-    console.log("token sikkitu " + token);
-    
-    const response = await axiosInstance.get(`/auth/verify-reset-token?token=${token}`)
-    
-    return { success: true, valid: response.data.valid }
+    const response = await api.get(`/auth/verify-reset-token?token=${token}`)
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Invalid or expired token",
-    }
+    return error as ApiResponse
   }
 }
 
 /**
- * Reset password action
+ * Reset password
  */
-export async function resetPassword(data: PasswordResetData): Promise<ApiResponse> {
+export const resetPassword = async (data: ResetPasswordData): Promise<ApiResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/reset-password", data)
-    return { success: true, data: response.data }
+    const response = await api.post("/auth/reset-password", data)
+    return response as ApiResponse
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string }>
-    return {
-      success: false,
-      error: axiosError.response?.data?.message || "Failed to reset password",
-    }
-  }
-}
-
-/**
- * Logout action
- */
-export async function logout(): Promise<void> {
-  try {
-    // Call logout endpoint if your API has one
-    await axiosInstance.post("/auth/logout")
-  } catch (error) {
-    // Continue with logout even if API call fails
-    console.error("Logout API call failed:", error)
-  }
-
-  // Clear the auth cookie
-  const cookieStore = await cookies();
-  cookieStore.delete("auth_token");
-
-  // Redirect to login page
-  redirect("/login")
-}
-
-/**
- * Check if user is authenticated
- */
-export async function isAuthenticated(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-  if (!token) {
-    console.log("No auth token found in cookies")
-    return false
-  }
-
-  try {
-    console.log("Verifying token with API")
-    const response = await axiosInstance.get("/auth/verify", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    const isValid = response.status === 200
-    console.log(`Token verification result: ${isValid}`)
-    return isValid
-  } catch (error) {
-    console.error("Token verification failed:", error)
-    return false
+    return error as ApiResponse
   }
 }

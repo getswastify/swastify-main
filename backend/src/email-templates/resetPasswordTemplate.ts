@@ -40,11 +40,12 @@ export const resetPasswordTemplate = (resetLink: string) => {
         .button {
           display: inline-block;
           background: #047857;
-          color: #fff;
+          color: #ffffff !important;
           padding: 12px 24px;
           border-radius: 6px;
           text-decoration: none;
           margin: 24px 0;
+          font-weight: bold;
         }
         .footer {
           text-align: center;
@@ -64,7 +65,7 @@ export const resetPasswordTemplate = (resetLink: string) => {
           We received a request to reset your Swastify password. Click the button below to proceed.
         </p>
         <div style="text-align:center;">
-          <a href="${resetLink}" class="button">Reset Password</a>
+          <a href="${resetLink}" class="button" style="color: #ffffff; background: #047857; text-decoration: none; border-radius: 6px; padding: 12px 24px; display: inline-block;">Reset Password</a>
         </div>
         <p class="text">
           This link expires in 10 minutes. If you didn’t request this, you can safely ignore this email.

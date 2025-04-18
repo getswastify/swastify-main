@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { login } from "@/actions/auth"
+import { loginUser } from "@/actions/auth"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -31,13 +32,14 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const result = await login(formData)
+      const response = await loginUser(formData)
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "Login failed")
       }
 
-      // Redirect to dashboard
+      // Store token in a secure HTTP-only cookie (handled by the server)
+      // Redirect to dashboard or home
       router.push("/dashboard")
     } catch (error) {
       toast.error("Login Failed", {
@@ -97,7 +99,6 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     className="pl-10"
-                    placeholder="●●●●●●●●"
                     required
                   />
                   <Button

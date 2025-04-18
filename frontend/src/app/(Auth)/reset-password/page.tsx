@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -35,13 +36,13 @@ export default function ResetPasswordPage() {
       }
 
       try {
-        const result = await verifyResetToken(token)
+        const response = await verifyResetToken(token)
 
-        if (!result.success) {
-          throw new Error(result.error)
+        if (!response.status) {
+          throw new Error(response.message || "Invalid or expired token")
         }
 
-        setIsTokenValid(true)
+        setIsTokenValid(response.data?.valid || false)
       } catch (error) {
         toast.error("Token Verification Failed", {
           description: error instanceof Error ? error.message : "Invalid or expired token",
@@ -81,13 +82,13 @@ export default function ResetPasswordPage() {
     setIsLoading(true)
 
     try {
-      const result = await resetPassword({
+      const response = await resetPassword({
         token,
         newPassword: formData.newPassword,
       })
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "Failed to reset password")
       }
 
       setIsSubmitted(true)
@@ -193,7 +194,6 @@ export default function ResetPasswordPage() {
                     value={formData.newPassword}
                     onChange={handleChange}
                     className="pl-10"
-                    placeholder="●●●●●●●●"
                     required
                   />
                   <Button
@@ -216,7 +216,6 @@ export default function ResetPasswordPage() {
                     id="confirmPassword"
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="●●●●●●●●"
                     autoCapitalize="none"
                     autoComplete="new-password"
                     disabled={isLoading}
