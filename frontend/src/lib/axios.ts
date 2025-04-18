@@ -1,7 +1,7 @@
-import axios, { type AxiosResponse, type AxiosError } from "axios"
+import axios, { AxiosError, AxiosResponse } from "axios"
 
-// Define response structure
-export interface ApiSuccessResponse<T = any> {
+// Define response structure with proper typing
+export interface ApiSuccessResponse<T = unknown> {
   status: true
   message: string
   data: T
@@ -10,14 +10,20 @@ export interface ApiSuccessResponse<T = any> {
 export interface ApiErrorResponse {
   status: false
   message: string
-  error: any
+  error: unknown
 }
 
-export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse
+export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse
+
+// Type for the error response data from the server
+interface ErrorResponseData {
+  message?: string
+  [key: string]: unknown
+}
 
 // Create a base axios instance with common configuration
 const api = axios.create({
-  baseURL: "http://localhost:3001",
+  baseURL: "https://api.swastify.life",
   headers: {
     "Content-Type": "application/json",
   },
@@ -26,18 +32,21 @@ const api = axios.create({
 
 // Add a response interceptor to standardize response format
 api.interceptors.response.use(
-  (response: AxiosResponse): AxiosResponse => {
-    // Optionally, you can transform the response data here if needed
+  <T>(response: AxiosResponse<T>): AxiosResponse<T> => {
+    // Optionally transform the response data here if needed
     response.data = {
       status: true,
-      message: response.data.message || "Operation successful",
+      message: (response.data as Record<string, unknown>).message as string || "Operation successful",
       data: response.data,
-    };
+    } as unknown as T;
     return response;
   },
-  (error: AxiosError): Promise<ApiErrorResponse> => {
+  (error: AxiosError<ErrorResponseData>): Promise<ApiErrorResponse> => {
     // Transform error responses to match our expected format
-    const errorMessage = (error.response?.data as { message?: string })?.message || error.message || "An unexpected error occurred"
+    const errorMessage = 
+      error.response?.data?.message || 
+      error.message || 
+      "An unexpected error occurred"
 
     return Promise.reject({
       status: false,
