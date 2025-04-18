@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { redis } from "../utils/redisConnection";
 import jwt from "jsonwebtoken";
 import {sendOtpEmail, sendResetPassEmail} from "../utils/emailConnection";
-
+const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 export const registerUser = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -277,12 +277,12 @@ export const requestPasswordReset = async (req: Request, res:Response ): Promise
     // Store token in Redis
     await redis.set(`reset:${email}`, token, 'EX', 10 * 60);
 
-    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+    const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
     // Send email
     await sendResetPassEmail(email, resetLink);
 
-    res.status(200).json({ message: 'Reset password email sent ✅' });
+    res.status(200).json({ message: 'Reset password email sent ✅', token });
   } catch (error) {
     console.error('Password reset error:', error);
     res.status(500).json({ message: 'Something went wrong 🥲' });
