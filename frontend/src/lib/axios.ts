@@ -1,8 +1,23 @@
-import axios from "axios"
+import axios, { type AxiosResponse, type AxiosError } from "axios"
+
+// Define response structure
+export interface ApiSuccessResponse<T = any> {
+  status: true
+  message: string
+  data: T
+}
+
+export interface ApiErrorResponse {
+  status: false
+  message: string
+  error: any
+}
+
+export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse
 
 // Create a base axios instance with common configuration
 const api = axios.create({
-  baseURL: "https://api.swastify.life",
+  baseURL: "http://localhost:3001",
   headers: {
     "Content-Type": "application/json",
   },
@@ -11,18 +26,18 @@ const api = axios.create({
 
 // Add a response interceptor to standardize response format
 api.interceptors.response.use(
-  (response) => {
-    // Transform successful responses to include custom properties
+  (response: AxiosResponse): AxiosResponse => {
+    // Optionally, you can transform the response data here if needed
     response.data = {
       status: true,
       message: response.data.message || "Operation successful",
       data: response.data,
-    }
-    return response
+    };
+    return response;
   },
-  (error) => {
+  (error: AxiosError): Promise<ApiErrorResponse> => {
     // Transform error responses to match our expected format
-    const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred"
+    const errorMessage = (error.response?.data as { message?: string })?.message || error.message || "An unexpected error occurred"
 
     return Promise.reject({
       status: false,
