@@ -55,6 +55,10 @@ export const resetPasswordTemplate = (resetLink: string) => {
             font-size: 16px;
           }
         }
+
+        a{
+            color:white;
+        }
       </style>
     </head>
     <body>

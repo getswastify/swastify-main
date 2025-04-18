@@ -7,7 +7,6 @@ import jwt from "jsonwebtoken";
 import {sendOtpEmail, sendResetPassEmail} from "../utils/emailConnection";
 
 
-
 export const registerUser = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, phone, password, firstName, lastName, dob, gender } = req.body;
@@ -278,7 +277,7 @@ export const requestPasswordReset = async (req: Request, res:Response ): Promise
     // Store token in Redis
     await redis.set(`reset:${email}`, token, 'EX', 10 * 60);
 
-    const resetLink = `https://swastify.life/reset-password?token=${token}`;
+    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
 
     // Send email
     await sendResetPassEmail(email, resetLink);
