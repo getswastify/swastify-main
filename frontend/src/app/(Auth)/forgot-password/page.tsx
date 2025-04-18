@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { Mail } from "lucide-react"
@@ -21,10 +22,10 @@ export default function ForgotPasswordPage() {
     setIsLoading(true)
 
     try {
-      const result = await requestPasswordReset({ email })
+      const response = await requestPasswordReset(email)
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "Failed to send reset email")
       }
 
       setIsSubmitted(true)

@@ -6,108 +6,74 @@ const resetPasswordTemplate = (resetLink) => {
   <html>
     <head>
       <meta charset="UTF-8" />
-      <title>Swastify Password Reset</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Reset Password</title>
       <style>
         body {
+          font-family: 'Inter', sans-serif;
+          background: #f4f4f4;
           margin: 0;
           padding: 0;
-          background-color: #f4f4f4;
-          font-family: 'Segoe UI', sans-serif;
+          color: #333;
         }
         .container {
           max-width: 600px;
-          margin: 40px auto;
-          background-color: #ffffff;
+          margin: auto;
+          background: #fff;
+          padding: 32px;
           border-radius: 8px;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .header {
-          background-color: #e6f4ea;
-          padding: 16px 24px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .logo-title {
-          display: flex;
-          align-items: center;
+          text-align: center;
+          margin-bottom: 24px;
         }
         .logo {
-          height: 30px;
+          height: 40px;
         }
         .title {
-          font-size: 18px;
-          font-weight: 600;
           color: #047857;
-          margin-left: 10px;
+          font-size: 24px;
+          margin: 16px 0;
         }
-        .date {
-          font-size: 14px;
-          color: #047857;
+        .text {
+          font-size: 16px;
+          line-height: 1.5;
         }
-        .content {
-          padding: 32px 24px;
-          text-align: center;
-        }
-        .reset-link {
+        .button {
           display: inline-block;
-          background-color: #047857;
-          color: white;
+          background: #047857;
+          color: #fff;
           padding: 12px 24px;
-          border-radius: 8px;
+          border-radius: 6px;
           text-decoration: none;
-          font-size: 18px;
           margin: 24px 0;
         }
         .footer {
-          background-color: #f4f4f4;
-          padding: 20px;
-          font-size: 12px;
-          color: #888888;
           text-align: center;
-        }
-        @media only screen and (max-width: 600px) {
-          .reset-link {
-            font-size: 16px;
-          }
-        }
-        a {
-          color: white;
-          text-decoration: none;
-        }
-        a:hover {
-          color: lightgray;
-          text-decoration: underline;
+          font-size: 13px;
+          color: #777;
+          margin-top: 32px;
         }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo-title">
-            <img class="logo" src="https://www.swastify.life/images/swastify-logo.png" alt="Swastify Logo" />
-            <span class="title">Swastify</span>
-          </div>
-          <div class="date">${new Date().toLocaleDateString()}</div>
+          <img src="https://www.swastify.life/images/swastify-logo.png" class="logo" alt="Swastify" />
+          <h2 class="title">Reset Your Password</h2>
         </div>
-
-        <div class="content">
-          <p>Hey there 👋,</p>
-          <p>We received a request to reset your password. To proceed, click the button below:</p>
-
-          <a class="reset-link" href="${resetLink}">Reset Your Password</a>
-
-          <p>If you didn’t request this, please ignore this email. If you have any concerns, feel free to reach out to us.</p>
-
-          <p>This link will expire in 10 minutes.</p>
-
-          <p>Stay safe and healthy,<br />💚 Team Swastify</p>
+        <p class="text">
+          We received a request to reset your Swastify password. Click the button below to proceed.
+        </p>
+        <div style="text-align:center;">
+          <a href="${resetLink}" class="button">Reset Password</a>
         </div>
-
+        <p class="text">
+          This link expires in 10 minutes. If you didn’t request this, you can safely ignore this email.
+        </p>
         <div class="footer">
-          © 2025 Swastify. All rights reserved.<br />
-          Made with 💚 for better healthcare.
+          © ${new Date().getFullYear()} Swastify • Made with 💚
         </div>
       </div>
     </body>

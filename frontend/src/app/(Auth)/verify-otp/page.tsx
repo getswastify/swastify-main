@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
@@ -73,13 +74,10 @@ export default function VerifyOTPPage() {
     }
 
     try {
-      const result = await verifyOTP({
-        email,
-        otp: otpValue,
-      })
+      const response = await verifyOTP(email, otpValue)
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "OTP verification failed")
       }
 
       toast.success("Account Verified", {
@@ -106,10 +104,10 @@ export default function VerifyOTPPage() {
     }
 
     try {
-      const result = await resendOTP({ email })
+      const response = await resendOTP(email)
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "Failed to resend OTP")
       }
 
       toast.success("OTP Sent", {

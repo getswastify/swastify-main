@@ -254,7 +254,7 @@ const requestPasswordReset = (req, res) => __awaiter(void 0, void 0, void 0, fun
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
         // Send email
         yield (0, emailConnection_1.sendResetPassEmail)(email, resetLink);
-        res.status(200).json({ message: 'Reset password email sent ✅', token });
+        res.status(200).json({ message: 'Reset password email sent ✅' });
     }
     catch (error) {
         console.error('Password reset error:', error);

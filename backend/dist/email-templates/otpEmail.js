@@ -3,165 +3,113 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.otpEmailTemplate = void 0;
 const otpEmailTemplate = (otp) => {
     return `<!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Swastify OTP Verification</title>
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body
-    style="
-      margin: 0;
-      font-family: 'Poppins', sans-serif;
-      background: #f4f7ff;
-      font-size: 14px;
-    "
-  >
-    <div
-      style="
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 45px 30px 60px;
-        background: #ffffff;
+    <title>Swastify OTP</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+        font-family: 'Inter', sans-serif;
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #fff;
         border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        font-size: 14px;
-        color: #434343;
-      "
-    >
-    <header>
-        <table style="width: 100%;">
-          <tbody>
-            <tr style="vertical-align: middle;">
-              <!-- Logo + Title -->
-              <td style="display: flex; align-items: center;">
-                <img
-                  alt="Swastify Logo"
-                  src="https://www.swastify.life/images/swastify-logo.png"
-                  height="30px"
-                  style="vertical-align: middle;"
-                />
-                <span
-                  style="font-size: 18px; font-weight: 600; color: #047857; margin-left: 10px;"
-                >
-                  Swastify
-                </span>
-              </td>
-      
-              <!-- Date on the right -->
-              <td style="text-align: right;">
-                <span
-                  style="font-size: 16px; line-height: 30px; color: #047857;"
-                >
-                  ${new Date().toLocaleDateString()}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </header>
-      
-      
-
-      <main>
-        <div
-          style="
-            margin: 0;
-            margin-top: 40px;
-            padding: 32px 24px;
-            background: #ffffff;
-            border-radius: 8px;
-            text-align: center;
-          "
-        >
-          <h1
-            style="
-              margin: 0;
-              font-size: 24px;
-              font-weight: 500;
-              color: #1f1f1f;
-            "
-          >
-            Your OTP Verification Code
-          </h1>
-          <p
-            style="
-              margin: 0;
-              margin-top: 17px;
-              font-size: 16px;
-              font-weight: 500;
-            "
-          >
-            Hey there 👋,
-          </p>
-          <p
-            style="
-              margin: 0;
-              margin-top: 17px;
-              font-weight: 500;
-              letter-spacing: 0.56px;
-            "
-          >
-            To keep your account secure, use the OTP below to complete the procedure. The OTP is valid for
-            <span style="font-weight: 600; color: #047857;">10 minutes</span>.
-            Please do not share this code with anyone, including Swastify staff.
-          </p>
-
-          <div
-            style="
-              margin-top: 30px;
-              font-size: 40px;
-              font-weight: bold;
-              letter-spacing: 10px;
-              color: #047857;
-              background-color: #e6f4ea;
-              padding: 16px 32px;
-              border-radius: 12px;
-              display: inline-block;
-            "
-          >
-            ${otp}
-          </div>
-
-          <p
-            style="margin-top: 30px; font-size: 16px; color: #888888; font-weight: 500;"
-          >
-            This OTP is valid for the next 10 minutes. If you didn’t request this, feel free to ignore this email.
-          </p>
-
-          <p
-            style="margin-top: 30px; font-size: 16px; color: #8c8c8c;"
-          >
-            Stay safe and healthy, <br />💚 Team Swastify
-          </p>
-        </div>
-      </main>
-
-      <footer
-        style="
-          width: 100%;
-          text-align: center;
-          margin-top: 40px;
-          padding: 20px;
-          font-size: 12px;
-          color: #888888;
-          border-top: 1px solid #e6ebf1;
-        "
-      >
-        <p style="margin: 0;">© 2025 Swastify. All rights reserved.</p>
-        <p style="margin-top: 8px;">
-          Made with 💚 for better healthcare.
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        background: #e6f4ea;
+        padding: 20px;
+        text-align: center;
+      }
+      .logo {
+        height: 36px;
+      }
+      .brand {
+        font-size: 20px;
+        font-weight: 600;
+        color: #047857;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .content {
+        padding: 30px;
+        text-align: center;
+      }
+      .title {
+        font-size: 22px;
+        color: #047857;
+        margin-bottom: 16px;
+      }
+      .message {
+        font-size: 15px;
+        color: #555;
+        margin-bottom: 24px;
+      }
+      .otp {
+        font-size: 28px;
+        font-weight: bold;
+        letter-spacing: 6px;
+        background: #e6f4ea;
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 6px;
+        color: #047857;
+        margin-bottom: 16px;
+      }
+      .note {
+        font-size: 13px;
+        color: #777;
+        margin-top: 16px;
+      }
+      .footer {
+        background: #fafafa;
+        text-align: center;
+        font-size: 13px;
+        color: #666;
+        padding: 20px;
+        border-top: 1px solid #eee;
+      }
+      .footer a {
+        color: #047857;
+        text-decoration: none;
+        margin: 0 8px;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="https://www.swastify.life/images/swastify-logo.png" alt="Swastify" class="logo" />
+        <span class="brand">Swastify</span>
+      </div>
+      <div class="content">
+        <h1 class="title">Your OTP Code</h1>
+        <p class="message">Use the code below to verify your account:</p>
+        <div class="otp">${otp}</div>
+        <p class="note">This code expires in 10 minutes. If you didn’t request it, please ignore this email.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} Swastify</p>
+        <p>
+          <a href="https://x.com/getswastify">X</a> • 
+          <a href="https://www.linkedin.com/company/getswastify/">LinkedIn</a> • 
+          <a href="http://swastify.life/contact">Contact</a>
         </p>
-      </footer>
+        <p>Made with 💚 for better healthcare.</p>
+      </div>
     </div>
   </body>
-</html>
-`;
+</html>`;
 };
 exports.otpEmailTemplate = otpEmailTemplate;

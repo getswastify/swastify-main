@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { register } from "@/actions/auth"
+import { registerUser } from "@/actions/auth"
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -41,10 +42,10 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const result = await register(formData)
+      const response = await registerUser(formData)
 
-      if (!result.success) {
-        throw new Error(result.error)
+      if (!response.status) {
+        throw new Error(response.message || "Registration failed")
       }
 
       // Redirect to OTP verification page
@@ -193,7 +194,6 @@ export default function RegisterPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     autoCapitalize="none"
-                    placeholder="●●●●●●●●"
                     autoComplete="new-password"
                     disabled={isLoading}
                     value={formData.password}

@@ -1,34 +1,35 @@
 import axios from "axios"
 
 // Create a base axios instance with common configuration
-const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
+const api = axios.create({
+  baseURL: "https://api.swastify.life",
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Important for cookies
+  timeout: 10000, // 10 seconds
 })
 
-// Add a request interceptor for authentication
-axiosInstance.interceptors.request.use(
-  (config) => {
-    // You can add auth token from localStorage or cookies here if needed
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  },
-)
-
-// Add a response interceptor for error handling
-axiosInstance.interceptors.response.use(
+// Add a response interceptor to standardize response format
+api.interceptors.response.use(
   (response) => {
+    // Transform successful responses to include custom properties
+    response.data = {
+      status: true,
+      message: response.data.message || "Operation successful",
+      data: response.data,
+    }
     return response
   },
   (error) => {
-    // Handle common errors here
-    return Promise.reject(error)
+    // Transform error responses to match our expected format
+    const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred"
+
+    return Promise.reject({
+      status: false,
+      message: errorMessage,
+      error: error.response?.data || error,
+    })
   },
 )
 
-export default axiosInstance
+export default api

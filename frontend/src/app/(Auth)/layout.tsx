@@ -5,8 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/sonner"
 
-
-
 export const metadata: Metadata = {
   title: "Swastify | Authentication",
   description: "Where Healthcare meets Innovation.",
@@ -46,8 +44,8 @@ export default function AuthLayout({
               <div className="relative z-20 mt-auto">
                 <blockquote className="space-y-2">
                   <p className="text-lg">
-                    &quot;Swastify connects patient experiences with innovative solutions. Share your healthcare journey to
-                    help us build a better system for everyone.&quot;
+                    &quot;Swastify connects patient experiences with innovative solutions. Share your healthcare journey
+                    to help us build a better system for everyone.&quot;
                   </p>
                   <footer className="text-sm text-emerald-500">Healthcare Innovation Team</footer>
                 </blockquote>
