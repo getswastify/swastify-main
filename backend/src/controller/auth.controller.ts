@@ -282,7 +282,7 @@ export const requestPasswordReset = async (req: Request, res:Response ): Promise
     // Send email
     await sendResetPassEmail(email, resetLink);
 
-    res.status(200).json({ message: 'Reset password email sent ✅', token });
+    res.status(200).json({ message: 'Reset password email sent ✅' });
   } catch (error) {
     console.error('Password reset error:', error);
     res.status(500).json({ message: 'Something went wrong 🥲' });
