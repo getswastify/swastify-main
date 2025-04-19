@@ -19,7 +19,14 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email or phone already registered' });
+      return res.status(400).json({
+        status: false,
+        message: "Email or phone already registered. Please use a different one.",
+        error: {
+          code: "ERR_ALREADY_REGISTERED",
+          issue: "Email or phone already exists"
+        }
+      });
     }
 
     // 2. Generate OTP
@@ -34,28 +41,45 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
       lastName,
       dob,
       gender,
-      role:"USER" ,
+      role: "USER",
       otp
     };
 
-    await redis.setex(`otp:${email}`, 300, JSON.stringify(userData)); // OTP expires in 5 minutes
+    await redis.setex(`otp:${email}`, 600, JSON.stringify(userData)); // OTP expires in 10 minutes
 
     // 4. Send OTP email
     try {
       await sendOtpEmail(email, otp);
     } catch (error) {
-      return res.status(500).json({ message: 'Error sending OTP. Please try again.' });
+      return res.status(500).json({
+        status: false,
+        message: "There was an issue sending the OTP. Please try again later.",
+        error: {
+          code: "ERR_EMAIL_FAILURE",
+          issue: "Failed to send OTP email"
+        }
+      });
     }
 
     // 5. Respond with OTP sent status
-    res.status(200).json({
-      message: 'OTP sent to your email. Please verify.',
-      otpVerificationRequired: true
+    return res.status(200).json({
+      status: true,
+      message: "OTP sent to your email. Please verify to complete the registration.",
+      data: {
+        otpVerificationRequired: true
+      }
     });
 
   } catch (err) {
     console.error('[REGISTER_USER_ERROR]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({
+      status: false,
+      message: "Server error. Please try again later.",
+      error: {
+        code: "ERR_INTERNAL",
+        issue: "Unexpected error occurred"
+      }
+    });
   }
 };
 
@@ -71,7 +95,14 @@ export const registerDoctor = async (req: Request, res: Response): Promise<any> 
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email or phone already registered' });
+      return res.status(400).json({
+        status: false,
+        message: 'Email or phone already registered. Please use a different one.',
+        error: {
+          code: 'ERR_ALREADY_REGISTERED',
+          issue: 'Email or phone already exists'
+        }
+      });
     }
 
     // 2. Generate OTP
@@ -86,7 +117,7 @@ export const registerDoctor = async (req: Request, res: Response): Promise<any> 
       lastName,
       dob,
       gender,
-      role:"DOCTOR" ,
+      role: 'DOCTOR',
       otp
     };
 
@@ -96,18 +127,35 @@ export const registerDoctor = async (req: Request, res: Response): Promise<any> 
     try {
       await sendOtpEmail(email, otp);
     } catch (error) {
-      return res.status(500).json({ message: 'Error sending OTP. Please try again.' });
+      return res.status(500).json({
+        status: false,
+        message: 'There was an issue sending the OTP. Please try again later.',
+        error: {
+          code: 'ERR_EMAIL_FAILURE',
+          issue: 'Failed to send OTP email'
+        }
+      });
     }
 
     // 5. Respond with OTP sent status
-    res.status(200).json({
-      message: 'OTP sent to your email. Please verify.',
-      otpVerificationRequired: true
+    return res.status(200).json({
+      status: true,
+      message: 'OTP sent to your email. Please verify to complete your registration.',
+      data: {
+        otpVerificationRequired: true
+      }
     });
 
   } catch (err) {
-    console.error('[REGISTER_USER_ERROR]', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('[REGISTER_DOCTOR_ERROR]', err);
+    return res.status(500).json({
+      status: false,
+      message: 'Server error. Please try again later.',
+      error: {
+        code: 'ERR_INTERNAL',
+        issue: 'Unexpected error occurred'
+      }
+    });
   }
 };
 
@@ -123,7 +171,14 @@ export const registerHospital = async (req: Request, res: Response): Promise<any
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email or phone already registered' });
+      return res.status(400).json({
+        status: false,
+        message: 'Email or phone already registered. Please use a different one.',
+        error: {
+          code: 'ERR_ALREADY_REGISTERED',
+          issue: 'Email or phone already exists'
+        }
+      });
     }
 
     // 2. Generate OTP
@@ -138,7 +193,7 @@ export const registerHospital = async (req: Request, res: Response): Promise<any
       lastName,
       dob,
       gender,
-      role:"HOSPITAL" ,
+      role: 'HOSPITAL',
       otp
     };
 
@@ -148,18 +203,35 @@ export const registerHospital = async (req: Request, res: Response): Promise<any
     try {
       await sendOtpEmail(email, otp);
     } catch (error) {
-      return res.status(500).json({ message: 'Error sending OTP. Please try again.' });
+      return res.status(500).json({
+        status: false,
+        message: 'There was an issue sending the OTP. Please try again later.',
+        error: {
+          code: 'ERR_EMAIL_FAILURE',
+          issue: 'Failed to send OTP email'
+        }
+      });
     }
 
     // 5. Respond with OTP sent status
-    res.status(200).json({
-      message: 'OTP sent to your email. Please verify.',
-      otpVerificationRequired: true
+    return res.status(200).json({
+      status: true,
+      message: 'OTP sent to your email. Please verify to complete your registration.',
+      data: {
+        otpVerificationRequired: true
+      }
     });
 
   } catch (err) {
-    console.error('[REGISTER_USER_ERROR]', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('[REGISTER_HOSPITAL_ERROR]', err);
+    return res.status(500).json({
+      status: false,
+      message: 'Server error. Please try again later.',
+      error: {
+        code: 'ERR_INTERNAL',
+        issue: 'Unexpected error occurred'
+      }
+    });
   }
 };
 
@@ -171,14 +243,28 @@ export const verifyOtpAndRegister = async (req: Request, res: Response): Promise
     const cachedData = await redis.get(`otp:${email}`);
 
     if (!cachedData) {
-      return res.status(400).json({ message: 'No registration data found or OTP expired. Please try registering again.' });
+      return res.status(400).json({
+        status: false,
+        message: 'No registration data found or OTP expired. Please try registering again.',
+        error: {
+          code: 'ERR_OTP_EXPIRED',
+          issue: 'OTP expired or registration data not found'
+        }
+      });
     }
 
     const cachedUser = JSON.parse(cachedData);
 
     // 2. Check if the OTP matches
     if (cachedUser.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid OTP.',
+        error: {
+          code: 'ERR_INVALID_OTP',
+          issue: 'The OTP provided does not match'
+        }
+      });
     }
 
     // 3. Hash the password
@@ -203,18 +289,28 @@ export const verifyOtpAndRegister = async (req: Request, res: Response): Promise
 
     // 6. Respond with the newly created user
     res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        role: user.role
+      status: true,
+      message: 'User registered successfully.',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          role: user.role
+        }
       }
     });
 
   } catch (err) {
     console.error('[VERIFY_OTP_ERROR]', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      status: false,
+      message: 'Server error. Please try again later.',
+      error: {
+        code: 'ERR_INTERNAL',
+        issue: 'Unexpected error occurred'
+      }
+    });
   }
 };
 
@@ -230,14 +326,28 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        status: false,
+        message: "User not found.",
+        error: {
+          code: "ERR_USER_NOT_FOUND",
+          issue: "No user found with the provided email or phone"
+        }
+      });
     }
 
     // 2. Compare the provided password with the hashed password stored in the database
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({
+        status: false,
+        message: "Invalid credentials.",
+        error: {
+          code: "ERR_INVALID_CREDENTIALS",
+          issue: "The provided password is incorrect"
+        }
+      });
     }
 
     // 3. Create a JWT token
@@ -249,29 +359,53 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
 
     // 4. Send response with the token
     res.status(200).json({
-      message: "Login successful",
-      token,
+      status: true,
+      message: "Login successful.",
+      data: {
+        token,
+      }
     });
   } catch (err) {
     console.error("[LOGIN_USER_ERROR]", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      status: false,
+      message: "Server error. Please try again later.",
+      error: {
+        code: "ERR_INTERNAL",
+        issue: "Unexpected error occurred"
+      }
+    });
   }
 };
 
-export const requestPasswordReset = async (req: Request, res:Response ): Promise<any>=> {
+export const requestPasswordReset = async (req: Request, res: Response): Promise<any> => {
   const { email } = req.body;
 
-  if (!email) return res.status(400).json({ message: 'Email is required' });
+  if (!email) return res.status(400).json({
+    status: false,
+    message: 'Email is required',
+    error: {
+      code: 'ERR_MISSING_EMAIL',
+      issue: 'Email is a required field to request a password reset'
+    }
+  });
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({
+      status: false,
+      message: 'User not found',
+      error: {
+        code: 'ERR_USER_NOT_FOUND',
+        issue: 'No user found with the provided email address'
+      }
+    });
 
     // Generate JWT token
     const token = jwt.sign(
       { email, purpose: 'reset_password' },
       process.env.JWT_SECRET || '',
-      { expiresIn: 10 * 60 } //10 minutes
+      { expiresIn: 10 * 60 } // 10 minutes
     );
 
     // Store token in Redis
@@ -282,10 +416,20 @@ export const requestPasswordReset = async (req: Request, res:Response ): Promise
     // Send email
     await sendResetPassEmail(email, resetLink);
 
-    res.status(200).json({ message: 'Reset password email sent ✅' });
+    res.status(200).json({
+      status: true,
+      message: 'Reset password email sent',
+    });
   } catch (error) {
     console.error('Password reset error:', error);
-    res.status(500).json({ message: 'Something went wrong 🥲' });
+    res.status(500).json({
+      status: false,
+      message: 'Something went wrong 🥲',
+      error: {
+        code: 'ERR_INTERNAL',
+        issue: 'An unexpected error occurred during the password reset process'
+      }
+    });
   }
 };
 
@@ -293,26 +437,58 @@ export const verifyResetToken = async (req: Request, res: Response): Promise<any
   const { token } = req.query;
 
   if (!token || typeof token !== 'string') {
-    return res.status(400).json({ message: 'Invalid token' });
+    return res.status(400).json({
+      status: false,
+      message: 'Invalid token',
+      error: {
+        code: 'ERR_INVALID_TOKEN',
+        issue: 'The provided token is either missing or invalid'
+      }
+    });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as { email: string, purpose: string };
     if (decoded.purpose !== 'reset_password') {
-      return res.status(400).json({ message: 'Invalid purpose' });
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid purpose',
+        error: {
+          code: 'ERR_INVALID_PURPOSE',
+          issue: 'The token purpose is not for password reset'
+        }
+      });
     }
 
     // Check Redis
     const storedToken = await redis.get(`reset:${decoded.email}`);
     if (!storedToken || storedToken !== token) {
-      return res.status(401).json({ message: 'Token expired or invalid' });
+      return res.status(401).json({
+        status: false,
+        message: 'Token expired or invalid',
+        error: {
+          code: 'ERR_TOKEN_EXPIRED',
+          issue: 'The token has expired or is invalid'
+        }
+      });
     }
 
     // ✅ Token is valid
-    res.status(200).json({ message: 'Token valid', email: decoded.email });
+    res.status(200).json({
+      status: true,
+      message: 'Token valid',
+      email: decoded.email
+    });
   } catch (err) {
     console.error(err);
-    res.status(401).json({ message: 'Token expired or invalid' });
+    res.status(401).json({
+      status: false,
+      message: 'Token expired or invalid',
+      error: {
+        code: 'ERR_TOKEN_INVALID',
+        issue: 'The token is expired or invalid'
+      }
+    });
   }
 };
 
@@ -320,7 +496,14 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
   const { token, newPassword } = req.body;
 
   if (!token || !newPassword) {
-    return res.status(400).json({ message: 'Token and new password are required' });
+    return res.status(400).json({
+      status: false,
+      message: 'Token and new password are required',
+      error: {
+        code: 'ERR_MISSING_PARAMETERS',
+        issue: 'Both token and new password are required to reset the password'
+      }
+    });
   }
 
   try {
@@ -329,13 +512,27 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
     const email = decoded.email;
 
     if (decoded.purpose !== 'reset_password') {
-      return res.status(400).json({ message: 'Invalid token purpose' });
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid token purpose',
+        error: {
+          code: 'ERR_INVALID_TOKEN_PURPOSE',
+          issue: 'The token purpose is not for password reset'
+        }
+      });
     }
 
     // 2. Check if token exists in Redis
     const redisToken = await redis.get(`reset:${email}`);
     if (!redisToken || redisToken !== token) {
-      return res.status(401).json({ message: 'Token is invalid or expired' });
+      return res.status(401).json({
+        status: false,
+        message: 'Token is invalid or expired',
+        error: {
+          code: 'ERR_TOKEN_INVALID',
+          issue: 'The token is either invalid or expired'
+        }
+      });
     }
 
     // 3. Hash new password
@@ -350,9 +547,19 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
     // 5. Invalidate token
     await redis.del(`reset:${email}`);
 
-    res.status(200).json({ message: 'Password has been reset successfully 🙌' });
+    res.status(200).json({
+      status: true,
+      message: 'Password has been reset successfully'
+    });
   } catch (err) {
     console.error('Reset password error:', err);
-    return res.status(401).json({ message: 'Token is invalid or expired' });
+    return res.status(401).json({
+      status: false,
+      message: 'Token is invalid or expired',
+      error: {
+        code: 'ERR_TOKEN_INVALID',
+        issue: 'The token is either invalid or expired'
+      }
+    });
   }
 };
