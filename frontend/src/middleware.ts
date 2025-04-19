@@ -1,28 +1,28 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Define auth routes that don't require authentication
-const authRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
+// Define public routes that don't require authentication
+const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Check if the route is a public route
+  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))
+
   // Get token from cookies
   const token = request.cookies.get("auth_token")?.value
 
-  // Check if the route is an auth route
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route) || pathname === route)
-
-  // If it's an auth route and user is logged in, redirect to dashboard
-  if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+  // If it's a protected route and user is not logged in, redirect to login
+  if (!isPublicRoute && !token) {
+    const url = new URL("/login", request.url)
+    url.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(url)
   }
 
-  // If it's not an auth route and user is not logged in, redirect to login
-  if (!isAuthRoute && !token && !pathname.startsWith("/api")) {
-    const url = new URL("/login", request.url)
-    url.searchParams.set("callbackUrl", encodeURI(request.url))
-    return NextResponse.redirect(url)
+  // If it's a login/register page and user is logged in, redirect to dashboard
+  if ((pathname === "/login" || pathname === "/register") && token) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   return NextResponse.next()

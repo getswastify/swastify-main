@@ -353,20 +353,62 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
     // 3. Create a JWT token
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET as string, // Ensure you have a secret in your env variables
-      { expiresIn: "1h" } // Token expiration time
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" } // Extending token lifetime for cookies
     );
 
-    // 4. Send response with the token
+    // 4. Set the token as an HTTP-only cookie
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
+      sameSite: 'strict', // Protect against CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      path: '/'
+    });
+
+    // 5. Send response (without the token in the body)
     res.status(200).json({
       status: true,
       message: "Login successful.",
       data: {
-        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
       }
     });
   } catch (err) {
     console.error("[LOGIN_USER_ERROR]", err);
+    res.status(500).json({
+      status: false,
+      message: "Server error. Please try again later.",
+      error: {
+        code: "ERR_INTERNAL",
+        issue: "Unexpected error occurred"
+      }
+    });
+  }
+};
+
+export const logoutUser = async (_req: Request, res: Response): Promise<any> => {
+  try {
+    // Clear the auth cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    res.status(200).json({
+      status: true,
+      message: "Logout successful."
+    });
+  } catch (err) {
+    console.error("[LOGOUT_USER_ERROR]", err);
     res.status(500).json({
       status: false,
       message: "Server error. Please try again later.",
@@ -430,6 +472,51 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
         issue: 'An unexpected error occurred during the password reset process'
       }
     });
+  }
+};
+
+export const verifyTokenFromHeader = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({
+        status: false,
+        message: "Authorization header missing or malformed.",
+        error: {
+          code: "ERR_NO_AUTH_HEADER",
+          issue: "Expected format: 'Authorization: Bearer <token>'"
+        }
+      });
+      return; // Return without a value
+    }
+
+    const token = authHeader.split(' ')[1]; // Extract token
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      userId: string;
+      role: string;
+    };
+
+    res.status(200).json({
+      status: true,
+      message: "Token is valid.",
+      data: {
+        user: decoded,
+      },
+    });
+    // No return statement here
+  } catch (err) {
+    console.error("[VERIFY_AUTH_ERROR]", err);
+    res.status(401).json({
+      status: false,
+      message: "Invalid or expired token.",
+      error: {
+        code: "ERR_INVALID_TOKEN",
+        issue: "JWT verification failed"
+      }
+    });
+    // No return statement here
   }
 };
 
@@ -559,6 +646,70 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
       error: {
         code: 'ERR_TOKEN_INVALID',
         issue: 'The token is either invalid or expired'
+      }
+    });
+  }
+};
+
+export const getUserDetails = async (req: Request, res: Response):Promise<any> => {
+  try {
+    const token = req.cookies?.auth_token;
+    console.log(token);
+    
+
+    if (!token) {
+      return res.status(401).json({
+        status: false,
+        message: "Unauthorized: No token found in cookies",
+        error: {
+          code: "ERR_NO_TOKEN",
+          issue: "Missing auth_token in cookies"
+        }
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
+
+    // Fetch user from DB
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+        error: {
+          code: "ERR_USER_NOT_FOUND",
+          issue: "Token is valid but user doesn’t exist anymore"
+        }
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: "User details fetched",
+      data: { user }
+    });
+
+  } catch (err) {
+    console.error("[GET_USER_DETAILS_ERROR]", err);
+    res.status(401).json({
+      status: false,
+      message: "Invalid or expired token",
+      error: {
+        code: "ERR_INVALID_TOKEN",
+        issue: "JWT verification failed or token expired"
       }
     });
   }

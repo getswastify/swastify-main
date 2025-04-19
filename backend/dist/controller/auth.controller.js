@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPassword = exports.verifyResetToken = exports.requestPasswordReset = exports.loginUser = exports.verifyOtpAndRegister = exports.registerHospital = exports.registerDoctor = exports.registerUser = void 0;
+exports.getUserDetails = exports.resetPassword = exports.verifyResetToken = exports.verifyTokenFromHeader = exports.requestPasswordReset = exports.logoutUser = exports.loginUser = exports.verifyOtpAndRegister = exports.registerHospital = exports.registerDoctor = exports.registerUser = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -333,15 +333,28 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             });
         }
         // 3. Create a JWT token
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, // Ensure you have a secret in your env variables
-        { expiresIn: "1h" } // Token expiration time
+        const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" } // Extending token lifetime for cookies
         );
-        // 4. Send response with the token
+        // 4. Set the token as an HTTP-only cookie
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/'
+        });
+        // 5. Send response (without the token in the body)
         res.status(200).json({
             status: true,
             message: "Login successful.",
             data: {
-                token,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    role: user.role
+                }
             }
         });
     }
@@ -358,6 +371,33 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.loginUser = loginUser;
+const logoutUser = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Clear the auth cookie
+        res.clearCookie('auth_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/'
+        });
+        res.status(200).json({
+            status: true,
+            message: "Logout successful."
+        });
+    }
+    catch (err) {
+        console.error("[LOGOUT_USER_ERROR]", err);
+        res.status(500).json({
+            status: false,
+            message: "Server error. Please try again later.",
+            error: {
+                code: "ERR_INTERNAL",
+                issue: "Unexpected error occurred"
+            }
+        });
+    }
+});
+exports.logoutUser = logoutUser;
 const requestPasswordReset = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email } = req.body;
     if (!email)
@@ -406,6 +446,45 @@ const requestPasswordReset = (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.requestPasswordReset = requestPasswordReset;
+const verifyTokenFromHeader = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            res.status(401).json({
+                status: false,
+                message: "Authorization header missing or malformed.",
+                error: {
+                    code: "ERR_NO_AUTH_HEADER",
+                    issue: "Expected format: 'Authorization: Bearer <token>'"
+                }
+            });
+            return; // Return without a value
+        }
+        const token = authHeader.split(' ')[1]; // Extract token
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        res.status(200).json({
+            status: true,
+            message: "Token is valid.",
+            data: {
+                user: decoded,
+            },
+        });
+        // No return statement here
+    }
+    catch (err) {
+        console.error("[VERIFY_AUTH_ERROR]", err);
+        res.status(401).json({
+            status: false,
+            message: "Invalid or expired token.",
+            error: {
+                code: "ERR_INVALID_TOKEN",
+                issue: "JWT verification failed"
+            }
+        });
+        // No return statement here
+    }
+});
+exports.verifyTokenFromHeader = verifyTokenFromHeader;
 const verifyResetToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { token } = req.query;
     if (!token || typeof token !== 'string') {
@@ -527,3 +606,62 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.resetPassword = resetPassword;
+const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
+        console.log(token);
+        if (!token) {
+            return res.status(401).json({
+                status: false,
+                message: "Unauthorized: No token found in cookies",
+                error: {
+                    code: "ERR_NO_TOKEN",
+                    issue: "Missing auth_token in cookies"
+                }
+            });
+        }
+        // Verify token
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        // Fetch user from DB
+        const user = yield prismaConnection_1.prisma.user.findUnique({
+            where: { id: decoded.userId },
+            select: {
+                id: true,
+                email: true,
+                phone: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                createdAt: true,
+            },
+        });
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found",
+                error: {
+                    code: "ERR_USER_NOT_FOUND",
+                    issue: "Token is valid but user doesn’t exist anymore"
+                }
+            });
+        }
+        res.status(200).json({
+            status: true,
+            message: "User details fetched",
+            data: { user }
+        });
+    }
+    catch (err) {
+        console.error("[GET_USER_DETAILS_ERROR]", err);
+        res.status(401).json({
+            status: false,
+            message: "Invalid or expired token",
+            error: {
+                code: "ERR_INVALID_TOKEN",
+                issue: "JWT verification failed or token expired"
+            }
+        });
+    }
+});
+exports.getUserDetails = getUserDetails;
