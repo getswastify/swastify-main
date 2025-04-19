@@ -14,8 +14,8 @@ const PORT = process.env.PORT || 3001;
 app.use((0, morgan_1.default)('combined'));
 // CORS setup
 app.use((0, cors_1.default)({
-    origin: 'http://localhost:3000',
-    credentials: true // if you're using cookies or auth headers
+    origin: ['http://localhost:3000', 'https://app.swastify.life/'],
+    credentials: true
 }));
 app.use(express_1.default.json());
 app.get("/", (req, res) => {

@@ -42,7 +42,7 @@ export default function ResetPasswordPage() {
           throw new Error(response.message || "Invalid or expired token")
         }
 
-        setIsTokenValid(response.data?.valid || false)
+        setIsTokenValid(response.status || false)
       } catch (error) {
         toast.error("Token Verification Failed", {
           description: error instanceof Error ? error.message : "Invalid or expired token",
