@@ -1,57 +1,52 @@
-import axios, { AxiosError, AxiosResponse } from "axios"
-
-// Define response structure with proper typing
-export interface ApiSuccessResponse<T = unknown> {
-  status: true
-  message: string
-  data: T
-}
-
-export interface ApiErrorResponse {
-  status: false
-  message: string
-  error: unknown
-}
-
-export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse
-
-// Type for the error response data from the server
-interface ErrorResponseData {
-  message?: string
-  [key: string]: unknown
-}
+import axios from "axios"
 
 // Create a base axios instance with common configuration
 const api = axios.create({
-  baseURL: "https://api.swastify.life",
+  baseURL: "http://localhost:3001",
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // This ensures cookies are sent with requests
   timeout: 10000, // 10 seconds
 })
 
-// Add a response interceptor to standardize response format
-api.interceptors.response.use(
-  <T>(response: AxiosResponse<T>): AxiosResponse<T> => {
-    // Optionally transform the response data here if needed
-    response.data = {
-      status: true,
-      message: (response.data as Record<string, unknown>).message as string || "Operation successful",
-      data: response.data,
-    } as unknown as T;
-    return response;
+// Add a request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    // Check if we're in a browser environment
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token")
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    }
+    return config
   },
-  (error: AxiosError<ErrorResponseData>): Promise<ApiErrorResponse> => {
-    // Transform error responses to match our expected format
-    const errorMessage = 
-      error.response?.data?.message || 
-      error.message || 
-      "An unexpected error occurred"
+  (error) => Promise.reject(error),
+)
+
+// Add a response interceptor to standardize error responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // If we get a 401 Unauthorized error, clear the auth token
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token")
+      }
+    }
+
+    const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred"
+    const errorCode = error.response?.data?.error?.code || "UNKNOWN_ERROR"
+    const errorIssue = error.response?.data?.error?.issue || errorMessage
 
     return Promise.reject({
       status: false,
       message: errorMessage,
-      error: error.response?.data || error,
+      error: {
+        code: errorCode,
+        issue: errorIssue,
+      },
     })
   },
 )

@@ -24,7 +24,7 @@ export default function RegisterPage() {
     firstName: "",
     lastName: "",
     dob: "",
-    gender: "Male",
+    gender: "",
   })
   const router = useRouter()
 
@@ -201,6 +201,8 @@ export default function RegisterPage() {
                     className="pl-10"
                     required
                   />
+
+                  
                   <Button
                     type="button"
                     variant="ghost"

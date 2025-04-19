@@ -1,56 +1,30 @@
-import api, { type ApiResponse } from "@/lib/axios"
-
-// Types for request data
-export interface LoginData {
-  email: string
-  password: string
-}
-
-export interface RegisterData {
-  email: string
-  phone: string
-  password: string
-  firstName: string
-  lastName: string
-  dob: string
-  gender: string
-}
-
-export interface ResetPasswordData {
-  token: string
-  newPassword: string
-}
-
-// Types for response data
-export interface UserData {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  // Add other user fields as needed
-}
-
-export interface TokenData {
-  token: string
-  // Add other token-related fields as needed
-}
-
-export interface VerificationData {
-  valid: boolean
-  // Add other verification-related fields as needed
-}
+import api from "@/lib/axios"
+import type {
+  ApiResponse,
+  LoginData,
+  RegisterData,
+  ResetPasswordData,
+  LoginApiResponse,
+  RegisterResponse,
+  VerifyOtpApiResponse,
+  User,
+} from "@/types/auth"
 
 /**
  * Login user
  */
-export const loginUser = async (data: LoginData): Promise<ApiResponse<UserData & TokenData>> => {
+export const loginUser = async (data: LoginData): Promise<LoginApiResponse> => {
   try {
-    const response = await api.post<UserData & TokenData>("/auth/login", data)
-    return {
-      status: true,
-      message: "Login successful",
-      data: response.data
+    const response = await api.post<LoginApiResponse>("/auth/login", data)
+
+    // Store token in localStorage for client-side access
+    if (response.data.status && response.data.data?.token) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_token", response.data.data.token)
+      }
     }
+
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -59,14 +33,10 @@ export const loginUser = async (data: LoginData): Promise<ApiResponse<UserData &
 /**
  * Register user
  */
-export const registerUser = async (data: RegisterData): Promise<ApiResponse<UserData>> => {
+export const registerUser = async (data: RegisterData): Promise<RegisterResponse> => {
   try {
-    const response = await api.post<UserData>("/auth/register", data)
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
-    }
+    const response = await api.post<RegisterResponse>("/auth/register", data)
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -75,14 +45,18 @@ export const registerUser = async (data: RegisterData): Promise<ApiResponse<User
 /**
  * Verify OTP
  */
-export const verifyOTP = async (email: string, otp: string): Promise<ApiResponse<{ verified: boolean }>> => {
+export const verifyOTP = async (email: string, otp: string): Promise<VerifyOtpApiResponse> => {
   try {
-    const response = await api.post<{ verified: boolean }>("/auth/verify-otp", { email, otp })
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
+    const response = await api.post<VerifyOtpApiResponse>("/auth/verify-otp", { email, otp })
+
+    // If verification is successful and we get a token, store it
+    if (response.data.status && response.data.data?.token) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_token", response.data.data.token)
+      }
     }
+
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -93,12 +67,8 @@ export const verifyOTP = async (email: string, otp: string): Promise<ApiResponse
  */
 export const resendOTP = async (email: string): Promise<ApiResponse<{ sent: boolean }>> => {
   try {
-    const response = await api.post<{ sent: boolean }>("/auth/resend-otp", { email })
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
-    }
+    const response = await api.post<ApiResponse<{ sent: boolean }>>("/auth/resend-otp", { email })
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -109,12 +79,8 @@ export const resendOTP = async (email: string): Promise<ApiResponse<{ sent: bool
  */
 export const requestPasswordReset = async (email: string): Promise<ApiResponse<{ sent: boolean }>> => {
   try {
-    const response = await api.post<{ sent: boolean }>("/auth/request-password-reset", { email })
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
-    }
+    const response = await api.post<ApiResponse<{ sent: boolean }>>("/auth/request-password-reset", { email })
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -123,14 +89,10 @@ export const requestPasswordReset = async (email: string): Promise<ApiResponse<{
 /**
  * Verify reset token
  */
-export const verifyResetToken = async (token: string): Promise<ApiResponse<VerificationData>> => {
+export const verifyResetToken = async (token: string): Promise<ApiResponse<{ valid: boolean }>> => {
   try {
-    const response = await api.get<VerificationData>(`/auth/verify-reset-token?token=${token}`)
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
-    }
+    const response = await api.get<ApiResponse<{ valid: boolean }>>(`/auth/verify-reset-token?token=${token}`)
+    return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
@@ -141,13 +103,52 @@ export const verifyResetToken = async (token: string): Promise<ApiResponse<Verif
  */
 export const resetPassword = async (data: ResetPasswordData): Promise<ApiResponse<{ updated: boolean }>> => {
   try {
-    const response = await api.post<{ updated: boolean }>("/auth/reset-password", data)
-    return {
-      status: true,
-      message: "Registration successful",
-      data: response.data
-    }
+    const response = await api.post<ApiResponse<{ updated: boolean }>>("/auth/reset-password", data)
+    return response.data
   } catch (error) {
+    return error as ApiResponse<never>
+  }
+}
+
+/**
+ * Get current user
+ */
+export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
+  try {
+    // Only make this call if we have a token
+    if (typeof window !== "undefined" && !localStorage.getItem("auth_token")) {
+      return {
+        status: false,
+        message: "No authentication token found",
+      }
+    }
+
+    const response = await api.get<ApiResponse<User>>("/auth/getuser-details")
+    return response.data
+  } catch (error) {
+    return error as ApiResponse<never>
+  }
+}
+
+/**
+ * Logout user
+ */
+export const logoutUser = async (): Promise<ApiResponse<void>> => {
+  try {
+    const response = await api.post<ApiResponse<void>>("/auth/logout")
+
+    // Remove token from localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token")
+    }
+
+    return response.data
+  } catch (error) {
+    // Even if the API call fails, clear local storage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token")
+    }
+
     return error as ApiResponse<never>
   }
 }
