@@ -21,7 +21,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Your backend API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL|| "http://localhost:3001"
+const API_URL =  process.env.NEXT_PUBLIC_API_URL;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({

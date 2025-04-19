@@ -25,18 +25,13 @@ const sendOtpEmail = (email, otp) => __awaiter(void 0, void 0, void 0, function*
         senderAddress: senderEmail,
         content: emailContent,
         recipients: {
-            to: [
-                {
-                    address: email,
-                    displayName: 'Swastify User',
-                },
-            ],
+            to: [{ address: email, displayName: 'Swastify User' }],
         },
     };
     try {
         const poller = yield emailClient.beginSend(emailMessage);
-        const response = yield poller.pollUntilDone();
-        console.log('Email send request sent! Response:', response);
+        const operationState = poller.getOperationState();
+        console.log('OTP email send initiated! Operation ID:', operationState.id);
     }
     catch (error) {
         console.error('Error sending OTP:', error);
@@ -53,18 +48,13 @@ const sendResetPassEmail = (email, resetLink) => __awaiter(void 0, void 0, void 
         senderAddress: senderEmail,
         content: emailContent,
         recipients: {
-            to: [
-                {
-                    address: email,
-                    displayName: 'Swastify User',
-                },
-            ],
+            to: [{ address: email, displayName: 'Swastify User' }],
         },
     };
     try {
         const poller = yield emailClient.beginSend(emailMessage);
-        const response = yield poller.pollUntilDone();
-        console.log('Password reset email sent! Response:', response);
+        const operationState = poller.getOperationState();
+        console.log('Password reset email send initiated! Operation ID:', operationState.id);
     }
     catch (error) {
         console.error('Error sending password reset email:', error);
