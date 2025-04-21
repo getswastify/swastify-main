@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useRouter } from "next/navigation"
 import type { User } from "@/types/auth"
 import api from "@/lib/axios"
+import { AxiosError } from "axios"
 
 
 // Define the auth state interface
@@ -22,14 +23,7 @@ interface AuthContextType extends AuthState {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Helper function to check if a token exists
-const hasAuthToken = (): boolean => {
-  if (typeof window === "undefined") return false
 
-  // We can only reliably check localStorage from client-side JavaScript
-  // since httpOnly cookies are not accessible via document.cookie
-  return !!localStorage.getItem("auth_token")
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -83,20 +77,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           message: response.data.message || "Login failed",
         }
       }
-    } catch (error: any) {
-      console.error("Login error:", error)
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-      })
-
-      // Extract error message from axios error response
-      const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred"
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+    
+      console.error("Login error:", axiosError);
+    
+      // fallback message handling
+      const errorMessage =
+        (axiosError.response?.data as { message?: string })?.message || axiosError.message || "An unexpected error occurred";
+    
       return {
         status: false,
         message: errorMessage,
-      }
+      };
     }
   }
 
@@ -130,11 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.get("/auth/getuser-details")
 
         if (response.data.status && response.data.data?.user) {
-          // If successful, update localStorage with token if it doesn't exist
-          // This helps with our client-side checks
-          if (typeof window !== "undefined" && !localStorage.getItem("auth_token") && response.data.data?.token) {
-            localStorage.setItem("auth_token", response.data.data.token)
-          }
+
 
           setState({
             user: response.data.data.user,
@@ -142,10 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isLoading: false,
           })
         } else {
-          // Clear any stale token in localStorage
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("auth_token")
-          }
 
           setState({
             user: null,
@@ -154,11 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
         }
       } catch (error) {
-        // On error, clear localStorage and set unauthenticated
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("auth_token")
-        }
 
+        console.error(error);
         setState({
           user: null,
           isAuthenticated: false,
