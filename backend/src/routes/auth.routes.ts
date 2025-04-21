@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import {  getUserDetails, loginUser, logoutUser, registerDoctor, registerHospital, registerUser, requestPasswordReset, resetPassword, verifyOtpAndRegister, verifyResetToken, verifyTokenFromHeader } from '../controller/auth.controller';
-import { verifyToken } from '../middleware/verifyToken';
+import {  getUserDetails, loginUser, logoutUser, registerDoctor, registerHospital, registerUser, requestPasswordReset, resendOtp, resetPassword, verifyOtpAndRegister, verifyResetToken, verifyTokenFromHeader } from '../controller/auth.controller';
 
 const router = Router();
 
@@ -9,6 +8,7 @@ router.post('/register/doctor', registerDoctor);
 router.post('/register/hospital', registerHospital);
 
 
+router.post('/resend-otp', resendOtp);
 router.post('/verify-otp', verifyOtpAndRegister);
 router.get('/verify-auth', verifyTokenFromHeader);
 
