@@ -235,6 +235,96 @@ export const registerHospital = async (req: Request, res: Response): Promise<any
   }
 };
 
+export const resendOtp = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        status: false,
+        message: "Email is required to resend OTP.",
+        error: {
+          code: "ERR_EMAIL_REQUIRED",
+          issue: "Missing email in request body"
+        }
+      });
+    }
+
+    const redisKey = `otp:${email}`;
+    const userDataRaw = await redis.get(redisKey);
+
+    if (!userDataRaw) {
+      return res.status(404).json({
+        status: false,
+        message: "No pending registration found for this email.",
+        error: {
+          code: "ERR_NO_PENDING_REGISTRATION",
+          issue: "No OTP session exists in Redis for this email"
+        }
+      });
+    }
+
+    const userData = JSON.parse(userDataRaw);
+    const lastSentAt = userData.lastSentAt || 0;
+    const now = Date.now();
+
+    const secondsSinceLastSent = Math.floor((now - lastSentAt) / 1000);
+    const cooldownSeconds = 30;
+
+    if (secondsSinceLastSent < cooldownSeconds) {
+      return res.status(429).json({
+        status: false,
+        message: `Please wait ${cooldownSeconds - secondsSinceLastSent} seconds before resending OTP.`,
+        error: {
+          code: "ERR_COOLDOWN_ACTIVE",
+          issue: "Resend attempted before cooldown expired"
+        }
+      });
+    }
+
+    // Generate new OTP
+    const newOtp = crypto.randomInt(100000, 999999).toString();
+    userData.otp = newOtp;
+    userData.lastSentAt = now;
+
+    // Update Redis with new OTP and reset expiry to 10 minutes
+    await redis.setex(redisKey, 600, JSON.stringify(userData));
+
+    // Send OTP again
+    try {
+      await sendOtpEmail(email, newOtp);
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        message: "Failed to resend OTP. Try again later.",
+        error: {
+          code: "ERR_EMAIL_FAILURE",
+          issue: "Could not send OTP email"
+        }
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "OTP resent successfully. Please check your email.",
+      data: {
+        otpResent: true
+      }
+    });
+
+  } catch (err) {
+    console.error('[RESEND_OTP_ERROR]', err);
+    return res.status(500).json({
+      status: false,
+      message: "Server error. Please try again later.",
+      error: {
+        code: "ERR_INTERNAL",
+        issue: "Unexpected error occurred"
+      }
+    });
+  }
+};
+
 export const verifyOtpAndRegister = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, otp } = req.body;
@@ -358,14 +448,30 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
     );
 
     // 4. Set the token as an HTTP-only cookie
-    res.cookie('auth_token', token, {
+    // res.cookie('auth_token', token, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
+    //   sameSite: 'none', // Protect against CSRF
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    //   path: '/',
+    //   domain: '.swastify.life' 
+    // });
+
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
-      sameSite: 'none', // Protect against CSRF
+      secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const, // Use 'none' in production, 'lax' in development
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-      domain: '.swastify.life' 
-    });
+      path: "/",
+    }
+
+    // Only add domain in production
+    if (process.env.NODE_ENV === "production") {
+      Object.assign(cookieOptions, { domain: ".swastify.life" })
+    }
+
+    res.cookie("auth_token", token, cookieOptions)
+
 
     // 5. Send response (without the token in the body)
     res.status(200).json({
@@ -396,14 +502,20 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
 
 export const logoutUser = async (_req: Request, res: Response): Promise<any> => {
   try {
-    // Clear the auth cookie
-    res.clearCookie('auth_token', {
+    // Clear the auth cookie with conditional domain
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
       path: '/',
-      domain: '.swastify.life'
-    });
+    };
+
+    // Only add domain in production
+    if (process.env.NODE_ENV === 'production') {
+      Object.assign(cookieOptions, { domain: '.swastify.life' });
+    }
+
+    res.clearCookie('auth_token', cookieOptions);
 
     res.status(200).json({
       status: true,

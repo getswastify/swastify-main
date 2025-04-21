@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import type { User } from "@/types/auth"
+import api from "@/lib/axios"
+
 
 // Define the auth state interface
 interface AuthState {
@@ -13,15 +15,21 @@ interface AuthState {
 
 // Define the auth context interface
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ status: boolean; message: string }>
   logout: () => Promise<void>
 }
 
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Your backend API URL
-const API_URL =  process.env.NEXT_PUBLIC_API_URL;
+// Helper function to check if a token exists
+const hasAuthToken = (): boolean => {
+  if (typeof window === "undefined") return false
+
+  // We can only reliably check localStorage from client-side JavaScript
+  // since httpOnly cookies are not accessible via document.cookie
+  return !!localStorage.getItem("auth_token")
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -32,73 +40,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   // Login function
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ status: boolean; message: string }> => {
     try {
       setState((prev) => ({ ...prev, isLoading: true }))
 
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        credentials: "include", // This ensures cookies are received
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await api.post("/auth/login", { email, password })
+      console.log("Login response:", response.data)
 
-      const data = await response.json()
-
-      if (response.ok && data.status) {
+      if (response.data.status) {
         // After successful login, fetch the user data
         try {
-          const userResponse = await fetch(`${API_URL}/auth/getuser-details`, {
-            credentials: "include",
-          })
+          const userResponse = await api.get("/auth/getuser-details")
+          console.log("User details response:", userResponse.data)
 
-          if (userResponse.ok) {
-            const userData = await userResponse.json()
-            if (userData && userData.data && userData.data.user) {
-              setState({
-                user: userData.data.user,
-                isAuthenticated: true,
-                isLoading: false,
-              })
-              return true
-            }
+          if (userResponse.data.status) {
+            setState({
+              user: userResponse.data.data.user,
+              isAuthenticated: true,
+              isLoading: false,
+            })
+            return { status: true, message: response.data.message || "Login successful" }
           }
-
-          // If we couldn't get user data, still consider login successful
-          setState({
-            user: null,
-            isAuthenticated: true,
-            isLoading: false,
-          })
-          return true
         } catch (error) {
           console.error("Error fetching user data after login:", error)
-          // Still consider login successful even if we couldn't get user data
-          setState({
-            user: null,
-            isAuthenticated: true,
-            isLoading: false,
-          })
-          return true
         }
+
+        // Even if we couldn't get user data, still consider login successful
+        setState({
+          user: response.data.data?.user || null,
+          isAuthenticated: true,
+          isLoading: false,
+        })
+        return { status: true, message: response.data.message || "Login successful" }
       } else {
         setState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
         })
-        return false
+        return {
+          status: false,
+          message: response.data.message || "Login failed",
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error)
       setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
       })
-      return false
+
+      // Extract error message from axios error response
+      const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred"
+      return {
+        status: false,
+        message: errorMessage,
+      }
     }
   }
 
@@ -116,10 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/login")
 
       // Finally, call the logout API
-      await fetch(`${API_URL}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      })
+      await api.post("/auth/logout")
     } catch (error) {
       console.error("Logout error:", error)
       // Already navigated to login page, so no need to do anything else
@@ -130,28 +125,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch(`${API_URL}/auth/getuser-details`, {
-          credentials: "include",
-        })
+        // Always make a lightweight API call to check authentication status
+        // The cookie will be sent automatically with the request
+        const response = await api.get("/auth/getuser-details")
 
-        if (!response.ok) {
+        if (response.data.status && response.data.data?.user) {
+          // If successful, update localStorage with token if it doesn't exist
+          // This helps with our client-side checks
+          if (typeof window !== "undefined" && !localStorage.getItem("auth_token") && response.data.data?.token) {
+            localStorage.setItem("auth_token", response.data.data.token)
+          }
+
           setState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          })
-          return
-        }
-
-        const data = await response.json()
-
-        if (data && data.data && data.data.user) {
-          setState({
-            user: data.data.user,
+            user: response.data.data.user,
             isAuthenticated: true,
             isLoading: false,
           })
         } else {
+          // Clear any stale token in localStorage
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("auth_token")
+          }
+
           setState({
             user: null,
             isAuthenticated: false,
@@ -159,7 +154,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
         }
       } catch (error) {
-        console.error("Error checking auth:", error)
+        // On error, clear localStorage and set unauthenticated
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth_token")
+        }
+
         setState({
           user: null,
           isAuthenticated: false,

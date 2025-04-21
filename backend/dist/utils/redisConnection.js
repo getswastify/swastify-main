@@ -6,10 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.redis = void 0;
 const ioredis_1 = __importDefault(require("ioredis"));
 exports.redis = new ioredis_1.default({
-    host: process.env.REDIS_HOST, // Host
-    port: Number(process.env.REDIS_PORT), // Port
-    password: process.env.REDIS_PASSWORD, // Password
-    tls: {}, // SSL enabled (tls is the equivalent option in ioredis)
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
+    password: process.env.REDIS_PASSWORD,
+    tls: {},
     retryStrategy: (times) => {
         // Retry connection logic (optional)
         if (times > 3) {
