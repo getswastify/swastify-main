@@ -4,8 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useRouter } from "next/navigation"
 import type { User } from "@/types/auth"
 import api from "@/lib/axios"
-import { AxiosError } from "axios"
-
+import type { AxiosError } from "axios"
 
 // Define the auth state interface
 interface AuthState {
@@ -23,7 +22,12 @@ interface AuthContextType extends AuthState {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-
+// Safe error logging function that only logs in development
+const safeLogError = (message: string, error: unknown): void => {
+  if (process.env.NODE_ENV !== "production") {
+    console.error(message, error)
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -39,13 +43,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({ ...prev, isLoading: true }))
 
       const response = await api.post("/auth/login", { email, password })
-      console.log("Login response:", response.data)
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Login response:", response.data)
+      }
 
       if (response.data.status) {
         // After successful login, fetch the user data
         try {
           const userResponse = await api.get("/auth/getuser-details")
-          console.log("User details response:", userResponse.data)
+
+          if (process.env.NODE_ENV !== "production") {
+            console.log("User details response:", userResponse.data)
+          }
 
           if (userResponse.data.status) {
             setState({
@@ -56,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { status: true, message: response.data.message || "Login successful" }
           }
         } catch (error) {
-          console.error("Error fetching user data after login:", error)
+          safeLogError("Error fetching user data after login:", error)
         }
 
         // Even if we couldn't get user data, still consider login successful
@@ -78,18 +88,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error: unknown) {
-      const axiosError = error as AxiosError;
-    
-      console.error("Login error:", axiosError);
-    
+      const axiosError = error as AxiosError
+
+      safeLogError("Login error:", axiosError)
+
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
+
       // fallback message handling
       const errorMessage =
-        (axiosError.response?.data as { message?: string })?.message || axiosError.message || "An unexpected error occurred";
-    
+        (axiosError.response?.data as { message?: string })?.message ||
+        axiosError.message ||
+        "An unexpected error occurred"
+
       return {
         status: false,
         message: errorMessage,
-      };
+      }
     }
   }
 
@@ -109,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Finally, call the logout API
       await api.post("/auth/logout")
     } catch (error) {
-      console.error("Logout error:", error)
+      safeLogError("Logout error:", error)
       // Already navigated to login page, so no need to do anything else
     }
   }
@@ -123,15 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.get("/auth/getuser-details")
 
         if (response.data.status && response.data.data?.user) {
-
-
           setState({
             user: response.data.data.user,
             isAuthenticated: true,
             isLoading: false,
           })
         } else {
-
           setState({
             user: null,
             isAuthenticated: false,
@@ -139,8 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
         }
       } catch (error) {
+        safeLogError("Authentication check error:", error)
 
-        console.error(error);
         setState({
           user: null,
           isAuthenticated: false,
