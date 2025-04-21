@@ -338,10 +338,11 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // 4. Set the token as an HTTP-only cookie
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none',
+            secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
+            sameSite: 'none', // Protect against CSRF
             maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: '/'
+            path: '/',
+            domain: '.swastify.life'
         });
         // 5. Send response (without the token in the body)
         res.status(200).json({
@@ -377,8 +378,9 @@ const logoutUser = (_req, res) => __awaiter(void 0, void 0, void 0, function* ()
         res.clearCookie('auth_token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/'
+            sameSite: 'none',
+            path: '/',
+            domain: '.swastify.life'
         });
         res.status(200).json({
             status: true,

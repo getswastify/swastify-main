@@ -362,8 +362,9 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
       sameSite: 'none', // Protect against CSRF
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-      path: '/'
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+      domain: '.swastify.life' 
     });
 
     // 5. Send response (without the token in the body)
@@ -399,8 +400,9 @@ export const logoutUser = async (_req: Request, res: Response): Promise<any> => 
     res.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/'
+      sameSite: 'none',
+      path: '/',
+      domain: '.swastify.life'
     });
 
     res.status(200).json({
