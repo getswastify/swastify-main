@@ -18,6 +18,8 @@ api.interceptors.request.use(
       const token = localStorage.getItem("auth_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
+        // Also add token to a custom header for middleware to check
+        config.headers["x-auth-token"] = token
       }
     }
     return config

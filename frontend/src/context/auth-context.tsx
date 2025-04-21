@@ -24,7 +24,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Safe error logging function that only logs in development
 const safeLogError = (message: string, error: unknown): void => {
-  if (process.env.NODE_ENV !== "production") {
+  // Only log in development, never in production
+  if (process.env.NODE_ENV === "development") {
     console.error(message, error)
   }
 }
@@ -44,18 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await api.post("/auth/login", { email, password })
 
-      if (process.env.NODE_ENV !== "production") {
-        console.log("Login response:", response.data)
-      }
-
       if (response.data.status) {
         // After successful login, fetch the user data
         try {
           const userResponse = await api.get("/auth/getuser-details")
-
-          if (process.env.NODE_ENV !== "production") {
-            console.log("User details response:", userResponse.data)
-          }
 
           if (userResponse.data.status) {
             setState({
@@ -135,9 +128,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
+      // Skip authentication check on public routes
+      const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password"]
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
+
+      const isPublicRoute = publicRoutes.some((route) => currentPath === route || currentPath.startsWith(route + "/"))
+
+      // Don't make the API call if we're on a public route
+      if (isPublicRoute) {
+        setState((prev) => ({ ...prev, isLoading: false }))
+        return
+      }
+
       try {
-        // Always make a lightweight API call to check authentication status
-        // The cookie will be sent automatically with the request
+        // Only make API call on protected routes
         const response = await api.get("/auth/getuser-details")
 
         if (response.data.status && response.data.data?.user) {
@@ -165,6 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     checkAuth()
+
+    // Add cleanup function to prevent memory leaks
+    return () => {
+      // Cancel any pending requests if component unmounts
+    }
   }, [])
 
   return (

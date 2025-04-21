@@ -12,8 +12,17 @@ export default function DashboardPage() {
 
   // If not authenticated and not loading, redirect to login
   useEffect(() => {
+    let redirectTimeout: NodeJS.Timeout
+
     if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+      redirectTimeout = setTimeout(() => {
+        router.push("/login")
+      }, 100)
+    }
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (redirectTimeout) clearTimeout(redirectTimeout)
     }
   }, [isLoading, isAuthenticated, router])
 

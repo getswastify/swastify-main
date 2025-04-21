@@ -13,8 +13,11 @@ export function middleware(request: NextRequest) {
   // Get token from cookies
   const token = request.cookies.get("auth_token")?.value
 
+  // Also check localStorage token as a fallback (for client-side auth)
+  const localToken = request.headers.get("x-auth-token")
+
   // If it's a protected route and user is not logged in, redirect to login
-  if (!isPublicRoute && !token) {
+  if (!isPublicRoute && !token && !localToken) {
     const url = new URL("/login", request.url)
     // Only add redirect param if not already on login page
     if (pathname !== "/login") {
@@ -24,7 +27,7 @@ export function middleware(request: NextRequest) {
   }
 
   // If it's a login/register page and user is logged in, redirect to dashboard
-  if ((pathname === "/login" || pathname === "/register") && token) {
+  if ((pathname === "/login" || pathname === "/register") && (token || localToken)) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
@@ -40,6 +43,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|images|.*\\..*).*)"
+    "/((?!_next/static|_next/image|favicon.ico|images|.*\\..*).*)",
   ],
 }

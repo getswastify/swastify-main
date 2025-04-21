@@ -44,7 +44,7 @@ function LoginForm() {
 
     try {
       const result = await login(values.email, values.password)
-      console.log("Login result:", result)
+      // Remove the console.log here
 
       if (!result.status) {
         setError(result.message)
