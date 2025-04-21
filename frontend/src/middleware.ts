@@ -16,7 +16,10 @@ export function middleware(request: NextRequest) {
   // If it's a protected route and user is not logged in, redirect to login
   if (!isPublicRoute && !token) {
     const url = new URL("/login", request.url)
-    url.searchParams.set("redirect", pathname)
+    // Only add redirect param if not already on login page
+    if (pathname !== "/login") {
+      url.searchParams.set("redirect", pathname)
+    }
     return NextResponse.redirect(url)
   }
 
@@ -37,6 +40,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images|.*\\..*).*)"
   ],
 }
