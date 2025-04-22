@@ -43,6 +43,30 @@ export const registerUser = async (data: RegisterData): Promise<RegisterResponse
 }
 
 /**
+ * Register Doctor
+ */
+export const registerDoctor = async (data: RegisterData): Promise<RegisterResponse> => {
+  try {
+    const response = await api.post<RegisterResponse>("/auth/register/doctor", data)
+    return response.data
+  } catch (error) {
+    return error as ApiResponse<never>
+  }
+}
+
+/**
+ * Register Doctor
+ */
+export const registerHospital = async (data: RegisterData): Promise<RegisterResponse> => {
+  try {
+    const response = await api.post<RegisterResponse>("/auth/register/hospital", data)
+    return response.data
+  } catch (error) {
+    return error as ApiResponse<never>
+  }
+}
+
+/**
  * Verify OTP
  */
 export const verifyOTP = async (email: string, otp: string): Promise<VerifyOtpApiResponse> => {
