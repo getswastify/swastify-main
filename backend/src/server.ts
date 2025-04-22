@@ -4,6 +4,7 @@ import cors from 'cors';
 import { authRoutes } from './routes/auth.routes';
 import morgan from  'morgan'
 import cookieParser from "cookie-parser";
+import { profileRoutes } from './routes/profile.route';
 
 dotenv.config();
 const app = express();
@@ -27,6 +28,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/profile", profileRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

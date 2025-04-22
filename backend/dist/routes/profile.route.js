@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.profileRoutes = void 0;
+const express_1 = require("express");
+const profile_controller_1 = require("../controller/profile.controller");
+const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
+const router = (0, express_1.Router)();
+router.post('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), profile_controller_1.createDoctorProfile);
+router.post('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), profile_controller_1.createHospitalProfile);
+exports.profileRoutes = router;

@@ -768,7 +768,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
 export const getUserDetails = async (req: Request, res: Response):Promise<any> => {
   try {
     const token = req.cookies?.auth_token;
-    console.log(token);
+    // console.log(token);
     
 
     if (!token) {

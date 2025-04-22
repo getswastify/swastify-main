@@ -44,7 +44,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Profile</h1>
         <UserNav />
       </div>
 
@@ -53,7 +53,25 @@ export default function DashboardPage() {
           <CardTitle>Welcome, {user.firstName || "User"}!</CardTitle>
         </CardHeader>
         <CardContent>
-          <h1>Add Profile Coming Soon</h1>
+          <div className="space-y-2">
+            <p>
+              <strong>Name:</strong> {user.firstName || ""} {user.lastName || ""}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.email || ""}
+            </p>
+            <p>
+              <strong>User ID:</strong> {user.id || ""}
+            </p>
+            <p>
+              <strong>Role:</strong> {user.role || ""}
+            </p>
+            {user.phone && (
+              <p>
+                <strong>Phone:</strong> {user.phone}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
