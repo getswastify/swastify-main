@@ -1,12 +1,10 @@
 import { prisma } from "../utils/prismaConnection";
 import { Request, Response } from 'express';
+import { DoctorProfileSchema, HospitalProfileSchema } from '../zodSchemas/profileSchema';
 
 
-export const createDoctorProfile = async (req: Request, res: Response):Promise<any> => {
-
-    console.log(req.user);
-    
-    const userId = req.user?.userId; 
+export const createDoctorProfile = async (req: Request, res: Response): Promise<any> => {
+    const userId = req.user?.userId;
   
     if (!userId || typeof userId !== 'string') {
       return res.status(401).json({
@@ -15,21 +13,44 @@ export const createDoctorProfile = async (req: Request, res: Response):Promise<a
       });
     }
   
+    const validation = DoctorProfileSchema.safeParse(req.body);
+  
+    if (!validation.success) {
+        return res.status(400).json({
+          status: false,
+          message: validation.error.errors.map(err => err.message).join(', '), // 👈 Main fix here
+          error: {
+            code: 'VALIDATION_ERROR',
+            issue: validation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            })),
+          },
+        });
+      }
+      
+  
+    const {
+      specialization,
+      clinicAddress,
+      consultationFee,
+      availableFrom,
+      availableTo,
+    } = validation.data;
+  
     try {
-      // Create a new doctor profile and link it to the userId
       const doctorProfile = await prisma.doctorProfile.create({
         data: {
-          userId: userId, // Link the doctor profile to the authenticated user
-          specialization: req.body.specialization, // Get specialization from the request body
-          clinicAddress: req.body.clinicAddress, // Get clinic address from the request body
-          consultationFee: req.body.consultationFee, // Get consultation fee from the request body
-          status: 'PENDING', // Default status for a new profile
-          availableFrom: req.body.availableFrom, // Get availableFrom time from the request body
-          availableTo: req.body.availableTo, // Get availableTo time from the request body
+          userId,
+          specialization,
+          clinicAddress,
+          consultationFee,
+          availableFrom,
+          availableTo,
+          status: 'PENDING',
         },
       });
   
-      // Send success response with the created doctor profile data
       return res.status(201).json({
         status: true,
         message: 'Doctor profile created successfully',
@@ -47,7 +68,7 @@ export const createDoctorProfile = async (req: Request, res: Response):Promise<a
       });
     }
   };
-
+  
 export const createHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     const userId = req.user?.userId;
   
@@ -58,15 +79,33 @@ export const createHospitalProfile = async (req: Request, res: Response): Promis
       });
     }
   
+    const validation = HospitalProfileSchema.safeParse(req.body);
+  
+    if (!validation.success) {
+        return res.status(400).json({
+          status: false,
+          message: validation.error.errors.map(err => err.message).join(', '), // 👈 Main fix here
+          error: {
+            code: 'VALIDATION_ERROR',
+            issue: validation.error.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+            })),
+          },
+        });
+      }
+      
+  
+    const { hospitalName, location, services } = validation.data;
+  
     try {
-      // Create new hospital profile and link it to the userId
       const hospitalProfile = await prisma.hospitalProfile.create({
         data: {
-          userId: userId,
-          hospitalName: req.body.hospitalName,
-          location: req.body.location,
-          services: req.body.services,
-          status: 'PENDING', // Default status
+          userId,
+          hospitalName,
+          location,
+          services,
+          status: 'PENDING',
         },
       });
   

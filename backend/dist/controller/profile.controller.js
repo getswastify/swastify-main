@@ -11,9 +11,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createHospitalProfile = exports.createDoctorProfile = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
+const profileSchema_1 = require("../zodSchemas/profileSchema");
 const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    console.log(req.user);
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userId || typeof userId !== 'string') {
         return res.status(401).json({
@@ -21,20 +21,33 @@ const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, func
             message: 'User not authenticated',
         });
     }
-    try {
-        // Create a new doctor profile and link it to the userId
-        const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.create({
-            data: {
-                userId: userId,
-                specialization: req.body.specialization,
-                clinicAddress: req.body.clinicAddress,
-                consultationFee: req.body.consultationFee,
-                status: 'PENDING',
-                availableFrom: req.body.availableFrom,
-                availableTo: req.body.availableTo, // Get availableTo time from the request body
+    const validation = profileSchema_1.DoctorProfileSchema.safeParse(req.body);
+    if (!validation.success) {
+        return res.status(400).json({
+            status: false,
+            message: validation.error.errors.map(err => err.message).join(', '),
+            error: {
+                code: 'VALIDATION_ERROR',
+                issue: validation.error.errors.map(err => ({
+                    path: err.path.join('.'),
+                    message: err.message,
+                })),
             },
         });
-        // Send success response with the created doctor profile data
+    }
+    const { specialization, clinicAddress, consultationFee, availableFrom, availableTo, } = validation.data;
+    try {
+        const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.create({
+            data: {
+                userId,
+                specialization,
+                clinicAddress,
+                consultationFee,
+                availableFrom,
+                availableTo,
+                status: 'PENDING',
+            },
+        });
         return res.status(201).json({
             status: true,
             message: 'Doctor profile created successfully',
@@ -63,15 +76,29 @@ const createHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, fu
             message: 'User not authenticated',
         });
     }
+    const validation = profileSchema_1.HospitalProfileSchema.safeParse(req.body);
+    if (!validation.success) {
+        return res.status(400).json({
+            status: false,
+            message: validation.error.errors.map(err => err.message).join(', '),
+            error: {
+                code: 'VALIDATION_ERROR',
+                issue: validation.error.errors.map(err => ({
+                    path: err.path.join('.'),
+                    message: err.message,
+                })),
+            },
+        });
+    }
+    const { hospitalName, location, services } = validation.data;
     try {
-        // Create new hospital profile and link it to the userId
         const hospitalProfile = yield prismaConnection_1.prisma.hospitalProfile.create({
             data: {
-                userId: userId,
-                hospitalName: req.body.hospitalName,
-                location: req.body.location,
-                services: req.body.services,
-                status: 'PENDING', // Default status
+                userId,
+                hospitalName,
+                location,
+                services,
+                status: 'PENDING',
             },
         });
         return res.status(201).json({
