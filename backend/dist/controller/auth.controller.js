@@ -709,7 +709,7 @@ const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function*
     var _a;
     try {
         const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
-        console.log(token);
+        // console.log(token);
         if (!token) {
             return res.status(401).json({
                 status: false,
