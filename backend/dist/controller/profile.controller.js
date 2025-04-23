@@ -57,8 +57,8 @@ const createPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 address,
                 height,
                 weight,
-                allergies,
-                diseases,
+                allergies: allergies || [],
+                diseases: diseases || [], // Store as array, default to empty if undefined
             },
         });
         return res.status(201).json({

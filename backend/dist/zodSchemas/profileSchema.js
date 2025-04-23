@@ -16,10 +16,22 @@ exports.PatientProfileSchema = zod_1.z.object({
         required_error: "Please select your blood group",
     }),
     address: zod_1.z.string().min(5, "Address is too short"),
-    height: zod_1.z.number({ invalid_type_error: "Height must be a number" }).positive("Height must be positive"),
-    weight: zod_1.z.number({ invalid_type_error: "Weight must be a number" }).positive("Weight must be positive"),
-    allergies: zod_1.z.string().max(1000, "Allergies can't exceed 1000 characters").optional(),
-    diseases: zod_1.z.string().max(1000, "Diseases can't exceed 1000 characters").optional(),
+    height: zod_1.z
+        .number({
+        invalid_type_error: "Height must be a number",
+    })
+        .positive("Height must be a positive number"),
+    weight: zod_1.z
+        .number({
+        invalid_type_error: "Weight must be a number",
+    })
+        .positive("Weight must be a positive number"),
+    allergies: zod_1.z
+        .array(zod_1.z.string().max(100, "Each allergy should be under 100 characters"))
+        .optional(),
+    diseases: zod_1.z
+        .array(zod_1.z.string().max(100, "Each disease should be under 100 characters"))
+        .optional(), // Same here, an empty array or one or more entries
 });
 exports.DoctorProfileSchema = zod_1.z.object({
     specialization: zod_1.z.string().min(3, "Specialization must be at least 3 characters"),
