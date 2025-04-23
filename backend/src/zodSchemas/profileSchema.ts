@@ -33,9 +33,6 @@ export const PatientProfileSchema = z.object({
     .optional(), // Same here, an empty array or one or more entries
 });
 
-
-
-
 export const DoctorProfileSchema = z.object({
   specialization: z.string().min(3, "Specialization must be at least 3 characters"),
   clinicAddress: z.string().min(5, "Clinic address is too short"),
@@ -57,3 +54,8 @@ export const HospitalProfileSchema = z.object({
   location: z.string().min(3, "Location must be at least 3 characters"),
   services: z.string().min(5, "Please describe at least one service"),
 });
+
+
+export const UpdatePatientProfileSchema = PatientProfileSchema.partial();
+export const UpdateDoctorProfileSchema = DoctorProfileSchema.partial();
+export const UpdateHospitalProfileSchema = HospitalProfileSchema.partial();

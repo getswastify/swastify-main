@@ -8,4 +8,7 @@ const router = (0, express_1.Router)();
 router.post('/patient', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), profile_controller_1.createPatientProfile);
 router.post('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), profile_controller_1.createDoctorProfile);
 router.post('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), profile_controller_1.createHospitalProfile);
+router.patch('/patient', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), profile_controller_1.updatePatientProfile);
+router.patch('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), profile_controller_1.updateDoctorProfile);
+router.patch('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), profile_controller_1.updateHospitalProfile);
 exports.profileRoutes = router;

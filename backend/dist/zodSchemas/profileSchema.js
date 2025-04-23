@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HospitalProfileSchema = exports.DoctorProfileSchema = exports.PatientProfileSchema = void 0;
+exports.UpdateHospitalProfileSchema = exports.UpdateDoctorProfileSchema = exports.UpdatePatientProfileSchema = exports.HospitalProfileSchema = exports.DoctorProfileSchema = exports.PatientProfileSchema = void 0;
 const zod_1 = require("zod");
 exports.PatientProfileSchema = zod_1.z.object({
     bloodGroup: zod_1.z.enum([
@@ -53,3 +53,6 @@ exports.HospitalProfileSchema = zod_1.z.object({
     location: zod_1.z.string().min(3, "Location must be at least 3 characters"),
     services: zod_1.z.string().min(5, "Please describe at least one service"),
 });
+exports.UpdatePatientProfileSchema = exports.PatientProfileSchema.partial();
+exports.UpdateDoctorProfileSchema = exports.DoctorProfileSchema.partial();
+exports.UpdateHospitalProfileSchema = exports.HospitalProfileSchema.partial();
