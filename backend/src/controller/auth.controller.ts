@@ -447,15 +447,7 @@ export const loginUser = async (req: Request, res: Response): Promise<any> => {
       { expiresIn: "7d" } // Extending token lifetime for cookies
     );
 
-    // 4. Set the token as an HTTP-only cookie
-    // res.cookie('auth_token', token, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
-    //   sameSite: 'none', // Protect against CSRF
-    //   maxAge: 7 * 24 * 60 * 60 * 1000,
-    //   path: '/',
-    //   domain: '.swastify.life' 
-    // });
+
 
     const cookieOptions = {
       httpOnly: true,

@@ -39,10 +39,26 @@ enum UserRole {
   ADMIN       // Admin
 }
 
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
 model PatientProfile {
-  userId String @id
-  user   User   @relation(fields: [userId], references: [id])
-  // Add more patient-specific info here
+  userId     String    @id
+  user       User      @relation(fields: [userId], references: [id])
+  bloodGroup BloodGroup
+  address    String
+  height     Float
+  weight     Float
+  allergies  String?
+  diseases   String?
 }
 
 enum ApprovalStatus {

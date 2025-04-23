@@ -9,12 +9,80 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createHospitalProfile = exports.createDoctorProfile = void 0;
+exports.createHospitalProfile = exports.createDoctorProfile = exports.createPatientProfile = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const profileSchema_1 = require("../zodSchemas/profileSchema");
-const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+    if (!userId || typeof userId !== "string") {
+        return res.status(401).json({
+            status: false,
+            message: "User not authenticated",
+        });
+    }
+    const validation = profileSchema_1.PatientProfileSchema.safeParse(req.body);
+    if (!validation.success) {
+        return res.status(400).json({
+            status: false,
+            message: validation.error.errors.map(err => err.message).join(", "),
+            error: {
+                code: "VALIDATION_ERROR",
+                issue: validation.error.errors.map(err => ({
+                    path: err.path.join("."),
+                    message: err.message,
+                })),
+            },
+        });
+    }
+    const { bloodGroup, address, height, weight, allergies, diseases } = validation.data;
+    try {
+        const existingProfile = yield prismaConnection_1.prisma.patientProfile.findUnique({
+            where: { userId },
+        });
+        if (existingProfile) {
+            return res.status(409).json({
+                status: false,
+                message: "Patient profile already exists",
+                error: {
+                    code: "DUPLICATE_PROFILE",
+                    issue: "A profile for this user already exists",
+                },
+            });
+        }
+        const newProfile = yield prismaConnection_1.prisma.patientProfile.create({
+            data: {
+                userId,
+                bloodGroup,
+                address,
+                height,
+                weight,
+                allergies,
+                diseases,
+            },
+        });
+        return res.status(201).json({
+            status: true,
+            message: "Patient profile created successfully",
+            data: newProfile,
+        });
+    }
+    catch (error) {
+        console.error("Error creating patient profile:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Something went wrong while creating the patient profile.",
+            error: {
+                code: "SERVER_ERROR",
+                issue: error instanceof Error ? error.message : "Unknown error",
+            },
+        });
+    }
+});
+exports.createPatientProfile = createPatientProfile;
+const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
     if (!userId || typeof userId !== 'string') {
         return res.status(401).json({
             status: false,
@@ -68,8 +136,8 @@ const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, func
 });
 exports.createDoctorProfile = createDoctorProfile;
 const createHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b;
-    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
+    var _c;
+    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
     if (!userId || typeof userId !== 'string') {
         return res.status(401).json({
             status: false,

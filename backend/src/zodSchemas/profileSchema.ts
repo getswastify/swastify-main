@@ -1,5 +1,28 @@
 import { z } from "zod";
 
+
+export const PatientProfileSchema = z.object({
+  bloodGroup: z.enum([
+    "A_POSITIVE",
+    "A_NEGATIVE",
+    "B_POSITIVE",
+    "B_NEGATIVE",
+    "AB_POSITIVE",
+    "AB_NEGATIVE",
+    "O_POSITIVE",
+    "O_NEGATIVE",
+  ], {
+    required_error: "Please select your blood group",
+  }),
+  address: z.string().min(5, "Address is too short"),
+  height: z.number({ invalid_type_error: "Height must be a number" }).positive("Height must be positive"),
+  weight: z.number({ invalid_type_error: "Weight must be a number" }).positive("Weight must be positive"),
+  allergies: z.string().max(1000, "Allergies can't exceed 1000 characters").optional(),
+  diseases: z.string().max(1000, "Diseases can't exceed 1000 characters").optional(),
+});
+
+
+
 export const DoctorProfileSchema = z.object({
   specialization: z.string().min(3, "Specialization must be at least 3 characters"),
   clinicAddress: z.string().min(5, "Clinic address is too short"),

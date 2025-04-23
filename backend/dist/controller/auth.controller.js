@@ -416,15 +416,6 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // 3. Create a JWT token
         const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" } // Extending token lifetime for cookies
         );
-        // 4. Set the token as an HTTP-only cookie
-        // res.cookie('auth_token', token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
-        //   sameSite: 'none', // Protect against CSRF
-        //   maxAge: 7 * 24 * 60 * 60 * 1000,
-        //   path: '/',
-        //   domain: '.swastify.life' 
-        // });
         const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
