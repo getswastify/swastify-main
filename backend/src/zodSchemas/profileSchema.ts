@@ -15,11 +15,24 @@ export const PatientProfileSchema = z.object({
     required_error: "Please select your blood group",
   }),
   address: z.string().min(5, "Address is too short"),
-  height: z.number({ invalid_type_error: "Height must be a number" }).positive("Height must be positive"),
-  weight: z.number({ invalid_type_error: "Weight must be a number" }).positive("Weight must be positive"),
-  allergies: z.string().max(1000, "Allergies can't exceed 1000 characters").optional(),
-  diseases: z.string().max(1000, "Diseases can't exceed 1000 characters").optional(),
+  height: z
+    .number({
+      invalid_type_error: "Height must be a number",
+    })
+    .positive("Height must be a positive number"),
+  weight: z
+    .number({
+      invalid_type_error: "Weight must be a number",
+    })
+    .positive("Weight must be a positive number"),
+  allergies: z
+    .array(z.string().max(100, "Each allergy should be under 100 characters"))
+    .optional(), // This can be an empty array or have one or more entries
+  diseases: z
+    .array(z.string().max(100, "Each disease should be under 100 characters"))
+    .optional(), // Same here, an empty array or one or more entries
 });
+
 
 
 

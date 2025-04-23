@@ -57,9 +57,10 @@ model PatientProfile {
   address    String
   height     Float
   weight     Float
-  allergies  String?
-  diseases   String?
+  allergies  String[] // Can hold multiple or one allergy
+  diseases   String[] // Can hold multiple or one disease
 }
+
 
 enum ApprovalStatus {
   PENDING

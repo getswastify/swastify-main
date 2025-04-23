@@ -53,10 +53,11 @@ export const createPatientProfile = async (req: Request, res: Response): Promise
         address,
         height,
         weight,
-        allergies,
-        diseases,
+        allergies: allergies || [],  // Store as array, default to empty if undefined
+        diseases: diseases || [],    // Store as array, default to empty if undefined
       },
     });
+    
     
 
     return res.status(201).json({
@@ -200,4 +201,3 @@ export const createHospitalProfile = async (req: Request, res: Response): Promis
       });
     }
   };
-
