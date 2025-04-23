@@ -1,6 +1,6 @@
 import { prisma } from "../utils/prismaConnection";
 import { Request, Response } from 'express';
-import { DoctorProfileSchema, HospitalProfileSchema, PatientProfileSchema} from '../zodSchemas/profileSchema';
+import { DoctorProfileSchema, HospitalProfileSchema, PatientProfileSchema, UpdateDoctorProfileSchema, UpdateHospitalProfileSchema, UpdatePatientProfileSchema} from '../zodSchemas/profileSchema';
 
 export const createPatientProfile = async (req: Request, res: Response): Promise<any> => {
   const userId = req.user?.userId;
@@ -194,6 +194,204 @@ export const createHospitalProfile = async (req: Request, res: Response): Promis
       return res.status(500).json({
         status: false,
         message: 'Something went wrong while creating the hospital profile.',
+        error: {
+          code: 'SERVER_ERROR',
+          issue: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  };
+
+export const updatePatientProfile = async (req: Request, res: Response):Promise<any> => {
+    const userId = req.user?.userId;
+  
+    if (!userId || typeof userId !== 'string') {
+      return res.status(401).json({
+        status: false,
+        message: 'User not authenticated',
+      });
+    }
+  
+    const validation = UpdatePatientProfileSchema.safeParse(req.body);
+  
+    if (!validation.success) {
+      return res.status(400).json({
+        status: false,
+        message: validation.error.errors.map(e => e.message).join(', '),
+        error: {
+          code: 'VALIDATION_ERROR',
+          issue: validation.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+      });
+    }
+  
+    const { bloodGroup, address, height, weight, allergies, diseases } = validation.data;
+  
+    try {
+      const updatedProfile = await prisma.patientProfile.update({
+        where: { userId },
+        data: {
+          ...(bloodGroup && { bloodGroup }),
+          ...(address && { address }),
+          ...(height && { height }),
+          ...(weight && { weight }),
+          ...(allergies && { allergies }),
+          ...(diseases && { diseases }),
+        },
+      });
+  
+      return res.status(200).json({
+        status: true,
+        message: 'Patient profile updated successfully',
+        data: updatedProfile,
+      });
+    } catch (error) {
+      console.error('Error updating patient profile:', error);
+
+      if (error instanceof Error && (error as any).code === 'P2025') {
+        return res.status(404).json({
+          status: false,
+          message: 'Patient profile not found',
+        });
+      }
+
+      return res.status(500).json({
+        status: false,
+        message: 'Failed to update patient profile',
+        error: {
+          code: 'SERVER_ERROR',
+          issue: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  };
+
+export const updateDoctorProfile = async (req: Request, res: Response):Promise<any> => {
+    const userId = req.user?.userId;
+  
+    if (!userId || typeof userId !== 'string') {
+      return res.status(401).json({
+        status: false,
+        message: 'User not authenticated',
+      });
+    }
+  
+    const validation = UpdateDoctorProfileSchema.safeParse(req.body);
+  
+    if (!validation.success) {
+      return res.status(400).json({
+        status: false,
+        message: validation.error.errors.map((err) => err.message).join(', '),
+        error: {
+          code: 'VALIDATION_ERROR',
+          issue: validation.error.errors.map((err) => ({
+            path: err.path.join('.'),
+            message: err.message,
+          })),
+        },
+      });
+    }
+  
+    const { specialization, clinicAddress, consultationFee, availableFrom, availableTo } = validation.data;
+  
+    try {
+      const updatedDoctorProfile = await prisma.doctorProfile.update({
+        where: { userId },
+        data: {
+          ...(specialization && { specialization }),
+          ...(clinicAddress && { clinicAddress }),
+          ...(consultationFee && { consultationFee }),
+          ...(availableFrom && { availableFrom }),
+          ...(availableTo && { availableTo }),
+        },
+      });
+  
+      return res.status(200).json({
+        status: true,
+        message: 'Doctor profile updated successfully',
+        data: updatedDoctorProfile,
+      });
+    } catch (error) {
+      console.error('Error updating doctor profile:', error);
+
+
+      if (error instanceof Error && (error as any).code === 'P2025') {
+        return res.status(404).json({
+          status: false,
+          message: 'Doctor profile not found',
+        });
+      }
+
+      return res.status(500).json({
+        status: false,
+        message: 'Failed to update doctor profile',
+        error: {
+          code: 'SERVER_ERROR',
+          issue: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  };
+
+export const updateHospitalProfile = async (req: Request, res: Response):Promise<any> => {
+    const userId = req.user?.userId;
+  
+    if (!userId || typeof userId !== 'string') {
+      return res.status(401).json({
+        status: false,
+        message: 'User not authenticated',
+      });
+    }
+  
+    const validation = UpdateHospitalProfileSchema.safeParse(req.body);
+  
+    if (!validation.success) {
+      return res.status(400).json({
+        status: false,
+        message: validation.error.errors.map((err) => err.message).join(', '),
+        error: {
+          code: 'VALIDATION_ERROR',
+          issue: validation.error.errors.map((err) => ({
+            path: err.path.join('.'),
+            message: err.message,
+          })),
+        },
+      });
+    }
+  
+    const { hospitalName, location, services } = validation.data;
+  
+    try {
+      const updatedHospitalProfile = await prisma.hospitalProfile.update({
+        where: { userId },
+        data: {
+          ...(hospitalName && { hospitalName }),
+          ...(location && { location }),
+          ...(services && { services }),
+        },
+      });
+  
+      return res.status(200).json({
+        status: true,
+        message: 'Hospital profile updated successfully',
+        data: updatedHospitalProfile,
+      });
+    } catch (error) {
+      console.error('Error updating hospital profile:', error);
+
+      if (error instanceof Error && (error as any).code === 'P2025') {
+        return res.status(404).json({
+          status: false,
+          message: 'Hospital profile not found',
+        });
+      }
+
+      return res.status(500).json({
+        status: false,
+        message: 'Failed to update hospital profile',
         error: {
           code: 'SERVER_ERROR',
           issue: error instanceof Error ? error.message : 'Unknown error',

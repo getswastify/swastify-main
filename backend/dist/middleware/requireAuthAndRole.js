@@ -11,6 +11,7 @@ const requireAuthAndRole = (role) => {
         const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
         if (!token) {
             res.status(401).json({ status: false, message: 'Auth token missing' });
+            return;
         }
         try {
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
@@ -19,15 +20,16 @@ const requireAuthAndRole = (role) => {
             }
             else {
                 res.status(401).json({ status: false, message: 'Invalid token payload' });
+                return;
             }
-            // Now check if the user has the correct role
             if (!req.user || req.user.role !== role) {
                 res.status(403).json({
                     status: false,
                     message: `Access denied. Requires role: ${role}`,
                 });
+                return;
             }
-            next(); // Proceed if both authentication and role match
+            next(); // ✅ Only runs if all checks pass
         }
         catch (error) {
             res.status(401).json({ status: false, message: 'Invalid or expired token' });
