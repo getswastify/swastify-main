@@ -757,11 +757,9 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
   }
 };
 
-export const getUserDetails = async (req: Request, res: Response):Promise<any> => {
+export const getUserDetails = async (req: Request, res: Response): Promise<any> => {
   try {
     const token = req.cookies?.auth_token;
-    // console.log(token);
-    
 
     if (!token) {
       return res.status(401).json({
@@ -802,10 +800,23 @@ export const getUserDetails = async (req: Request, res: Response):Promise<any> =
       });
     }
 
-    res.status(200).json({
+    // Check for profile existence based on role
+    let hasProfile = false;
+    if (user.role === 'USER') {
+      hasProfile = !!(await prisma.patientProfile.findUnique({ where: { userId: user.id } }));
+    } else if (user.role === 'DOCTOR') {
+      hasProfile = !!(await prisma.doctorProfile.findUnique({ where: { userId: user.id } }));
+    } else if (user.role === 'HOSPITAL') {
+      hasProfile = !!(await prisma.hospitalProfile.findUnique({ where: { userId: user.id } }));
+    }
+
+    return res.status(200).json({
       status: true,
       message: "User details fetched",
-      data: { user }
+      data: {
+        ...user,
+        hasProfile,
+      },
     });
 
   } catch (err) {
@@ -820,3 +831,4 @@ export const getUserDetails = async (req: Request, res: Response):Promise<any> =
     });
   }
 };
+

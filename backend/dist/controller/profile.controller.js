@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateHospitalProfile = exports.updateDoctorProfile = exports.updatePatientProfile = exports.createHospitalProfile = exports.createDoctorProfile = exports.createPatientProfile = void 0;
+exports.getHospitalProfile = exports.getDoctorProfile = exports.getPatientProfile = exports.updateHospitalProfile = exports.updateDoctorProfile = exports.updatePatientProfile = exports.createHospitalProfile = exports.createDoctorProfile = exports.createPatientProfile = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const profileSchema_1 = require("../zodSchemas/profileSchema");
 const createPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -350,3 +350,139 @@ const updateHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.updateHospitalProfile = updateHospitalProfile;
+const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _g;
+    try {
+        const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g.userId;
+        const profile = yield prismaConnection_1.prisma.patientProfile.findUnique({
+            where: { userId },
+            select: {
+                userId: true,
+                bloodGroup: true,
+                address: true,
+                height: true,
+                weight: true,
+            },
+        });
+        if (!profile) {
+            return res.status(404).json({
+                status: false,
+                message: 'Patient profile not found',
+                data: {
+                    code: 'PROFILE_NOT_FOUND',
+                    issue: 'No patient profile exists for this user',
+                    isProfileComplete: false
+                },
+            });
+        }
+        const isProfileComplete = !!profile.bloodGroup && !!profile.address && !!profile.height && !!profile.weight;
+        return res.status(200).json({
+            status: true,
+            message: 'Patient profile retrieved successfully',
+            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+        });
+    }
+    catch (error) {
+        console.error('[GET_PATIENT_PROFILE_ERROR]', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Failed to retrieve patient profile',
+            error: {
+                code: 'SERVER_ERROR',
+                issue: 'Something went wrong on the server',
+            },
+        });
+    }
+});
+exports.getPatientProfile = getPatientProfile;
+const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _h;
+    try {
+        const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h.userId;
+        const profile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
+            where: { userId },
+            select: {
+                userId: true,
+                specialization: true,
+                clinicAddress: true,
+                consultationFee: true
+            },
+        });
+        if (!profile) {
+            return res.status(404).json({
+                status: false,
+                message: 'Doctor profile not found',
+                error: {
+                    code: 'PROFILE_NOT_FOUND',
+                    issue: 'No doctor profile exists for this user',
+                },
+            });
+        }
+        const isProfileComplete = !!profile.specialization &&
+            !!profile.clinicAddress &&
+            !!profile.consultationFee;
+        return res.status(200).json({
+            status: true,
+            message: 'Doctor profile retrieved successfully',
+            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+        });
+    }
+    catch (error) {
+        console.error('[GET_DOCTOR_PROFILE_ERROR]', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Failed to retrieve doctor profile',
+            error: {
+                code: 'SERVER_ERROR',
+                issue: 'Something went wrong on the server',
+            },
+        });
+    }
+});
+exports.getDoctorProfile = getDoctorProfile;
+const getHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _j;
+    try {
+        const userId = (_j = req.user) === null || _j === void 0 ? void 0 : _j.userId;
+        const profile = yield prismaConnection_1.prisma.hospitalProfile.findUnique({
+            where: { userId },
+            select: {
+                userId: true,
+                hospitalName: true,
+                location: true,
+                services: true,
+                status: true
+            },
+        });
+        if (!profile) {
+            return res.status(404).json({
+                status: false,
+                message: 'Hospital profile not found',
+                error: {
+                    code: 'PROFILE_NOT_FOUND',
+                    issue: 'No hospital profile exists for this user',
+                },
+            });
+        }
+        const isProfileComplete = !!profile.hospitalName &&
+            !!profile.location &&
+            !!profile.services;
+        return res.status(200).json({
+            status: true,
+            message: 'Hospital profile retrieved successfully',
+            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+        });
+    }
+    catch (error) {
+        console.error('[GET_HOSPITAL_PROFILE_ERROR]', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Failed to retrieve hospital profile',
+            error: {
+                code: 'SERVER_ERROR',
+                issue: 'Something went wrong on the server',
+            },
+        });
+    }
+});
+exports.getHospitalProfile = getHospitalProfile;

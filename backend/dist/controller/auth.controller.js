@@ -700,7 +700,6 @@ const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function*
     var _a;
     try {
         const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
-        // console.log(token);
         if (!token) {
             return res.status(401).json({
                 status: false,
@@ -736,10 +735,21 @@ const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 }
             });
         }
-        res.status(200).json({
+        // Check for profile existence based on role
+        let hasProfile = false;
+        if (user.role === 'USER') {
+            hasProfile = !!(yield prismaConnection_1.prisma.patientProfile.findUnique({ where: { userId: user.id } }));
+        }
+        else if (user.role === 'DOCTOR') {
+            hasProfile = !!(yield prismaConnection_1.prisma.doctorProfile.findUnique({ where: { userId: user.id } }));
+        }
+        else if (user.role === 'HOSPITAL') {
+            hasProfile = !!(yield prismaConnection_1.prisma.hospitalProfile.findUnique({ where: { userId: user.id } }));
+        }
+        return res.status(200).json({
             status: true,
             message: "User details fetched",
-            data: { user }
+            data: Object.assign(Object.assign({}, user), { hasProfile }),
         });
     }
     catch (err) {
