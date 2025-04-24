@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 // Phone number regex pattern
-const phoneRegex =  /^\d{10}$/
+const phoneRegex = /^\d{10}$/
 
 export const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

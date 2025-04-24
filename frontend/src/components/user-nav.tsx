@@ -22,6 +22,10 @@ export function UserNav() {
       ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
       : user?.email?.charAt(0).toUpperCase() || "U" // Default fallback if name is not available
 
+  const handleLogout = () => {
+    logout()
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,6 +42,7 @@ export function UserNav() {
               {user?.firstName || ""} {user?.lastName || ""}
             </p>
             <p className="text-xs leading-none text-muted-foreground">{user?.email || ""}</p>
+            <p className="text-xs leading-none text-muted-foreground">Role: {user?.role || ""}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -50,7 +55,7 @@ export function UserNav() {
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

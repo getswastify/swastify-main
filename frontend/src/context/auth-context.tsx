@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import type { User } from "@/types/auth"
 import api from "@/lib/axios"
 import type { AxiosError } from "axios"
+import { setCookie, deleteCookie } from "@/lib/cookies"
 
 // Define the auth state interface
 interface AuthState {
@@ -17,6 +18,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ status: boolean; message: string }>
   logout: () => Promise<void>
+  hasRole: (role: string) => boolean
 }
 
 // Create the auth context
@@ -38,6 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
   const router = useRouter()
 
+  // Check if user has a specific role
+  const hasRole = (role: string): boolean => {
+    if (!state.user) return false
+    return state.user.role === role
+  }
+
   // Login function
   const login = async (email: string, password: string): Promise<{ status: boolean; message: string }> => {
     try {
@@ -51,11 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userResponse = await api.get("/auth/getuser-details")
 
           if (userResponse.data.status) {
+            const userData = userResponse.data.data
+
+            // Store user role in cookie
+            if (userData?.role) {
+              setCookie("user_role", userData.role, 7) // 7 days expiry
+            }
+
             setState({
-              user: userResponse.data.data.user,
+              user: userData,
               isAuthenticated: true,
               isLoading: false,
             })
+
             return { status: true, message: response.data.message || "Login successful" }
           }
         } catch (error) {
@@ -63,8 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Even if we couldn't get user data, still consider login successful
+        const userData = response.data.data?.user || null
+
+        // Store user role in cookie
+        if (userData?.role) {
+          setCookie("user_role", userData.role, 7) // 7 days expiry
+        }
+
         setState({
-          user: response.data.data?.user || null,
+          user: userData,
           isAuthenticated: true,
           isLoading: false,
         })
@@ -107,21 +130,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout function
   const logout = async () => {
     try {
-      // First set the state to prevent flashing of error messages
+      // Call the logout API first
+      await api.post("/auth/logout")
+
+      // Update state
       setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
       })
 
-      // Then navigate to login page
-      router.push("/login")
+      // Delete cookies (server should also clear the HTTP-only cookies)
+      deleteCookie("user_role")
 
-      // Finally, call the logout API
-      await api.post("/auth/logout")
+      // Finally, navigate to login page
+      router.push("/login")
     } catch (error) {
       safeLogError("Logout error:", error)
-      // Already navigated to login page, so no need to do anything else
+
+      // Even if API call fails, clear state and cookies
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
+
+      // Delete cookies
+      deleteCookie("user_role")
+
+      // Still redirect to login
+      router.push("/login")
     }
   }
 
@@ -129,10 +167,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       // Skip authentication check on public routes
-      const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password"]
+      const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
       const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
 
       const isPublicRoute = publicRoutes.some((route) => currentPath === route || currentPath.startsWith(route + "/"))
+
+      // Check if we already have user data in state
+      if (state.user && state.isAuthenticated) {
+        setState((prev) => ({ ...prev, isLoading: false }))
+        return
+      }
 
       // Don't make the API call if we're on a public route
       if (isPublicRoute) {
@@ -144,9 +188,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only make API call on protected routes
         const response = await api.get("/auth/getuser-details")
 
-        if (response.data.status && response.data.data?.user) {
+        if (response.data.status && response.data.data) {
+          const userData = response.data.data
+
+          // Store user role in cookie
+          if (userData?.role) {
+            setCookie("user_role", userData.role, 7) // 7 days expiry
+          }
+
           setState({
-            user: response.data.data.user,
+            user: userData,
             isAuthenticated: true,
             isLoading: false,
           })
@@ -174,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       // Cancel any pending requests if component unmounts
     }
-  }, [])
+  }, [state.user, state.isAuthenticated])
 
   return (
     <AuthContext.Provider
@@ -182,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...state,
         login,
         logout,
+        hasRole,
       }}
     >
       {children}

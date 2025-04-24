@@ -16,14 +16,6 @@ import type {
 export const loginUser = async (data: LoginData): Promise<LoginApiResponse> => {
   try {
     const response = await api.post<LoginApiResponse>("/auth/login", data)
-
-    // Store token in localStorage for client-side access
-    if (response.data.status && response.data.data?.token) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("auth_token", response.data.data.token)
-      }
-    }
-
     return response.data
   } catch (error) {
     return error as ApiResponse<never>
@@ -55,7 +47,7 @@ export const registerDoctor = async (data: RegisterData): Promise<RegisterRespon
 }
 
 /**
- * Register Doctor
+ * Register Hospital
  */
 export const registerHospital = async (data: RegisterData): Promise<RegisterResponse> => {
   try {
@@ -72,14 +64,6 @@ export const registerHospital = async (data: RegisterData): Promise<RegisterResp
 export const verifyOTP = async (email: string, otp: string): Promise<VerifyOtpApiResponse> => {
   try {
     const response = await api.post<VerifyOtpApiResponse>("/auth/verify-otp", { email, otp })
-
-    // If verification is successful and we get a token, store it
-    if (response.data.status && response.data.data?.token) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("auth_token", response.data.data.token)
-      }
-    }
-
     return response.data
   } catch (error) {
     return error as ApiResponse<never>
@@ -139,14 +123,6 @@ export const resetPassword = async (data: ResetPasswordData): Promise<ApiRespons
  */
 export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
   try {
-    // Only make this call if we have a token
-    if (typeof window !== "undefined" && !localStorage.getItem("auth_token")) {
-      return {
-        status: false,
-        message: "No authentication token found",
-      }
-    }
-
     const response = await api.get<ApiResponse<User>>("/auth/getuser-details")
     return response.data
   } catch (error) {
@@ -160,19 +136,8 @@ export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
 export const logoutUser = async (): Promise<ApiResponse<void>> => {
   try {
     const response = await api.post<ApiResponse<void>>("/auth/logout")
-
-    // Remove token from localStorage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token")
-    }
-
     return response.data
   } catch (error) {
-    // Even if the API call fails, clear local storage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token")
-    }
-
     return error as ApiResponse<never>
   }
 }

@@ -71,7 +71,7 @@ export function OTPInput({ length = 6, onComplete, disabled = false }: OTPInputP
         <Input
           key={index}
           ref={(el) => {
-            inputRefs.current[index] = el;
+            inputRefs.current[index] = el
           }}
           type="text"
           inputMode="numeric"

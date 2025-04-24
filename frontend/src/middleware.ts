@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { canAccessRoute, getDashboardByRole } from "./lib/roles"
 
 // Define public routes that don't require authentication
 const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
@@ -13,11 +14,8 @@ export function middleware(request: NextRequest) {
   // Get token from cookies
   const token = request.cookies.get("auth_token")?.value
 
-  // Also check localStorage token as a fallback (for client-side auth)
-  const localToken = request.headers.get("x-auth-token")
-
   // If it's a protected route and user is not logged in, redirect to login
-  if (!isPublicRoute && !token && !localToken) {
+  if (!isPublicRoute && !token) {
     const url = new URL("/login", request.url)
     // Only add redirect param if not already on login page
     if (pathname !== "/login") {
@@ -27,8 +25,33 @@ export function middleware(request: NextRequest) {
   }
 
   // If it's a login/register page and user is logged in, redirect to dashboard
-  if ((pathname === "/login" || pathname === "/register") && (token || localToken)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+  if ((pathname === "/login" || pathname === "/register") && token) {
+    // Get user role from cookie
+    const userRole = request.cookies.get("user_role")?.value
+    const dashboardRoute = getDashboardByRole(userRole)
+    return NextResponse.redirect(new URL(dashboardRoute, request.url))
+  }
+
+  // Special case for the main dashboard - redirect to role-specific dashboard
+  if (pathname === "/dashboard") {
+    const userRole = request.cookies.get("user_role")?.value
+    const dashboardRoute = getDashboardByRole(userRole)
+    return NextResponse.redirect(new URL(dashboardRoute, request.url))
+  }
+
+  // Handle role-based access for protected routes
+  if (!isPublicRoute && token) {
+    // Get user role from cookie
+    const userRole = request.cookies.get("user_role")?.value
+
+    // Check if user can access the requested route
+    // Only redirect if the user is trying to access a route they don't have permission for
+    // This prevents redirect loops
+    if (userRole && !canAccessRoute(userRole, pathname)) {
+      // Redirect to their appropriate dashboard
+      const dashboardRoute = getDashboardByRole(userRole)
+      return NextResponse.redirect(new URL(dashboardRoute, request.url))
+    }
   }
 
   return NextResponse.next()

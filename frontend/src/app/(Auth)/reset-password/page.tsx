@@ -83,7 +83,6 @@ export default function ResetPasswordPage() {
 
     try {
       const response = await resetPassword({
-
         token,
         newPassword: formData.newPassword,
       })

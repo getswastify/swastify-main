@@ -30,10 +30,7 @@ export default function AuthLayout({
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/60 via-emerald-800/40 to-background z-10 dark:from-emerald-800/60 dark:via-background/80 dark:to-background" />
 
         {/* Content */}
-        <div className="relative z-20 flex items-center text-lg font-medium">
-          
-          Swastify
-        </div>
+        <div className="relative z-20 flex items-center text-lg font-medium">Swastify</div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
