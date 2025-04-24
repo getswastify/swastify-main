@@ -103,7 +103,7 @@ const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, func
             },
         });
     }
-    const { specialization, clinicAddress, consultationFee, availableFrom, availableTo, } = validation.data;
+    const { specialization, clinicAddress, consultationFee, startedPracticeOn, licenseNumber, licenseIssuedBy, licenseDocumentUrl } = validation.data;
     try {
         const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.create({
             data: {
@@ -111,8 +111,10 @@ const createDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, func
                 specialization,
                 clinicAddress,
                 consultationFee,
-                availableFrom,
-                availableTo,
+                startedPracticeOn: new Date(startedPracticeOn),
+                licenseNumber,
+                licenseIssuedBy,
+                licenseDocumentUrl,
                 status: 'PENDING',
             },
         });
@@ -265,11 +267,11 @@ const updateDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, func
             },
         });
     }
-    const { specialization, clinicAddress, consultationFee, availableFrom, availableTo } = validation.data;
+    const { specialization, clinicAddress, consultationFee, startedPracticeOn, licenseNumber, licenseIssuedBy, licenseDocumentUrl } = validation.data;
     try {
         const updatedDoctorProfile = yield prismaConnection_1.prisma.doctorProfile.update({
             where: { userId },
-            data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (specialization && { specialization })), (clinicAddress && { clinicAddress })), (consultationFee && { consultationFee })), (availableFrom && { availableFrom })), (availableTo && { availableTo })),
+            data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (specialization && { specialization })), (clinicAddress && { clinicAddress })), (consultationFee && { consultationFee })), (startedPracticeOn && { startedPracticeOn: new Date(startedPracticeOn) })), (licenseNumber && { licenseNumber })), (licenseIssuedBy && { licenseIssuedBy })), (licenseDocumentUrl && { licenseDocumentUrl })),
         });
         return res.status(200).json({
             status: true,
@@ -354,6 +356,12 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     var _g;
     try {
         const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g.userId;
+        if (!userId || typeof userId !== 'string') {
+            return res.status(401).json({
+                status: false,
+                message: 'User not authenticated',
+            });
+        }
         const profile = yield prismaConnection_1.prisma.patientProfile.findUnique({
             where: { userId },
             select: {
@@ -362,6 +370,8 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 address: true,
                 height: true,
                 weight: true,
+                allergies: true,
+                diseases: true,
             },
         });
         if (!profile) {
@@ -371,11 +381,14 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 data: {
                     code: 'PROFILE_NOT_FOUND',
                     issue: 'No patient profile exists for this user',
-                    isProfileComplete: false
+                    isProfileComplete: false,
                 },
             });
         }
-        const isProfileComplete = !!profile.bloodGroup && !!profile.address && !!profile.height && !!profile.weight;
+        const isProfileComplete = !!profile.bloodGroup &&
+            !!profile.address &&
+            profile.height > 0 &&
+            profile.weight > 0;
         return res.status(200).json({
             status: true,
             message: 'Patient profile retrieved successfully',
@@ -399,13 +412,23 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
     var _h;
     try {
         const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h.userId;
+        if (!userId || typeof userId !== 'string') {
+            return res.status(401).json({
+                status: false,
+                message: 'User not authenticated',
+            });
+        }
         const profile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
             where: { userId },
             select: {
                 userId: true,
                 specialization: true,
                 clinicAddress: true,
-                consultationFee: true
+                consultationFee: true,
+                startedPracticeOn: true,
+                licenseNumber: true,
+                licenseIssuedBy: true,
+                licenseDocumentUrl: true,
             },
         });
         if (!profile) {
@@ -424,7 +447,7 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
         return res.status(200).json({
             status: true,
             message: 'Doctor profile retrieved successfully',
-            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+            data: Object.assign(Object.assign({}, profile), { startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0], isProfileComplete }),
         });
     }
     catch (error) {

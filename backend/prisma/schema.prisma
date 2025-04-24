@@ -70,15 +70,23 @@ enum ApprovalStatus {
 
 
 model DoctorProfile {
-  userId          String         @id
-  user            User           @relation(fields: [userId], references: [id])
-  specialization  String
-  clinicAddress   String
-  availableFrom   DateTime
-  availableTo     DateTime
-  consultationFee Float
-  status          ApprovalStatus @default(PENDING)
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  specialization   String
+  clinicAddress    String
+  consultationFee  Int
+  status           ApprovalStatus   @default(PENDING)
+
+  startedPracticeOn DateTime
+  licenseNumber     String
+  licenseIssuedBy   String? // optional
+  licenseDocumentUrl String? // optional
+
+  user             User     @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
+
 
 model HospitalProfile {
   userId       String         @id

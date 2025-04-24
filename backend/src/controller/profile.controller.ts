@@ -79,71 +79,74 @@ export const createPatientProfile = async (req: Request, res: Response): Promise
 };
 
 export const createDoctorProfile = async (req: Request, res: Response): Promise<any> => {
-    const userId = req.user?.userId;
-  
-    if (!userId || typeof userId !== 'string') {
-      return res.status(401).json({
-        status: false,
-        message: 'User not authenticated',
-      });
-    }
-  
-    const validation = DoctorProfileSchema.safeParse(req.body);
-  
-    if (!validation.success) {
-        return res.status(400).json({
-          status: false,
-          message: validation.error.errors.map(err => err.message).join(', '), // 👈 Main fix here
-          error: {
-            code: 'VALIDATION_ERROR',
-            issue: validation.error.errors.map(err => ({
-              path: err.path.join('.'),
-              message: err.message,
-            })),
-          },
-        });
-      }
-      
-  
-    const {
-      specialization,
-      clinicAddress,
-      consultationFee,
-      availableFrom,
-      availableTo,
-    } = validation.data;
-  
-    try {
-      const doctorProfile = await prisma.doctorProfile.create({
-        data: {
-          userId,
-          specialization,
-          clinicAddress,
-          consultationFee,
-          availableFrom,
-          availableTo,
-          status: 'PENDING',
-        },
-      });
-  
-      return res.status(201).json({
-        status: true,
-        message: 'Doctor profile created successfully',
-        data: doctorProfile,
-      });
-    } catch (error) {
-      console.error('Error creating doctor profile:', error);
-      return res.status(500).json({
-        status: false,
-        message: 'Something went wrong while creating the doctor profile.',
-        error: {
-          code: 'SERVER_ERROR',
-          issue: error instanceof Error ? error.message : 'Unknown error',
-        },
-      });
-    }
-  };
-  
+  const userId = req.user?.userId;
+
+  if (!userId || typeof userId !== 'string') {
+    return res.status(401).json({
+      status: false,
+      message: 'User not authenticated',
+    });
+  }
+
+  const validation = DoctorProfileSchema.safeParse(req.body);
+
+  if (!validation.success) {
+    return res.status(400).json({
+      status: false,
+      message: validation.error.errors.map(err => err.message).join(', '),
+      error: {
+        code: 'VALIDATION_ERROR',
+        issue: validation.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      },
+    });
+  }
+
+  const {
+    specialization,
+    clinicAddress,
+    consultationFee,
+    startedPracticeOn,
+    licenseNumber,
+    licenseIssuedBy,
+    licenseDocumentUrl
+  } = validation.data;
+
+  try {
+    const doctorProfile = await prisma.doctorProfile.create({
+      data: {
+        userId,
+        specialization,
+        clinicAddress,
+        consultationFee,
+        startedPracticeOn:new Date(startedPracticeOn),
+        licenseNumber,
+        licenseIssuedBy,
+        licenseDocumentUrl,
+        status: 'PENDING',
+      },
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: 'Doctor profile created successfully',
+      data: doctorProfile,
+    });
+  } catch (error) {
+    console.error('Error creating doctor profile:', error);
+    return res.status(500).json({
+      status: false,
+      message: 'Something went wrong while creating the doctor profile.',
+      error: {
+        code: 'SERVER_ERROR',
+        issue: error instanceof Error ? error.message : 'Unknown error',
+      },
+    });
+  }
+};
+
 export const createHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     const userId = req.user?.userId;
   
@@ -269,7 +272,7 @@ export const updatePatientProfile = async (req: Request, res: Response):Promise<
     }
   };
 
-export const updateDoctorProfile = async (req: Request, res: Response):Promise<any> => {
+  export const updateDoctorProfile = async (req: Request, res: Response): Promise<any> => {
     const userId = req.user?.userId;
   
     if (!userId || typeof userId !== 'string') {
@@ -295,7 +298,15 @@ export const updateDoctorProfile = async (req: Request, res: Response):Promise<a
       });
     }
   
-    const { specialization, clinicAddress, consultationFee, availableFrom, availableTo } = validation.data;
+    const { 
+      specialization, 
+      clinicAddress, 
+      consultationFee, 
+      startedPracticeOn, 
+      licenseNumber, 
+      licenseIssuedBy, 
+      licenseDocumentUrl 
+    } = validation.data;
   
     try {
       const updatedDoctorProfile = await prisma.doctorProfile.update({
@@ -304,8 +315,10 @@ export const updateDoctorProfile = async (req: Request, res: Response):Promise<a
           ...(specialization && { specialization }),
           ...(clinicAddress && { clinicAddress }),
           ...(consultationFee && { consultationFee }),
-          ...(availableFrom && { availableFrom }),
-          ...(availableTo && { availableTo }),
+          ...(startedPracticeOn && { startedPracticeOn: new Date(startedPracticeOn) }), // Convert to Date
+          ...(licenseNumber && { licenseNumber }),
+          ...(licenseIssuedBy && { licenseIssuedBy }),
+          ...(licenseDocumentUrl && { licenseDocumentUrl }),
         },
       });
   
@@ -316,15 +329,14 @@ export const updateDoctorProfile = async (req: Request, res: Response):Promise<a
       });
     } catch (error) {
       console.error('Error updating doctor profile:', error);
-
-
+  
       if (error instanceof Error && (error as any).code === 'P2025') {
         return res.status(404).json({
           status: false,
           message: 'Doctor profile not found',
         });
       }
-
+  
       return res.status(500).json({
         status: false,
         message: 'Failed to update doctor profile',
@@ -400,9 +412,16 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
     }
   };
 
-export const getPatientProfile = async (req: Request, res: Response): Promise<any> => {
+  export const getPatientProfile = async (req: Request, res: Response): Promise<any> => {
     try {
-      const userId = req.user?.userId; 
+      const userId = req.user?.userId;
+  
+      if (!userId || typeof userId !== 'string') {
+        return res.status(401).json({
+          status: false,
+          message: 'User not authenticated',
+        });
+      }
   
       const profile = await prisma.patientProfile.findUnique({
         where: { userId },
@@ -412,6 +431,8 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
           address: true,
           height: true,
           weight: true,
+          allergies: true,
+          diseases: true,
         },
       });
   
@@ -422,13 +443,16 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
           data: {
             code: 'PROFILE_NOT_FOUND',
             issue: 'No patient profile exists for this user',
-            isProfileComplete: false
+            isProfileComplete: false,
           },
         });
       }
   
       const isProfileComplete =
-        !!profile.bloodGroup && !!profile.address && !!profile.height && !!profile.weight;
+        !!profile.bloodGroup &&
+        !!profile.address &&
+        profile.height > 0 &&
+        profile.weight > 0;
   
       return res.status(200).json({
         status: true,
@@ -450,10 +474,17 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
       });
     }
   };
-
-export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
+  
+  export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
     try {
       const userId = req.user?.userId;
+  
+      if (!userId || typeof userId !== 'string') {
+        return res.status(401).json({
+          status: false,
+          message: 'User not authenticated',
+        });
+      }
   
       const profile = await prisma.doctorProfile.findUnique({
         where: { userId },
@@ -461,7 +492,11 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
           userId: true,
           specialization: true,
           clinicAddress: true,
-          consultationFee: true
+          consultationFee: true,
+          startedPracticeOn: true,
+          licenseNumber: true,
+          licenseIssuedBy: true,
+          licenseDocumentUrl: true,
         },
       });
   
@@ -486,6 +521,7 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
         message: 'Doctor profile retrieved successfully',
         data: {
           ...profile,
+          startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0],
           isProfileComplete,
         },
       });
@@ -501,7 +537,7 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
       });
     }
   };
-  
+
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     try {
       const userId = req.user?.userId;
