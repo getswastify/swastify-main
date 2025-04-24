@@ -34,20 +34,40 @@ export const PatientProfileSchema = z.object({
 });
 
 export const DoctorProfileSchema = z.object({
-  specialization: z.string().min(3, "Specialization must be at least 3 characters"),
-  clinicAddress: z.string().min(5, "Clinic address is too short"),
+  specialization: z
+    .string()
+    .min(3, "Specialization must be at least 3 characters"),
+
+  clinicAddress: z
+    .string()
+    .min(5, "Clinic address is too short"),
+
   consultationFee: z
     .number({
       invalid_type_error: "Consultation fee must be a number",
     })
     .positive("Consultation fee must be greater than 0"),
-  availableFrom: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: "availableFrom must be in HH:mm format",
-  }),
-  availableTo: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: "availableTo must be in HH:mm format",
-  }),
+
+  startedPracticeOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: "startedPracticeOn must be in YYYY-MM-DD format",
+    }),
+
+  licenseNumber: z
+    .string()
+    .min(5, "License number must be at least 5 characters"),
+
+  licenseIssuedBy: z
+    .string()
+    .optional(),
+
+  licenseDocumentUrl: z
+    .string()
+    .url("licenseDocumentUrl must be a valid URL")
+    .optional()
 });
+
 
 export const HospitalProfileSchema = z.object({
   hospitalName: z.string().min(3, "Hospital name must be at least 3 characters"),

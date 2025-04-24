@@ -34,19 +34,32 @@ exports.PatientProfileSchema = zod_1.z.object({
         .optional(), // Same here, an empty array or one or more entries
 });
 exports.DoctorProfileSchema = zod_1.z.object({
-    specialization: zod_1.z.string().min(3, "Specialization must be at least 3 characters"),
-    clinicAddress: zod_1.z.string().min(5, "Clinic address is too short"),
+    specialization: zod_1.z
+        .string()
+        .min(3, "Specialization must be at least 3 characters"),
+    clinicAddress: zod_1.z
+        .string()
+        .min(5, "Clinic address is too short"),
     consultationFee: zod_1.z
         .number({
         invalid_type_error: "Consultation fee must be a number",
     })
         .positive("Consultation fee must be greater than 0"),
-    availableFrom: zod_1.z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-        message: "availableFrom must be in HH:mm format",
+    startedPracticeOn: zod_1.z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, {
+        message: "startedPracticeOn must be in YYYY-MM-DD format",
     }),
-    availableTo: zod_1.z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-        message: "availableTo must be in HH:mm format",
-    }),
+    licenseNumber: zod_1.z
+        .string()
+        .min(5, "License number must be at least 5 characters"),
+    licenseIssuedBy: zod_1.z
+        .string()
+        .optional(),
+    licenseDocumentUrl: zod_1.z
+        .string()
+        .url("licenseDocumentUrl must be a valid URL")
+        .optional()
 });
 exports.HospitalProfileSchema = zod_1.z.object({
     hospitalName: zod_1.z.string().min(3, "Hospital name must be at least 3 characters"),

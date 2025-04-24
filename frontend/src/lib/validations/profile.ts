@@ -1,15 +1,15 @@
 import { z } from "zod"
-import { BLOOD_GROUPS, SPECIALIZATIONS } from "@/types/profile"
+import {  SPECIALIZATIONS } from "@/types/profile"
 
 // Patient Profile Schema
 export const patientProfileSchema = z.object({
-  bloodGroup: z.enum(BLOOD_GROUPS, {
-    errorMap: () => ({ message: "Please select a valid blood group" }),
-  }),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  height: z.coerce.number().min(50, "Height must be at least 50 cm").max(250, "Height must be less than 250 cm"),
-  weight: z.coerce.number().min(10, "Weight must be at least 10 kg").max(300, "Weight must be less than 300 kg"),
-})
+  bloodGroup: z.enum(["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"]),
+  address: z.string(),
+  height: z.number(),
+  weight: z.number(),
+  allergies: z.array(z.string()),
+  diseases: z.array(z.string()),
+});
 
 // Doctor Profile Schema
 export const doctorProfileSchema = z.object({
@@ -21,8 +21,10 @@ export const doctorProfileSchema = z.object({
     .number()
     .min(0, "Consultation fee cannot be negative")
     .max(10000, "Consultation fee must be less than 10,000"),
-  availableFrom: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
-  availableTo: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
+  startedPracticeOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter a valid date (YYYY-MM-DD)"),
+  licenseNumber: z.string().min(3, "License number must be at least 3 characters"),
+  licenseIssuedBy: z.string().min(3, "License issuing authority must be at least 3 characters"),
+  licenseDocumentUrl: z.string().url("Please enter a valid URL").or(z.literal("")),
 })
 
 // Hospital Profile Schema

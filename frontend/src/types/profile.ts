@@ -16,20 +16,25 @@ export interface PatientProfileData {
   address: string
   height: number
   weight: number
+  allergies: string[]
+  diseases: string[]
   isProfileComplete?: boolean
 }
 
 export type PatientProfileResponse = ProfileResponse<PatientProfileData>
 
 // Doctor Profile Types
+// Update the DoctorProfileData interface to remove availableFrom and availableTo
 export interface DoctorProfileData {
   id?: string
   userId?: string
   specialization: string
   clinicAddress: string
   consultationFee: number
-  availableFrom: string
-  availableTo: string
+  startedPracticeOn: string
+  licenseNumber: string
+  licenseIssuedBy: string
+  licenseDocumentUrl: string
   isProfileComplete?: boolean
 }
 
