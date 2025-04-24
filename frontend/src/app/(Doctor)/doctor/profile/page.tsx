@@ -28,8 +28,10 @@ export default function DoctorProfilePage() {
       specialization: "Cardiology",
       clinicAddress: "",
       consultationFee: 500,
-      availableFrom: "09:00",
-      availableTo: "17:00",
+      startedPracticeOn: new Date().toISOString().split("T")[0],
+      licenseNumber: "",
+      licenseIssuedBy: "",
+      licenseDocumentUrl: "",
     },
   })
 
@@ -45,8 +47,10 @@ export default function DoctorProfilePage() {
             specialization: response.data.specialization as (typeof SPECIALIZATIONS)[number],
             clinicAddress: response.data.clinicAddress,
             consultationFee: response.data.consultationFee,
-            availableFrom: response.data.availableFrom,
-            availableTo: response.data.availableTo,
+            startedPracticeOn: response.data.startedPracticeOn || new Date().toISOString().split("T")[0],
+            licenseNumber: response.data.licenseNumber || "",
+            licenseIssuedBy: response.data.licenseIssuedBy || "",
+            licenseDocumentUrl: response.data.licenseDocumentUrl || "",
           })
         }
       } catch (error) {
@@ -59,11 +63,21 @@ export default function DoctorProfilePage() {
     fetchProfile()
   }, [form])
 
-  const onSubmit = async (values: DoctorProfileFormValues) => {
+  const onSubmit = async (data: DoctorProfileFormValues) => {
     setIsSubmitting(true)
 
     try {
-      const response = profileExists ? await updateDoctorProfile(values) : await createDoctorProfile(values)
+      // Format the date to ISO-8601 DateTime format
+      const formattedData = {
+        ...data,
+        // Convert YYYY-MM-DD to YYYY-MM-DDT00:00:00Z format
+        startedPracticeOn:data.startedPracticeOn,
+        licenseDocumentUrl: data.licenseDocumentUrl || "https://example.com/placeholder-license",
+      }
+
+      const response = profileExists
+        ? await updateDoctorProfile(formattedData)
+        : await createDoctorProfile(formattedData)
 
       if (!response.status) {
         throw new Error(response.message || "Failed to save profile")
@@ -171,17 +185,32 @@ export default function DoctorProfilePage() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="startedPracticeOn"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Started Practice On</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormDescription>When you started your medical practice</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="availableFrom"
+                      name="licenseNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Available From</FormLabel>
+                          <FormLabel>License Number</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} />
+                            <Input placeholder="Enter your medical license number" {...field} />
                           </FormControl>
-                          <FormDescription>Start of your working hours</FormDescription>
+                          <FormDescription>Your medical license/registration number</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -189,19 +218,34 @@ export default function DoctorProfilePage() {
 
                     <FormField
                       control={form.control}
-                      name="availableTo"
+                      name="licenseIssuedBy"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Available To</FormLabel>
+                          <FormLabel>License Issued By</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} />
+                            <Input placeholder="Enter issuing authority" {...field} />
                           </FormControl>
-                          <FormDescription>End of your working hours</FormDescription>
+                          <FormDescription>Authority that issued your license</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="licenseDocumentUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>License Document URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://example.com/your-license-document" {...field} />
+                        </FormControl>
+                        <FormDescription>URL to your license document (optional)</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex justify-center pt-4">
                     <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto md:min-w-[200px]">

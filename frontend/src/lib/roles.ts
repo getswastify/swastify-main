@@ -28,7 +28,6 @@ export const roleFriendlyNames: Record<UserRole, string> = {
 export function hasRolePermission(userRole: UserRole | string | undefined, requiredRole: UserRole): boolean {
   if (!userRole) return false
 
-
   // Admin has access to everything
   if (userRole === "ADMIN") return true
 
