@@ -11,4 +11,7 @@ router.post('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'
 router.patch('/patient', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), profile_controller_1.updatePatientProfile);
 router.patch('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), profile_controller_1.updateDoctorProfile);
 router.patch('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), profile_controller_1.updateHospitalProfile);
+router.get('/patient', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), profile_controller_1.getPatientProfile);
+router.get('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), profile_controller_1.getPatientProfile);
+router.get('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), profile_controller_1.getPatientProfile);
 exports.profileRoutes = router;

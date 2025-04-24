@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.dashboardRoutes = void 0;
+const express_1 = require("express");
+const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
+const dashboard_controller_1 = require("../controller/dashboard.controller");
+const router = (0, express_1.Router)();
+router.get('/patient', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), dashboard_controller_1.getPatientDashboard);
+router.get('/doctor', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), dashboard_controller_1.getDoctorDashboard);
+router.get('/hospital', (0, requireAuthAndRole_1.requireAuthAndRole)('HOSPITAL'), dashboard_controller_1.getHospitalDashboard);
+exports.dashboardRoutes = router;
