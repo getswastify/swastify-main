@@ -1,4 +1,5 @@
 import axios from "axios"
+import { getCookie } from "./cookies"
 
 // Create a base axios instance with common configuration
 const api = axios.create({
@@ -7,7 +8,7 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
   withCredentials: true, // This ensures cookies are sent with requests
-  timeout: 10000, // 10 seconds
+  timeout: 15000, // 15 seconds
 })
 
 // Add a request interceptor to include auth token
@@ -15,11 +16,15 @@ api.interceptors.request.use(
   (config) => {
     // Check if we're in a browser environment
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token")
+      const token = getCookie("auth_token")
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
-        // Also add token to a custom header for middleware to check
-        config.headers["x-auth-token"] = token
+      }
+
+      // Add user role to headers if available
+      const userRole = getCookie("user_role")
+      if (userRole) {
+        config.headers["x-user-role"] = userRole
       }
     }
     return config
@@ -31,10 +36,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If we get a 401 Unauthorized error, clear the auth token
+    // If we get a 401 Unauthorized error, redirect to login page
     if (error.response && error.response.status === 401) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token")
+        // The cookies will be cleared by the server
+        window.location.href = "/login"
       }
     }
 

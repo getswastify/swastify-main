@@ -5,7 +5,7 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 
 import { cn } from "@/lib/utils"
-import { AuthProvider } from '../context/auth-context';
+import { AuthProvider } from "../context/auth-context"
 
 export const metadata: Metadata = {
   title: "Swastify | Healthcare Platform",

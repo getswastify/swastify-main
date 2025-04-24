@@ -14,7 +14,6 @@ import { registerDoctor } from "@/actions/auth"
 import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
-
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)

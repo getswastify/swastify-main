@@ -1,4 +1,3 @@
-// Generic Response
 export interface ApiResponse<T = unknown> {
   status: boolean
   message: string
