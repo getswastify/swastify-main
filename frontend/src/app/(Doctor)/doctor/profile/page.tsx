@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -71,7 +70,7 @@ export default function DoctorProfilePage() {
       const formattedData = {
         ...data,
         // Convert YYYY-MM-DD to YYYY-MM-DDT00:00:00Z format
-        startedPracticeOn:data.startedPracticeOn,
+        startedPracticeOn: data.startedPracticeOn,
         licenseDocumentUrl: data.licenseDocumentUrl || "https://example.com/placeholder-license",
       }
 
@@ -112,16 +111,21 @@ export default function DoctorProfilePage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden border-none shadow-md">
-          <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-400 text-white text-center p-6 card-gradient-header">
-            <CardTitle>{profileExists ? "Update Profile" : "Complete Your Profile"}</CardTitle>
-            <CardDescription className="text-emerald-50">
+        <div className="relative w-full overflow-hidden rounded-lg shadow-md">
+          {/* Custom header that extends full width */}
+          <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 px-6 py-6 text-center">
+            <h2 className="text-xl font-semibold text-white">
+              {profileExists ? "Update Profile" : "Complete Your Profile"}
+            </h2>
+            <p className="text-emerald-50">
               {profileExists
                 ? "Update your professional information below"
                 : "Please provide your professional information to complete your profile"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
+            </p>
+          </div>
+
+          {/* Card content */}
+          <div className="bg-card p-6">
             {isLoading ? (
               <div className="flex h-40 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -264,8 +268,8 @@ export default function DoctorProfilePage() {
                 </form>
               </Form>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </RoleGuard>
   )

@@ -3,13 +3,23 @@ import {  SPECIALIZATIONS } from "@/types/profile"
 
 // Patient Profile Schema
 export const patientProfileSchema = z.object({
-  bloodGroup: z.enum(["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"]),
+  bloodGroup: z.enum([
+    "A_POSITIVE",
+    "A_NEGATIVE",
+    "B_POSITIVE",
+    "B_NEGATIVE",
+    "AB_POSITIVE",
+    "AB_NEGATIVE",
+    "O_POSITIVE",
+    "O_NEGATIVE",
+  ]),
   address: z.string(),
-  height: z.number(),
-  weight: z.number(),
+  height: z.coerce.number(), 
+  weight: z.coerce.number(), 
   allergies: z.array(z.string()),
   diseases: z.array(z.string()),
 });
+
 
 // Doctor Profile Schema
 export const doctorProfileSchema = z.object({
