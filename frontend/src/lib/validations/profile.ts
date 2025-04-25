@@ -1,5 +1,5 @@
 import { z } from "zod"
-import {  SPECIALIZATIONS } from "@/types/profile"
+import { SPECIALIZATIONS } from "@/types/profile"
 
 // Patient Profile Schema
 export const patientProfileSchema = z.object({
@@ -14,12 +14,11 @@ export const patientProfileSchema = z.object({
     "O_NEGATIVE",
   ]),
   address: z.string(),
-  height: z.coerce.number(), 
-  weight: z.coerce.number(), 
+  height: z.coerce.number(),
+  weight: z.coerce.number(),
   allergies: z.array(z.string()),
   diseases: z.array(z.string()),
-});
-
+})
 
 // Doctor Profile Schema
 export const doctorProfileSchema = z.object({

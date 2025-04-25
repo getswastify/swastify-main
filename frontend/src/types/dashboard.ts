@@ -4,6 +4,7 @@ export interface DashboardResponse {
   data?: {
     isProfile?: boolean
     isProfileComplete?: boolean
+    isVerified?: "PENDING" | "APPROVED" | "REJECTED"
   }
   error?: {
     issue: string

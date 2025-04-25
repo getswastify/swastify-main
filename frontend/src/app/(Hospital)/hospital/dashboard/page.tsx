@@ -6,12 +6,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { RoleGuard } from "@/components/role-guard"
 import { getHospitalDashboard } from "@/actions/dashboard"
-import { AlertCircle, CheckCircle, Building, Users, Calendar } from "lucide-react"
+import { AlertCircle, CheckCircle, Building, Users, Calendar, Clock, XCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/context/auth-context"
+import { VerificationStatusBadge } from "@/components/verification-status-badge"
 
 export default function HospitalDashboardPage() {
   const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<"PENDING" | "APPROVED" | "REJECTED" | undefined>(
+    undefined,
+  )
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const { user } = useAuth()
@@ -22,6 +26,7 @@ export default function HospitalDashboardPage() {
         const response = await getHospitalDashboard()
         // Check for either isProfile or isProfileComplete
         setIsProfileComplete(response.data?.isProfile || response.data?.isProfileComplete || false)
+        setVerificationStatus(response.data?.isVerified)
       } catch (error) {
         console.error("Error fetching dashboard:", error)
         setIsProfileComplete(false)
@@ -33,6 +38,43 @@ export default function HospitalDashboardPage() {
     fetchDashboardData()
   }, [])
 
+  // Function to render verification status alert
+  const renderVerificationAlert = () => {
+    if (!verificationStatus) return null
+
+    switch (verificationStatus) {
+      case "APPROVED":
+        return (
+          <Alert className="border-green-500 bg-green-500/10">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertTitle>Profile Verified</AlertTitle>
+            <AlertDescription>Your hospital profile has been verified and approved.</AlertDescription>
+          </Alert>
+        )
+      case "REJECTED":
+        return (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Verification Failed</AlertTitle>
+            <AlertDescription>
+              Your profile verification was rejected. Please update your information and contact support.
+            </AlertDescription>
+          </Alert>
+        )
+      case "PENDING":
+      default:
+        return (
+          <Alert className="border-yellow-500 bg-yellow-500/10">
+            <Clock className="h-4 w-4 text-yellow-500" />
+            <AlertTitle>Verification Pending</AlertTitle>
+            <AlertDescription>
+              Your hospital profile is awaiting verification. You will be notified once it is approved.
+            </AlertDescription>
+          </Alert>
+        )
+    }
+  }
+
   return (
     <RoleGuard requiredRole="HOSPITAL">
       <div className="w-full max-w-full space-y-6">
@@ -41,6 +83,9 @@ export default function HospitalDashboardPage() {
             <h1 className="text-2xl md:text-3xl font-bold">Hospital Dashboard</h1>
             <p className="text-muted-foreground">Welcome to your hospital dashboard, {user?.firstName || "User"}</p>
           </div>
+          {!isLoading && verificationStatus && (
+            <VerificationStatusBadge status={verificationStatus} className="mt-2 md:mt-0" />
+          )}
         </div>
 
         {isLoading ? (
@@ -59,13 +104,7 @@ export default function HospitalDashboardPage() {
               </Alert>
             )}
 
-            {isProfileComplete === true && (
-              <Alert className="border-green-500 bg-green-500/10">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <AlertTitle>Profile Complete</AlertTitle>
-                <AlertDescription>Your hospital profile is complete and up to date.</AlertDescription>
-              </Alert>
-            )}
+            {isProfileComplete === true && renderVerificationAlert()}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-background">
@@ -100,7 +139,7 @@ export default function HospitalDashboardPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-center">
-                  <Button className="w-full" variant="outline">
+                  <Button className="w-full" variant="outline" disabled={verificationStatus !== "APPROVED"}>
                     View Doctors
                   </Button>
                 </CardFooter>
@@ -117,12 +156,22 @@ export default function HospitalDashboardPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-center">
-                  <Button className="w-full" variant="outline">
+                  <Button className="w-full" variant="outline" disabled={verificationStatus !== "APPROVED"}>
                     View Appointments
                   </Button>
                 </CardFooter>
               </Card>
             </div>
+
+            {verificationStatus !== "APPROVED" && (
+              <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-800">
+                <p className="font-medium">Note:</p>
+                <p>
+                  Some features are limited until your profile is verified. We will review your information as soon as
+                  possible.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

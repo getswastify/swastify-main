@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Suspense } from "react";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Suspense } from "react"
 
 // Component that uses authentication state
 function HomeContent() {
@@ -12,8 +12,8 @@ function HomeContent() {
             Welcome to <span className="text-primary">Swastify</span>
           </h1>
           <p className="max-w-[700px] text-muted-foreground md:text-xl">
-            Where Healthcare meets Innovation. Connect with doctors, manage
-            appointments, and access your health records.
+            Where Healthcare meets Innovation. Connect with doctors, manage appointments, and access your health
+            records.
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
@@ -26,7 +26,7 @@ function HomeContent() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // Loading fallback
@@ -39,8 +39,8 @@ function HomeLoadingFallback() {
             Welcome to <span className="text-primary">Swastify</span>
           </h1>
           <p className="max-w-[700px] text-muted-foreground md:text-xl">
-            Where Healthcare meets Innovation. Connect with doctors, manage
-            appointments, and access your health records.
+            Where Healthcare meets Innovation. Connect with doctors, manage appointments, and access your health
+            records.
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
@@ -50,7 +50,7 @@ function HomeLoadingFallback() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // Main component with Suspense boundary
@@ -59,5 +59,5 @@ export default function HomePage() {
     <Suspense fallback={<HomeLoadingFallback />}>
       <HomeContent />
     </Suspense>
-  );
+  )
 }
