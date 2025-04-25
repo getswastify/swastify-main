@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, UserIcon } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
+import { VerificationStatusBadge } from "@/components/verification-status-badge"
 
 export function UserNav() {
   const { user, logout } = useAuth()
@@ -25,6 +26,9 @@ export function UserNav() {
   const handleLogout = () => {
     logout()
   }
+
+  // Only show verification status for doctors and hospitals
+  const showVerificationStatus = user?.role === "DOCTOR" || user?.role === "HOSPITAL"
 
   return (
     <DropdownMenu>
@@ -43,6 +47,11 @@ export function UserNav() {
             </p>
             <p className="text-xs leading-none text-muted-foreground">{user?.email || ""}</p>
             <p className="text-xs leading-none text-muted-foreground">Role: {user?.role || ""}</p>
+            {showVerificationStatus && user?.isVerified && (
+              <div className="pt-1">
+                <VerificationStatusBadge status={user.isVerified} />
+              </div>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

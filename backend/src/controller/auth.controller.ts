@@ -800,14 +800,22 @@ export const getUserDetails = async (req: Request, res: Response): Promise<any> 
       });
     }
 
-    // Check for profile existence based on role
+    // Check for profile existence and verification status based on role
     let hasProfile = false;
+    let isVerified = null;
+
     if (user.role === 'USER') {
-      hasProfile = !!(await prisma.patientProfile.findUnique({ where: { userId: user.id } }));
+      const patientProfile = await prisma.patientProfile.findUnique({ where: { userId: user.id } });
+      hasProfile = !!patientProfile;
+      isVerified = null; // N/A for Patients
     } else if (user.role === 'DOCTOR') {
-      hasProfile = !!(await prisma.doctorProfile.findUnique({ where: { userId: user.id } }));
+      const doctorProfile = await prisma.doctorProfile.findUnique({ where: { userId: user.id } });
+      hasProfile = !!doctorProfile;
+      isVerified = doctorProfile?.status; // Same assumption for doctor profile
     } else if (user.role === 'HOSPITAL') {
-      hasProfile = !!(await prisma.hospitalProfile.findUnique({ where: { userId: user.id } }));
+      const hospitalProfile = await prisma.hospitalProfile.findUnique({ where: { userId: user.id } });
+      hasProfile = !!hospitalProfile;
+      isVerified = hospitalProfile?.status; // Same assumption for hospital profile
     }
 
     return res.status(200).json({
@@ -816,6 +824,7 @@ export const getUserDetails = async (req: Request, res: Response): Promise<any> 
       data: {
         ...user,
         hasProfile,
+        isVerified,  // Adding the isVerified status to the response
       },
     });
 
@@ -831,4 +840,3 @@ export const getUserDetails = async (req: Request, res: Response): Promise<any> 
     });
   }
 };
-

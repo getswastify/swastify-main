@@ -36,6 +36,7 @@ export interface DoctorProfileData {
   licenseIssuedBy: string
   licenseDocumentUrl: string
   isProfileComplete?: boolean
+  isVerified?: "PENDING" | "APPROVED" | "REJECTED"
 }
 
 export type DoctorProfileResponse = ProfileResponse<DoctorProfileData>
@@ -48,6 +49,7 @@ export interface HospitalProfileData {
   location: string
   services: string
   isProfileComplete?: boolean
+  isVerified?: "PENDING" | "APPROVED" | "REJECTED"
 }
 
 export type HospitalProfileResponse = ProfileResponse<HospitalProfileData>

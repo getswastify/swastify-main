@@ -36,6 +36,8 @@ export interface User {
   email: string
   lastName: string
   firstName: string
+  hasProfile?: boolean
+  isVerified?: "PENDING" | "APPROVED" | "REJECTED"
   user?: {
     id: string
     email: string
@@ -44,6 +46,8 @@ export interface User {
     phone?: string
     role: "USER" | "DOCTOR" | "HOSPITAL"
     createdAt?: string
+    hasProfile?: boolean
+    isVerified?: "PENDING" | "APPROVED" | "REJECTED"
   }
 }
 

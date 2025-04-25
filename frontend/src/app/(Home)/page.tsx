@@ -1,14 +1,9 @@
-"use client"
-
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/auth-context"
 import { Suspense } from "react"
 
 // Component that uses authentication state
 function HomeContent() {
-  const { isAuthenticated } = useAuth()
-
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-background/80">
       <div className="container flex flex-col items-center justify-center gap-6 px-4 py-16 md:gap-8 md:py-24">
@@ -22,20 +17,12 @@ function HomeContent() {
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
-          {isAuthenticated ? (
-            <Button asChild size="lg">
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild size="lg">
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/register">Create Account</Link>
-              </Button>
-            </>
-          )}
+          <Button asChild size="lg">
+            <Link href="/login">Sign In</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/register">Create Account</Link>
+          </Button>
         </div>
       </div>
     </div>

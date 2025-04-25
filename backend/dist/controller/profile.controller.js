@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getHospitalProfile = exports.getDoctorProfile = exports.getPatientProfile = exports.updateHospitalProfile = exports.updateDoctorProfile = exports.updatePatientProfile = exports.createHospitalProfile = exports.createDoctorProfile = exports.createPatientProfile = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
@@ -429,6 +440,7 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 licenseNumber: true,
                 licenseIssuedBy: true,
                 licenseDocumentUrl: true,
+                status: true,
             },
         });
         if (!profile) {
@@ -441,13 +453,14 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 },
             });
         }
+        const { status } = profile, rest = __rest(profile, ["status"]); // Destructure to get status separately
         const isProfileComplete = !!profile.specialization &&
             !!profile.clinicAddress &&
             !!profile.consultationFee;
         return res.status(200).json({
             status: true,
             message: 'Doctor profile retrieved successfully',
-            data: Object.assign(Object.assign({}, profile), { startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0], isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0], isProfileComplete }),
         });
     }
     catch (error) {
@@ -474,7 +487,7 @@ const getHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 hospitalName: true,
                 location: true,
                 services: true,
-                status: true
+                status: true,
             },
         });
         if (!profile) {
@@ -490,10 +503,12 @@ const getHospitalProfile = (req, res) => __awaiter(void 0, void 0, void 0, funct
         const isProfileComplete = !!profile.hospitalName &&
             !!profile.location &&
             !!profile.services;
+        // Destructure to rename `status` to `isVerified`
+        const { status } = profile, rest = __rest(profile, ["status"]);
         return res.status(200).json({
             status: true,
             message: 'Hospital profile retrieved successfully',
-            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { isVerified: status, isProfileComplete }),
         });
     }
     catch (error) {

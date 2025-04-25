@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -35,7 +34,7 @@ export default function PatientProfilePage() {
       allergies: [], // Always provide an empty array, not undefined
       diseases: [], // Always provide an empty array, not undefined
     },
-  });
+  })
 
   const { watch, setValue } = form
   const allergies = watch("allergies") || []
@@ -139,16 +138,21 @@ export default function PatientProfilePage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden border-none shadow-md">
-          <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-400 text-white text-center p-6 card-gradient-header">
-            <CardTitle>{profileExists ? "Update Profile" : "Complete Your Profile"}</CardTitle>
-            <CardDescription className="text-emerald-50">
+        <div className="relative w-full overflow-hidden rounded-lg shadow-md">
+          {/* Custom header that extends full width */}
+          <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 px-6 py-6 text-center">
+            <h2 className="text-xl font-semibold text-white">
+              {profileExists ? "Update Profile" : "Complete Your Profile"}
+            </h2>
+            <p className="text-emerald-50">
               {profileExists
                 ? "Update your health information below"
                 : "Please provide your health information to complete your profile"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
+            </p>
+          </div>
+
+          {/* Card content */}
+          <div className="bg-card p-6">
             {isLoading ? (
               <div className="flex h-40 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -325,18 +329,18 @@ export default function PatientProfilePage() {
                             ))
                           )}
                         </div>
-                        <FormDescription>List any medical conditions you have (optional)</FormDescription>
+                        <FormDescription>List any ongoing or past conditions (optional)</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
                   <div className="flex justify-center pt-4">
-                    <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto md:min-w-[200px]">
+                    <Button type="submit" disabled={isSubmitting}>
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {profileExists ? "Updating..." : "Creating..."}
+                          Saving...
                         </>
                       ) : profileExists ? (
                         "Update Profile"
@@ -348,8 +352,8 @@ export default function PatientProfilePage() {
                 </form>
               </Form>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </RoleGuard>
   )
