@@ -58,14 +58,27 @@ const getDoctorDashboard = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 specialization: true,
                 clinicAddress: true,
                 consultationFee: true,
+                status: true, // Add the status field to check verification status
             },
         });
-        const isProfileComplete = !!(profile === null || profile === void 0 ? void 0 : profile.specialization) && !!(profile === null || profile === void 0 ? void 0 : profile.clinicAddress) && !!(profile === null || profile === void 0 ? void 0 : profile.consultationFee);
+        if (!profile) {
+            return res.status(404).json({
+                status: false,
+                message: 'Doctor profile not found',
+                error: {
+                    code: 'PROFILE_NOT_FOUND',
+                    issue: 'No doctor profile exists for this user',
+                },
+            });
+        }
+        const isProfileComplete = !!profile.specialization && !!profile.clinicAddress && !!profile.consultationFee;
+        const isVerified = profile.status || null; // Set isVerified based on the profile's status field
         return res.status(200).json({
             status: true,
             message: 'Doctor dashboard data retrieved successfully',
             data: {
                 isProfileComplete,
+                isVerified, // Include isVerified in the response
             },
         });
     }
@@ -92,14 +105,27 @@ const getHospitalDashboard = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 hospitalName: true,
                 location: true,
                 services: true,
+                status: true, // Add the status field here to determine isVerified
             },
         });
-        const isProfileComplete = !!(profile === null || profile === void 0 ? void 0 : profile.hospitalName) && !!(profile === null || profile === void 0 ? void 0 : profile.location) && !!(profile === null || profile === void 0 ? void 0 : profile.services);
+        if (!profile) {
+            return res.status(404).json({
+                status: false,
+                message: 'Hospital profile not found',
+                error: {
+                    code: 'PROFILE_NOT_FOUND',
+                    issue: 'No hospital profile exists for this user',
+                },
+            });
+        }
+        const isProfileComplete = !!profile.hospitalName && !!profile.location && !!profile.services;
+        const isVerified = profile.status || null; // Set isVerified based on the profile's status field
         return res.status(200).json({
             status: true,
             message: 'Hospital dashboard data retrieved successfully',
             data: {
                 isProfileComplete,
+                isVerified, // Include isVerified in the response
             },
         });
     }

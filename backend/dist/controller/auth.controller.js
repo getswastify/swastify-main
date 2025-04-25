@@ -735,21 +735,29 @@ const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 }
             });
         }
-        // Check for profile existence based on role
+        // Check for profile existence and verification status based on role
         let hasProfile = false;
+        let isVerified = null;
         if (user.role === 'USER') {
-            hasProfile = !!(yield prismaConnection_1.prisma.patientProfile.findUnique({ where: { userId: user.id } }));
+            const patientProfile = yield prismaConnection_1.prisma.patientProfile.findUnique({ where: { userId: user.id } });
+            hasProfile = !!patientProfile;
+            isVerified = null; // N/A for Patients
         }
         else if (user.role === 'DOCTOR') {
-            hasProfile = !!(yield prismaConnection_1.prisma.doctorProfile.findUnique({ where: { userId: user.id } }));
+            const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({ where: { userId: user.id } });
+            hasProfile = !!doctorProfile;
+            isVerified = doctorProfile === null || doctorProfile === void 0 ? void 0 : doctorProfile.status; // Same assumption for doctor profile
         }
         else if (user.role === 'HOSPITAL') {
-            hasProfile = !!(yield prismaConnection_1.prisma.hospitalProfile.findUnique({ where: { userId: user.id } }));
+            const hospitalProfile = yield prismaConnection_1.prisma.hospitalProfile.findUnique({ where: { userId: user.id } });
+            hasProfile = !!hospitalProfile;
+            isVerified = hospitalProfile === null || hospitalProfile === void 0 ? void 0 : hospitalProfile.status; // Same assumption for hospital profile
         }
         return res.status(200).json({
             status: true,
             message: "User details fetched",
-            data: Object.assign(Object.assign({}, user), { hasProfile }),
+            data: Object.assign(Object.assign({}, user), { hasProfile,
+                isVerified }),
         });
     }
     catch (err) {
