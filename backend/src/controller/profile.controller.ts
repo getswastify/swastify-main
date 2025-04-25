@@ -1,6 +1,7 @@
 import { prisma } from "../utils/prismaConnection";
 import { Request, Response } from 'express';
 import { DoctorProfileSchema, HospitalProfileSchema, PatientProfileSchema, UpdateDoctorProfileSchema, UpdateHospitalProfileSchema, UpdatePatientProfileSchema} from '../zodSchemas/profileSchema';
+import { ApprovalStatus } from "@prisma/client";
 
 export const createPatientProfile = async (req: Request, res: Response): Promise<any> => {
   const userId = req.user?.userId;
@@ -412,7 +413,7 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
     }
   };
 
-  export const getPatientProfile = async (req: Request, res: Response): Promise<any> => {
+export const getPatientProfile = async (req: Request, res: Response): Promise<any> => {
     try {
       const userId = req.user?.userId;
   
@@ -475,7 +476,7 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
     }
   };
   
-  export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
+export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
     try {
       const userId = req.user?.userId;
   
@@ -497,6 +498,7 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
           licenseNumber: true,
           licenseIssuedBy: true,
           licenseDocumentUrl: true,
+          status: true, 
         },
       });
   
@@ -511,6 +513,8 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
         });
       }
   
+      const { status, ...rest } = profile;  // Destructure to get status separately
+  
       const isProfileComplete =
         !!profile.specialization &&
         !!profile.clinicAddress &&
@@ -520,7 +524,8 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
         status: true,
         message: 'Doctor profile retrieved successfully',
         data: {
-          ...profile,
+          ...rest,  // Spread the rest of the profile data
+          isVerified: status,  // Rename status to isVerified
           startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0],
           isProfileComplete,
         },
@@ -537,6 +542,7 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
       });
     }
   };
+  
 
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -549,7 +555,7 @@ export const getHospitalProfile = async (req: Request, res: Response): Promise<a
           hospitalName: true,
           location: true,
           services: true,
-          status:true
+          status: true, 
         },
       });
   
@@ -568,13 +574,16 @@ export const getHospitalProfile = async (req: Request, res: Response): Promise<a
         !!profile.hospitalName &&
         !!profile.location &&
         !!profile.services;
-
+  
+      // Destructure to rename `status` to `isVerified`
+      const { status, ...rest } = profile;
   
       return res.status(200).json({
         status: true,
         message: 'Hospital profile retrieved successfully',
         data: {
-          ...profile,
+          ...rest,
+          isVerified: status, 
           isProfileComplete,
         },
       });
@@ -590,3 +599,4 @@ export const getHospitalProfile = async (req: Request, res: Response): Promise<a
       });
     }
   };
+  
