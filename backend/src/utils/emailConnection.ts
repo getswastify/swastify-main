@@ -1,10 +1,13 @@
 import { EmailClient, EmailMessage, EmailContent } from '@azure/communication-email';
 import { otpEmailTemplate } from '../email-templates/otpEmail';
 import { resetPasswordTemplate } from '../email-templates/resetPasswordTemplate';
+import dotenv from 'dotenv'
 
+dotenv.config();
 const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING || '';
 const senderEmail = 'donotreply@swastify.life'; 
 const emailClient = new EmailClient(connectionString);
+
 
 export const sendOtpEmail = async (email: string, otp: string) => {
   const emailContent: EmailContent = {

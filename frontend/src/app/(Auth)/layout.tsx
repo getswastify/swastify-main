@@ -4,7 +4,7 @@ import "../globals.css"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "Swastify | Authentication",
+  title: "Swastify | #1 Healthcare Platform",
   description: "Where Healthcare meets Innovation.",
 }
 

@@ -3,7 +3,7 @@ import { getCookie } from "./cookies"
 
 // Create a base axios instance with common configuration
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   headers: {
     "Content-Type": "application/json",
   },

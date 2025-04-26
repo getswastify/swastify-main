@@ -1,9 +1,11 @@
 
 import Redis from 'ioredis';
+import dotenv from 'dotenv';
 
+dotenv.config()
 export const redis = new Redis({
   host: process.env.REDIS_HOST, // Host
-  port:  Number(process.env.REDIS_PORT), // Port
+  port:Number(process.env.REDIS_PORT), // Port
   password: process.env.REDIS_PASSWORD, // Password
   tls: {}, // SSL enabled (tls is the equivalent option in ioredis)
   retryStrategy: (times) => {
