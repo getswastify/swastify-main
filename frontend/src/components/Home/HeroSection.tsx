@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
 import {  Shield, Activity, BarChart3 } from "lucide-react";
 import Image from "next/image";
 import { motion } from "motion/react"; // ✅ using motion/react lightweight
 import { ShimmerButton } from "../magicui/shimmer-button";
+import Link from "next/link";
 
 
 export default function HeroSection() {
@@ -35,11 +35,16 @@ export default function HeroSection() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <ShimmerButton className="!text-white font-semibold px-10" shimmerColor="green" shimmerSize="0.2rem" >
-              Start Free
-            </ShimmerButton>
-
-          </div>
+  <Link href="/register" passHref>
+    <ShimmerButton
+      className="!text-white font-semibold px-10"
+      shimmerColor="green"
+      shimmerSize="0.2rem"
+    >
+      <span>Start Free</span>
+    </ShimmerButton>
+  </Link>
+</div>
 
           <div className="pt-6 border-t border-neutral-800 grid grid-cols-2 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-2">
