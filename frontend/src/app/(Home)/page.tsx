@@ -1,5 +1,6 @@
 "use client";
 
+import CTASection from "@/components/Home/CTASection";
 import HeroSection from "@/components/Home/HeroSection";
 import { Spotlight } from "@/components/ui/spotlight-new";
 
@@ -13,6 +14,7 @@ const Home = () => {
       <section className="relative z-10 w-full lg:w-[90%] px-4">
         <HeroSection />
       </section>
+      <CTASection />
     </main>
   );
 };
