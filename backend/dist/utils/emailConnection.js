@@ -8,11 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendResetPassEmail = exports.sendOtpEmail = void 0;
 const communication_email_1 = require("@azure/communication-email");
 const otpEmail_1 = require("../email-templates/otpEmail");
 const resetPasswordTemplate_1 = require("../email-templates/resetPasswordTemplate");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING || '';
 const senderEmail = 'donotreply@swastify.life';
 const emailClient = new communication_email_1.EmailClient(connectionString);
