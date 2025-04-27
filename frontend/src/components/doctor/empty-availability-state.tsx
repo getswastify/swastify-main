@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Calendar, Clock, Loader2 } from "lucide-react"
+import { Calendar, Clock, Loader2, Plus, X } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import type { Availability } from "@/types/availability"
+import { DAY_NAMES } from "@/types/availability"
 
-// Form schema with validation
-const availabilitySchema = z
+// Form schema with validation for time slots
+const timeSlotSchema = z
   .object({
-    dayOfWeek: z.coerce.number().min(0).max(6),
     startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
     endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   })
@@ -36,8 +36,14 @@ const availabilitySchema = z
     },
   )
 
+// Form schema with validation
+const availabilitySchema = z.object({
+  dayOfWeek: z.number().min(0).max(6),
+  timeSlots: z.array(timeSlotSchema).min(1, "At least one time slot is required"),
+})
+
 interface EmptyAvailabilityStateProps {
-  onAddAvailability: (data: Omit<Availability, "id">) => Promise<void>
+  onAddAvailability: (data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">) => Promise<void>
   isSubmitting: boolean
 }
 
@@ -46,14 +52,22 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
     resolver: zodResolver(availabilitySchema),
     defaultValues: {
       dayOfWeek: 1, // Monday
-      startTime: "09:00",
-      endTime: "17:00",
+      timeSlots: [{ startTime: "09:00", endTime: "17:00" }],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "timeSlots",
   })
 
   const handleSubmit = async (data: z.infer<typeof availabilitySchema>) => {
     await onAddAvailability(data)
     form.reset()
+  }
+
+  const addTimeSlot = () => {
+    append({ startTime: "09:00", endTime: "17:00" })
   }
 
   return (
@@ -97,7 +111,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
           <Card className="w-full max-w-md border shadow-md">
             <CardHeader>
               <CardTitle className="text-lg">Create Schedule</CardTitle>
-              <CardDescription>Set your available time slot for a specific day</CardDescription>
+              <CardDescription>Set your available time slots for a specific day</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -118,13 +132,11 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="0">Sunday</SelectItem>
-                            <SelectItem value="1">Monday</SelectItem>
-                            <SelectItem value="2">Tuesday</SelectItem>
-                            <SelectItem value="3">Wednesday</SelectItem>
-                            <SelectItem value="4">Thursday</SelectItem>
-                            <SelectItem value="5">Friday</SelectItem>
-                            <SelectItem value="6">Saturday</SelectItem>
+                            {DAY_NAMES.map((day, index) => (
+                              <SelectItem key={day} value={index.toString()}>
+                                {day}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -132,34 +144,56 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="startTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start Time</FormLabel>
-                          <FormControl>
-                            <Input type="time" {...field} className="w-full" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Time Slots</FormLabel>
+                      <Button type="button" variant="outline" size="sm" onClick={addTimeSlot}>
+                        <Plus className="h-3 w-3 mr-1" /> Add Slot
+                      </Button>
+                    </div>
 
-                    <FormField
-                      control={form.control}
-                      name="endTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End Time</FormLabel>
-                          <FormControl>
-                            <Input type="time" {...field} className="w-full" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <div className="grid grid-cols-2 gap-2 flex-1">
+                          <FormField
+                            control={form.control}
+                            name={`timeSlots.${index}.startTime`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input type="time" {...field} className="w-full" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`timeSlots.${index}.endTime`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input type="time" {...field} className="w-full" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        {fields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => remove(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isSubmitting}>

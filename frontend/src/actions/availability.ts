@@ -14,10 +14,10 @@ export const fetchDoctorAvailability = async (): Promise<AvailabilityResponse<Av
 }
 
 /**
- * Create doctor availability
+ * Create doctor availability for a specific day
  */
 export const createDoctorAvailability = async (
-  data: Omit<Availability, "id">,
+  data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">,
 ): Promise<AvailabilityResponse<Availability>> => {
   try {
     const response = await api.post<AvailabilityResponse<Availability>>("/appointment/doctor-availability", data)
@@ -28,9 +28,11 @@ export const createDoctorAvailability = async (
 }
 
 /**
- * Update doctor availability
+ * Update doctor availability for a specific day
  */
-export const updateDoctorAvailability = async (data: Availability): Promise<AvailabilityResponse<Availability>> => {
+export const updateDoctorAvailability = async (
+  data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">,
+): Promise<AvailabilityResponse<Availability>> => {
   try {
     const response = await api.put<AvailabilityResponse<Availability>>("/appointment/doctor-availability", data)
     return response.data
@@ -40,15 +42,16 @@ export const updateDoctorAvailability = async (data: Availability): Promise<Avai
 }
 
 /**
- * Delete doctor availability
+ * Delete a specific time slot from doctor availability
  */
-export const deleteDoctorAvailability = async (id: string): Promise<AvailabilityResponse<{ deleted: boolean }>> => {
+export const deleteTimeSlot = async (availabilityId: string, timeSlotId: string): Promise<AvailabilityResponse<unknown>> => {
   try {
-    const response = await api.delete<AvailabilityResponse<{ deleted: boolean }>>(
-      `/appointment/doctor-availability/${id}`,
-    )
+    const response = await api.delete<AvailabilityResponse<unknown>>(`/appointment/doctor-availability/${availabilityId}`, {
+      data: { timeSlotId },
+    })
     return response.data
   } catch (error) {
     return error as AvailabilityResponse<never>
   }
 }
+

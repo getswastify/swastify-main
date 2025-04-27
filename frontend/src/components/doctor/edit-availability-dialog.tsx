@@ -52,7 +52,11 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
   })
 
   const handleSubmit = async (data: z.infer<typeof availabilitySchema>) => {
-    await onAddAvailability(data)
+    const transformedData = {
+      dayOfWeek: data.dayOfWeek,
+      timeSlots: [{ startTime: data.startTime, endTime: data.endTime }],
+    }
+    await onAddAvailability(transformedData)
     form.reset()
   }
 
