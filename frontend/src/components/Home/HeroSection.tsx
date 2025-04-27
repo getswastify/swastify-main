@@ -1,6 +1,4 @@
 import { Shield, Activity, BarChart3 } from "lucide-react";
-import Image from "next/image";
-import { motion } from "motion/react"; // ✅ using motion/react lightweight
 import { ShimmerButton } from "../magicui/shimmer-button";
 import Link from "next/link";
 import MobileFrame from "./MobileFrame";
