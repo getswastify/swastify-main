@@ -85,6 +85,8 @@ model DoctorProfile {
   user             User     @relation(fields: [userId], references: [id])
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  DoctorAvailability DoctorAvailability[]
 }
 
 
@@ -109,4 +111,28 @@ enum AdminRole {
   SUPER_ADMIN
   STAFF_ADMIN
   SUPPORT_ADMIN
+}
+
+// Appointments
+
+enum DayOfWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+model DoctorAvailability {
+  id              String   @id @default(uuid())
+  doctorId        String
+  dayOfWeek       Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime       String   // Stored in 24-hour format ("09:00", "14:00")
+  endTime         String   // Stored in 24-hour format ("10:00", "15:00")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  doctor          DoctorProfile   @relation(fields: [doctorId], references: [id])
 }

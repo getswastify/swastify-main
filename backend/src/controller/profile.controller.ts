@@ -1,7 +1,7 @@
 import { prisma } from "../utils/prismaConnection";
 import { Request, Response } from 'express';
 import { DoctorProfileSchema, HospitalProfileSchema, PatientProfileSchema, UpdateDoctorProfileSchema, UpdateHospitalProfileSchema, UpdatePatientProfileSchema} from '../zodSchemas/profileSchema';
-import { ApprovalStatus } from "@prisma/client";
+
 
 export const createPatientProfile = async (req: Request, res: Response): Promise<any> => {
   const userId = req.user?.userId;
