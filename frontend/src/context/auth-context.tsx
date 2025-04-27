@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import type { User } from "@/types/auth"
 import api from "@/lib/axios"
 import type { AxiosError } from "axios"
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
   })
   const router = useRouter()
+  const pathname = usePathname()
 
   // Check if user has a specific role
   const hasRole = (role: string): boolean => {
@@ -163,14 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Check authentication status on mount
+  // Check authentication status on mount and pathname change
   useEffect(() => {
     const checkAuth = async () => {
       // Skip authentication check on public routes
       const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
-      const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
-
-      const isPublicRoute = publicRoutes.some((route) => currentPath === route || currentPath.startsWith(route + "/"))
+      const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))
 
       // Check if we already have user data in state
       if (state.user && state.isAuthenticated) {
@@ -225,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       // Cancel any pending requests if component unmounts
     }
-  }, [state.user, state.isAuthenticated])
+  }, [pathname, state.user, state.isAuthenticated])
 
   return (
     <AuthContext.Provider

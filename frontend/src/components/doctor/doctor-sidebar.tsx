@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Home, User } from "lucide-react"
+import { Home, User , Calendar} from "lucide-react"
 
 export function DoctorSidebar() {
   const pathname = usePathname()
@@ -30,6 +30,12 @@ export function DoctorSidebar() {
       href: "/doctor/profile",
       active: pathname === "/doctor/profile",
     },
+    {
+      label: "Availability",
+      icon: Calendar,
+      href: "/doctor/availability",
+      active: pathname === "/doctor/availability",
+    }
   ]
 
   return (
