@@ -11,6 +11,7 @@ const morgan_1 = __importDefault(require("morgan"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const profile_route_1 = require("./routes/profile.route");
 const dashboard_route_1 = require("./routes/dashboard.route");
+const appointment_route_1 = require("./routes/appointment.route");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.get("/", (req, res) => {
 app.use("/auth", auth_routes_1.authRoutes);
 app.use("/profile", profile_route_1.profileRoutes);
 app.use("/dashboard", dashboard_route_1.dashboardRoutes);
+app.use("/appointment", appointment_route_1.appointmentRoutes);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
