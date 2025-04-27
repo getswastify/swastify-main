@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateDoctorAvailability = exports.setDoctorAvailability = exports.getDoctorAvailability = void 0;
+exports.deleteAvailability = exports.updateDoctorAvailability = exports.setDoctorAvailability = exports.getDoctorAvailability = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const AppointmentSchema_1 = require("../zodSchemas/AppointmentSchema");
 const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -36,7 +36,7 @@ const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 },
             });
         }
-        const doctorId = doctorProfile.id; // This is the doctorId
+        const doctorId = doctorProfile.userId; // This is the doctorId
         // Step 2: Get the doctor's availability
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
@@ -114,7 +114,7 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 },
             });
         }
-        const doctorId = doctorProfile.id; // This is the doctorId
+        const doctorId = doctorProfile.userId; // This is the doctorId
         // Step 2: Check if the doctor already has availability set for this day
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
             where: { doctorId, dayOfWeek },
@@ -196,7 +196,7 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
                 },
             });
         }
-        const doctorId = doctorProfile.id; // This is the doctorId
+        const doctorId = doctorProfile.userId; // This is the doctorId
         // Step 2: Find the existing availability by doctorId and dayOfWeek
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
             where: {
@@ -243,3 +243,53 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.updateDoctorAvailability = updateDoctorAvailability;
+const deleteAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _d;
+    const { availabilityId } = req.params;
+    const doctorId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.userId; // Assuming you set req.user in auth middleware
+    try {
+        const availability = yield prismaConnection_1.prisma.doctorAvailability.findUnique({
+            where: { id: availabilityId },
+        });
+        if (!availability) {
+            return res.status(404).json({
+                status: false,
+                message: "Availability not found",
+                error: {
+                    code: "NOT_FOUND",
+                    issue: "The requested availability does not exist",
+                },
+            });
+        }
+        if (availability.doctorId !== doctorId) {
+            return res.status(403).json({
+                status: false,
+                message: "You are not allowed to delete this availability",
+                error: {
+                    code: "FORBIDDEN",
+                    issue: "Doctor does not own this availability",
+                },
+            });
+        }
+        yield prismaConnection_1.prisma.doctorAvailability.delete({
+            where: { id: availabilityId },
+        });
+        return res.status(200).json({
+            status: true,
+            message: "Availability deleted successfully",
+            data: {},
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: false,
+            message: "Something went wrong",
+            error: {
+                code: "SERVER_ERROR",
+                issue: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
+    }
+});
+exports.deleteAvailability = deleteAvailability;

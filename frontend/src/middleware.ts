@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { canAccessRoute, getDashboardByRole } from "./lib/roles"
 
 // Define public routes that don't require authentication
-const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/"]
+const publicRoutes = ["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", "/" , "/about", "/mission", "/contact"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

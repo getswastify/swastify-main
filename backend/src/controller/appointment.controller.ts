@@ -29,7 +29,7 @@ export const getDoctorAvailability = async (req: Request, res: Response): Promis
         });
       }
   
-      const doctorId = doctorProfile.id;  // This is the doctorId
+      const doctorId = doctorProfile.userId;  // This is the doctorId
   
       // Step 2: Get the doctor's availability
       const availability = await prisma.doctorAvailability.findMany({
@@ -69,7 +69,6 @@ export const getDoctorAvailability = async (req: Request, res: Response): Promis
       });
     }
   };
-
 
 export const setDoctorAvailability = async (req: Request, res: Response): Promise<any> => {
   const userId = req.user?.userId; // The userId from the authenticated user
@@ -116,7 +115,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       });
     }
 
-    const doctorId = doctorProfile.id;  // This is the doctorId
+    const doctorId = doctorProfile.userId;  // This is the doctorId
 
     // Step 2: Check if the doctor already has availability set for this day
     const existingAvailability = await prisma.doctorAvailability.findFirst({
@@ -207,7 +206,7 @@ export const updateDoctorAvailability = async (req: Request, res: Response): Pro
         });
       }
   
-      const doctorId = doctorProfile.id;  // This is the doctorId
+      const doctorId = doctorProfile.userId;  // This is the doctorId
   
       // Step 2: Find the existing availability by doctorId and dayOfWeek
       const existingAvailability = await prisma.doctorAvailability.findFirst({
@@ -251,6 +250,60 @@ export const updateDoctorAvailability = async (req: Request, res: Response): Pro
         message: 'Something went wrong while updating the doctor availability.',
         error: {
           code: 'SERVER_ERROR',
+          issue: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+    }
+  };
+
+export const deleteAvailability = async (req:Request, res:Response):Promise<any> => {
+    const { availabilityId } = req.params;
+    const doctorId = req.user?.userId; // Assuming you set req.user in auth middleware
+  
+    try {
+      const availability = await prisma.doctorAvailability.findUnique({
+        where: { id: availabilityId },
+      });
+  
+      if (!availability) {
+        return res.status(404).json({
+          status: false,
+          message: "Availability not found",
+          error: {
+            code: "NOT_FOUND",
+            issue: "The requested availability does not exist",
+          },
+        });
+      }
+  
+      if (availability.doctorId !== doctorId) {
+        return res.status(403).json({
+          status: false,
+          message: "You are not allowed to delete this availability",
+          error: {
+            code: "FORBIDDEN",
+            issue: "Doctor does not own this availability",
+          },
+        });
+      }
+  
+      await prisma.doctorAvailability.delete({
+        where: { id: availabilityId },
+      });
+  
+      return res.status(200).json({
+        status: true,
+        message: "Availability deleted successfully",
+        data: {},
+      });
+  
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({
+        status: false,
+        message: "Something went wrong",
+        error: {
+          code: "SERVER_ERROR",
           issue: error instanceof Error ? error.message : 'Unknown error',
         },
       });
