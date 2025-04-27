@@ -7,7 +7,7 @@ const CTASection = () => {
   return (
     <>
     <section className="container relative z-10 mx-auto px-4 py-20">
-<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 to-emerald-500 px-6 py-16 shadow-xl sm:px-12 sm:py-24">
+<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-900 to-green-500 px-6 py-16 shadow-xl sm:px-12 sm:py-24">
   <div className="absolute inset-0 opacity-20 mix-blend-overlay">
     <svg
       className="h-full w-full"
