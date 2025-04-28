@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.availabilityRoutes = void 0;
+const express_1 = require("express");
+const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
+const availability_controller_1 = require("../controller/availability.controller");
+const router = (0, express_1.Router)();
+router.post('/doctor-availability', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), availability_controller_1.setDoctorAvailability);
+router.put('/doctor-availability', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), availability_controller_1.updateDoctorAvailability);
+router.get('/doctor-availability', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), availability_controller_1.getDoctorAvailability);
+router.delete('/doctor-availability/:availabilityId', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), availability_controller_1.deleteAvailability);
+exports.availabilityRoutes = router;
