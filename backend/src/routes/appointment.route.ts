@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { requireAuthAndRole } from '../middleware/requireAuthAndRole';
-import { deleteAvailability, getDoctorAvailability, setDoctorAvailability, updateDoctorAvailability } from '../controller/appointment.controller';
+import { getApprovedDoctors, getPublicDoctorAvailability } from '../controller/appointment.controller';
+
 
 const router = Router();
 
-router.post('/doctor-availability',requireAuthAndRole('DOCTOR'), setDoctorAvailability);
-router.put('/doctor-availability',requireAuthAndRole('DOCTOR'), updateDoctorAvailability);
-router.get('/doctor-availability',requireAuthAndRole('DOCTOR'), getDoctorAvailability);
-router.delete('/doctor-availability/:availabilityId',requireAuthAndRole('DOCTOR'), deleteAvailability);
 
+router.get('/get-doctors',requireAuthAndRole('DOCTOR'), getApprovedDoctors);
+router.get('/get-doctor-availbility/:doctorId',getPublicDoctorAvailability );
 
-export const appointmentRoutes =  router;
+export const appointmentRoutes =  router;   

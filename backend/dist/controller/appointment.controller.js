@@ -9,60 +9,83 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAvailability = exports.updateDoctorAvailability = exports.setDoctorAvailability = exports.getDoctorAvailability = void 0;
+exports.getPublicDoctorAvailability = exports.getApprovedDoctors = void 0;
+const CalculateExperience_1 = require("../helper/CalculateExperience");
 const prismaConnection_1 = require("../utils/prismaConnection");
-const AppointmentSchema_1 = require("../zodSchemas/AppointmentSchema");
-const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId; // The userId from the authenticated user
-    if (!userId || typeof userId !== 'string') {
-        return res.status(401).json({
-            status: false,
-            message: 'User not authenticated or invalid userId',
-        });
-    }
+const getApprovedDoctors = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Step 1: Find the doctor's profile using the userId
-        const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
-            where: { userId: userId }, // Match with the userId in the DoctorProfile table
-        });
-        if (!doctorProfile) {
-            return res.status(404).json({
-                status: false,
-                message: 'Doctor profile not found for this user',
-                error: {
-                    code: 'DOCTOR_NOT_FOUND',
-                    issue: `No doctor profile found for userId: ${userId}`,
-                },
-            });
-        }
-        const doctorId = doctorProfile.userId; // This is the doctorId
-        // Step 2: Get the doctor's availability with timeSlots
-        const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
+        const approvedDoctors = yield prismaConnection_1.prisma.doctorProfile.findMany({
             where: {
-                doctorId,
+                status: 'APPROVED',
             },
             include: {
-                timeSlots: true, // Ensure you're also fetching timeSlots related to the availability
-            },
-            orderBy: {
-                dayOfWeek: 'asc', // Ordering by day of the week
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true
+                    },
+                },
             },
         });
-        if (availability.length === 0) {
+        return res.status(200).json({
+            status: true,
+            message: 'Approved doctors fetched successfully',
+            data: approvedDoctors.map((doctor) => ({
+                doctorId: doctor.userId,
+                fullName: {
+                    firstName: doctor.user.firstName,
+                    lastName: doctor.user.lastName
+                },
+                specialization: doctor.specialization,
+                experience: (0, CalculateExperience_1.calculateExperience)(doctor.startedPracticeOn.toISOString()),
+                consultationFee: doctor.consultationFee,
+            })),
+        });
+    }
+    catch (error) {
+        console.error('Error fetching doctors:', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Something went wrong while fetching doctors.',
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+exports.getApprovedDoctors = getApprovedDoctors;
+const getPublicDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { doctorId } = req.params; // Get doctorId from the URL params
+    try {
+        // Step 1: Fetch the doctor's profile and availability details
+        const doctorAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
+            where: {
+                doctorId: doctorId, // Filter by doctorId
+            },
+            include: {
+                timeSlots: true, // Include the time slots for the doctor
+            },
+        });
+        if (doctorAvailability.length === 0) {
             return res.status(404).json({
                 status: false,
-                message: 'No availability set for this doctor',
+                message: `No availability found for doctorId: ${doctorId}`,
                 error: {
-                    code: 'AVAILABILITY_NOT_FOUND',
-                    issue: `No availability found for doctorId: ${doctorId}`,
+                    code: 'NO_AVAILABILITY',
+                    issue: `This doctor doesn't have any available time slots set.`,
                 },
             });
         }
+        // Step 2: Format response to include the doctor details + available time slots
+        const availabilityResponse = doctorAvailability.map((availability) => ({
+            dayOfWeek: availability.dayOfWeek,
+            timeSlots: availability.timeSlots.map((slot) => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+            })),
+        }));
         return res.status(200).json({
             status: true,
             message: 'Doctor availability fetched successfully',
-            data: availability,
+            data: availabilityResponse,
         });
     }
     catch (error) {
@@ -70,342 +93,8 @@ const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
         return res.status(500).json({
             status: false,
             message: 'Something went wrong while fetching doctor availability.',
-            error: {
-                code: 'SERVER_ERROR',
-                issue: error instanceof Error ? error.message : 'Unknown error',
-            },
+            error: error instanceof Error ? error.message : 'Unknown error',
         });
     }
 });
-exports.getDoctorAvailability = getDoctorAvailability;
-const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b;
-    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
-    if (!userId || typeof userId !== 'string') {
-        return res.status(401).json({
-            status: false,
-            message: 'User not authenticated or invalid userId',
-        });
-    }
-    const validation = AppointmentSchema_1.DoctorAvailabilitySchema.safeParse(req.body);
-    if (!validation.success) {
-        return res.status(400).json({
-            status: false,
-            message: validation.error.errors.map(err => err.message).join(', '),
-            error: {
-                code: 'VALIDATION_ERROR',
-                issue: validation.error.errors.map(err => ({
-                    path: err.path.join('.'),
-                    message: err.message,
-                })),
-            },
-        });
-    }
-    const { dayOfWeek, timeSlots } = validation.data;
-    try {
-        const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
-            where: { userId: userId },
-        });
-        if (!doctorProfile) {
-            return res.status(404).json({
-                status: false,
-                message: 'Doctor profile not found for this user',
-                error: {
-                    code: 'DOCTOR_NOT_FOUND',
-                    issue: `No doctor profile found for userId: ${userId}`,
-                },
-            });
-        }
-        const doctorId = doctorProfile.userId;
-        // 🧠 Fetch existing availabilities and their slots
-        const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
-            where: { doctorId, dayOfWeek },
-            include: { timeSlots: true },
-        });
-        const existingSlots = (existingAvailability === null || existingAvailability === void 0 ? void 0 : existingAvailability.timeSlots) || [];
-        // 🧠 Combine existing slots + new slots
-        const allSlots = [
-            ...existingSlots.map(slot => ({
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-            })),
-            ...timeSlots,
-        ];
-        // 🧠 Sort all slots by start time
-        const sortedSlots = allSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-        // 🧠 Check for any overlaps across all slots
-        for (let i = 0; i < sortedSlots.length - 1; i++) {
-            const currentSlotEnd = sortedSlots[i].endTime;
-            const nextSlotStart = sortedSlots[i + 1].startTime;
-            if (currentSlotEnd > nextSlotStart) {
-                return res.status(400).json({
-                    status: false,
-                    message: 'Overlapping time slots detected. Please fix them before submitting.',
-                    error: {
-                        code: 'OVERLAPPING_SLOTS',
-                        issue: `Slot ending at ${currentSlotEnd} overlaps with slot starting at ${nextSlotStart}`,
-                    },
-                });
-            }
-        }
-        if (existingAvailability) {
-            return res.status(409).json({
-                status: false,
-                message: `Doctor already has availability set for this day (${dayOfWeek})`,
-                error: {
-                    code: 'DUPLICATE_AVAILABILITY',
-                    issue: 'Availability already set for this day of the week.',
-                },
-            });
-        }
-        // 🎯 Finally create if no overlaps found
-        const newAvailability = yield prismaConnection_1.prisma.doctorAvailability.create({
-            data: {
-                doctorId,
-                dayOfWeek,
-                timeSlots: {
-                    create: timeSlots.map((slot) => ({
-                        startTime: slot.startTime,
-                        endTime: slot.endTime,
-                    })),
-                },
-            },
-            include: {
-                timeSlots: true,
-            },
-        });
-        return res.status(201).json({
-            status: true,
-            message: 'Doctor availability set successfully',
-            data: newAvailability,
-        });
-    }
-    catch (error) {
-        console.error('Error setting doctor availability:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'Something went wrong while setting the doctor availability.',
-            error: {
-                code: 'SERVER_ERROR',
-                issue: error instanceof Error ? error.message : 'Unknown error',
-            },
-        });
-    }
-});
-exports.setDoctorAvailability = setDoctorAvailability;
-const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c;
-    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
-    if (!userId || typeof userId !== 'string') {
-        return res.status(401).json({
-            status: false,
-            message: 'User not authenticated or invalid userId',
-        });
-    }
-    const validation = AppointmentSchema_1.DoctorAvailabilitySchema.safeParse(req.body);
-    if (!validation.success) {
-        return res.status(400).json({
-            status: false,
-            message: validation.error.errors.map(err => err.message).join(', '),
-            error: {
-                code: 'VALIDATION_ERROR',
-                issue: validation.error.errors.map(err => ({
-                    path: err.path.join('.'),
-                    message: err.message,
-                })),
-            },
-        });
-    }
-    const { dayOfWeek, timeSlots } = validation.data;
-    try {
-        const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
-            where: { userId: userId },
-        });
-        if (!doctorProfile) {
-            return res.status(404).json({
-                status: false,
-                message: 'Doctor profile not found for this user',
-                error: {
-                    code: 'DOCTOR_NOT_FOUND',
-                    issue: `No doctor profile found for userId: ${userId}`,
-                },
-            });
-        }
-        const doctorId = doctorProfile.userId;
-        const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
-            where: {
-                doctorId,
-                dayOfWeek,
-            },
-            include: {
-                timeSlots: true,
-            },
-        });
-        if (!existingAvailability) {
-            return res.status(404).json({
-                status: false,
-                message: `No availability found for this day (${dayOfWeek})`,
-                error: {
-                    code: 'AVAILABILITY_NOT_FOUND',
-                    issue: `No availability found for doctorId: ${doctorId} on day: ${dayOfWeek}`,
-                },
-            });
-        }
-        const existingSlots = (existingAvailability === null || existingAvailability === void 0 ? void 0 : existingAvailability.timeSlots) || [];
-        // 🧠 Combine existing + new slots (though here we replace, but just good practice)
-        const allSlots = [
-            ...timeSlots,
-        ];
-        // 🧠 Sort by startTime
-        const sortedSlots = allSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
-        // 🧠 Check for overlaps
-        for (let i = 0; i < sortedSlots.length - 1; i++) {
-            const currentSlotEnd = sortedSlots[i].endTime;
-            const nextSlotStart = sortedSlots[i + 1].startTime;
-            if (currentSlotEnd > nextSlotStart) {
-                return res.status(400).json({
-                    status: false,
-                    message: 'Overlapping time slots detected in the update. Please fix them before submitting.',
-                    error: {
-                        code: 'OVERLAPPING_SLOTS',
-                        issue: `Slot ending at ${currentSlotEnd} overlaps with slot starting at ${nextSlotStart}`,
-                    },
-                });
-            }
-        }
-        // 🎯 Now safe to delete old slots and create new ones
-        yield prismaConnection_1.prisma.timeSlot.deleteMany({
-            where: {
-                doctorAvailabilityId: existingAvailability.id,
-            },
-        });
-        const updatedAvailability = yield prismaConnection_1.prisma.doctorAvailability.update({
-            where: {
-                id: existingAvailability.id,
-            },
-            data: {
-                timeSlots: {
-                    create: timeSlots.map((slot) => ({
-                        startTime: slot.startTime,
-                        endTime: slot.endTime,
-                    })),
-                },
-            },
-            include: {
-                timeSlots: true,
-            },
-        });
-        return res.status(200).json({
-            status: true,
-            message: 'Doctor availability updated successfully',
-            data: updatedAvailability,
-        });
-    }
-    catch (error) {
-        console.error('Error updating doctor availability:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'Something went wrong while updating the doctor availability.',
-            error: {
-                code: 'SERVER_ERROR',
-                issue: error instanceof Error ? error.message : 'Unknown error',
-            },
-        });
-    }
-});
-exports.updateDoctorAvailability = updateDoctorAvailability;
-const deleteAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d;
-    const { availabilityId } = req.params; // Get the availabilityId from URL params
-    const { timeSlotId } = req.body; // Get the timeSlotId from the request body
-    const doctorId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.userId; // Get the doctorId from the authenticated user
-    if (!timeSlotId) {
-        return res.status(400).json({
-            status: false,
-            message: "Time slot ID is required to delete a time slot",
-            error: {
-                code: "BAD_REQUEST",
-                issue: "No timeSlotId provided in the request body",
-            },
-        });
-    }
-    try {
-        // Step 1: Find the availability record using the availabilityId
-        const availability = yield prismaConnection_1.prisma.doctorAvailability.findUnique({
-            where: { id: availabilityId },
-            include: {
-                timeSlots: true, // Get associated time slots with the availability
-            },
-        });
-        // If the availability record doesn't exist
-        if (!availability) {
-            return res.status(404).json({
-                status: false,
-                message: "Availability not found",
-                error: {
-                    code: "NOT_FOUND",
-                    issue: "The requested availability does not exist",
-                },
-            });
-        }
-        // Step 2: Check if the logged-in doctor owns this availability
-        if (availability.doctorId !== doctorId) {
-            return res.status(403).json({
-                status: false,
-                message: "You are not allowed to delete this availability",
-                error: {
-                    code: "FORBIDDEN",
-                    issue: "Doctor does not own this availability",
-                },
-            });
-        }
-        // Step 3: Check if the time slot exists and is associated with this availability
-        const timeSlot = availability.timeSlots.find((slot) => slot.id === timeSlotId);
-        if (!timeSlot) {
-            return res.status(404).json({
-                status: false,
-                message: "Time slot not found for this availability",
-                error: {
-                    code: "NOT_FOUND",
-                    issue: "The requested time slot does not exist for this availability",
-                },
-            });
-        }
-        // Step 4: Delete the specific time slot using the timeSlotId
-        yield prismaConnection_1.prisma.timeSlot.delete({
-            where: { id: timeSlotId },
-        });
-        // Step 5: Check if there are any remaining time slots
-        const remainingTimeSlots = yield prismaConnection_1.prisma.timeSlot.findMany({
-            where: { doctorAvailabilityId: availability.id },
-        });
-        // If no time slots are left, delete the availability record
-        if (remainingTimeSlots.length === 0) {
-            yield prismaConnection_1.prisma.doctorAvailability.delete({
-                where: { id: availabilityId },
-            });
-            return res.status(200).json({
-                status: true,
-                message: "Time slot deleted and availability record removed as no time slots remain",
-                data: {},
-            });
-        }
-        return res.status(200).json({
-            status: true,
-            message: "Time slot deleted successfully",
-            data: {},
-        });
-    }
-    catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            status: false,
-            message: "Something went wrong",
-            error: {
-                code: "SERVER_ERROR",
-                issue: error instanceof Error ? error.message : "Unknown error",
-            },
-        });
-    }
-});
-exports.deleteAvailability = deleteAvailability;
+exports.getPublicDoctorAvailability = getPublicDoctorAvailability;
