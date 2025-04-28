@@ -80,7 +80,7 @@ const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
 exports.getDoctorAvailability = getDoctorAvailability;
 const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _b;
-    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId; // The userId from the authenticated user
+    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
     if (!userId || typeof userId !== 'string') {
         return res.status(401).json({
             status: false,
@@ -101,9 +101,8 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
             },
         });
     }
-    const { dayOfWeek, timeSlots } = validation.data; // `timeSlots` is now part of the request
+    const { dayOfWeek, timeSlots } = validation.data;
     try {
-        // Step 1: Find the doctor's profile using the userId
         const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
             where: { userId: userId },
         });
@@ -117,11 +116,38 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 },
             });
         }
-        const doctorId = doctorProfile.userId; // This is the doctorId
-        // Step 2: Check if the doctor already has availability set for this day
+        const doctorId = doctorProfile.userId;
+        // 🧠 Fetch existing availabilities and their slots
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
             where: { doctorId, dayOfWeek },
+            include: { timeSlots: true },
         });
+        const existingSlots = (existingAvailability === null || existingAvailability === void 0 ? void 0 : existingAvailability.timeSlots) || [];
+        // 🧠 Combine existing slots + new slots
+        const allSlots = [
+            ...existingSlots.map(slot => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+            })),
+            ...timeSlots,
+        ];
+        // 🧠 Sort all slots by start time
+        const sortedSlots = allSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+        // 🧠 Check for any overlaps across all slots
+        for (let i = 0; i < sortedSlots.length - 1; i++) {
+            const currentSlotEnd = sortedSlots[i].endTime;
+            const nextSlotStart = sortedSlots[i + 1].startTime;
+            if (currentSlotEnd > nextSlotStart) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Overlapping time slots detected. Please fix them before submitting.',
+                    error: {
+                        code: 'OVERLAPPING_SLOTS',
+                        issue: `Slot ending at ${currentSlotEnd} overlaps with slot starting at ${nextSlotStart}`,
+                    },
+                });
+            }
+        }
         if (existingAvailability) {
             return res.status(409).json({
                 status: false,
@@ -132,7 +158,7 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 },
             });
         }
-        // Step 3: Create the new doctor availability with timeSlots
+        // 🎯 Finally create if no overlaps found
         const newAvailability = yield prismaConnection_1.prisma.doctorAvailability.create({
             data: {
                 doctorId,
@@ -145,7 +171,7 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 },
             },
             include: {
-                timeSlots: true, // Include time slots in the response
+                timeSlots: true,
             },
         });
         return res.status(201).json({
@@ -169,7 +195,7 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
 exports.setDoctorAvailability = setDoctorAvailability;
 const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _c;
-    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId; // The userId from the authenticated user
+    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
     if (!userId || typeof userId !== 'string') {
         return res.status(401).json({
             status: false,
@@ -190,9 +216,8 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
             },
         });
     }
-    const { dayOfWeek, timeSlots } = validation.data; // Expecting timeSlots array
+    const { dayOfWeek, timeSlots } = validation.data;
     try {
-        // Step 1: Find the doctor's profile using the userId
         const doctorProfile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
             where: { userId: userId },
         });
@@ -206,15 +231,14 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
                 },
             });
         }
-        const doctorId = doctorProfile.userId; // This is the doctorId
-        // Step 2: Find the existing availability by doctorId and dayOfWeek
+        const doctorId = doctorProfile.userId;
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
             where: {
                 doctorId,
                 dayOfWeek,
             },
             include: {
-                timeSlots: true, // Include timeSlots for checking and updating
+                timeSlots: true,
             },
         });
         if (!existingAvailability) {
@@ -227,13 +251,34 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
                 },
             });
         }
-        // Step 3: Delete existing time slots (if needed, based on your logic)
+        const existingSlots = (existingAvailability === null || existingAvailability === void 0 ? void 0 : existingAvailability.timeSlots) || [];
+        // 🧠 Combine existing + new slots (though here we replace, but just good practice)
+        const allSlots = [
+            ...timeSlots,
+        ];
+        // 🧠 Sort by startTime
+        const sortedSlots = allSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+        // 🧠 Check for overlaps
+        for (let i = 0; i < sortedSlots.length - 1; i++) {
+            const currentSlotEnd = sortedSlots[i].endTime;
+            const nextSlotStart = sortedSlots[i + 1].startTime;
+            if (currentSlotEnd > nextSlotStart) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Overlapping time slots detected in the update. Please fix them before submitting.',
+                    error: {
+                        code: 'OVERLAPPING_SLOTS',
+                        issue: `Slot ending at ${currentSlotEnd} overlaps with slot starting at ${nextSlotStart}`,
+                    },
+                });
+            }
+        }
+        // 🎯 Now safe to delete old slots and create new ones
         yield prismaConnection_1.prisma.timeSlot.deleteMany({
             where: {
                 doctorAvailabilityId: existingAvailability.id,
             },
         });
-        // Step 4: Add new time slots
         const updatedAvailability = yield prismaConnection_1.prisma.doctorAvailability.update({
             where: {
                 id: existingAvailability.id,
@@ -247,7 +292,7 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
                 },
             },
             include: {
-                timeSlots: true, // Include the updated time slots in the response
+                timeSlots: true,
             },
         });
         return res.status(200).json({
