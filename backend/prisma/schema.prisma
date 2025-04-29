@@ -24,7 +24,9 @@ model User {
   doctorProfile  DoctorProfile?
   hospitalProfile HospitalProfile?
   adminProfile   AdminProfile?
+
 }
+
 
 enum UserRole {
   USER        // Patient
@@ -110,23 +112,11 @@ enum AdminRole {
 // Appointments
 
 model DoctorAvailability {
-  id              String   @id @default(uuid())
-  doctorId        String
-  dayOfWeek       Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  timeSlots       TimeSlot[] // Each doctor can have multiple time slots for the same day
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  doctor          DoctorProfile   @relation(fields: [doctorId], references: [userId])
-}
+  id         String   @id @default(uuid())
+  doctorId   String
+  dayOfWeek  String   // Monday, Tuesday, etc.
+  startTime  DateTime // E.g., 9:00 AM
+  endTime    DateTime // E.g., 12:00 PM
 
-model TimeSlot {
-  id           String   @id @default(uuid())
-  doctorAvailabilityId String // Linking to DoctorAvailability
-  startTime    String   // Stored in 24-hour format ("09:00", "14:00")
-  endTime      String   // Stored in 24-hour format ("10:00", "15:00")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  doctorAvailability DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
+  doctor     DoctorProfile @relation(fields: [doctorId], references: [userId])
 }
