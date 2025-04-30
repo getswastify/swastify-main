@@ -63,17 +63,10 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
             targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
             return targetDate;
         };
-        // Check if the doctor already has availability set for the given dayOfWeek
-        const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: {
-                doctorId,
-                dayOfWeek,
-            },
-        });
-        if (existingAvailability.length > 0) {
-            return res.status(400).json({ error: 'Availability for this day already exists.' });
-        }
-        // If no existing availability, proceed to create new availability slots
+        const isOverlapping = (startA, endA, startB, endB) => {
+            return startA < endB && startB < endA;
+        };
+        // Convert slots first
         const availabilityData = timeSlots.map((slot) => {
             const startTime = buildDateTimeFromTimeString(dayOfWeek, slot.startTime);
             const endTime = buildDateTimeFromTimeString(dayOfWeek, slot.endTime);
@@ -84,7 +77,25 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 endTime,
             };
         });
-        // Bulk insert all availability slots
+        // 🚨 Check for internal conflicts (in the submitted timeSlots)
+        for (let i = 0; i < availabilityData.length; i++) {
+            for (let j = i + 1; j < availabilityData.length; j++) {
+                if (isOverlapping(availabilityData[i].startTime, availabilityData[i].endTime, availabilityData[j].startTime, availabilityData[j].endTime)) {
+                    return res.status(400).json({ error: 'Conflict between provided time slots.' });
+                }
+            }
+        }
+        // ✅ Check if existing availability exists for the day
+        const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
+            where: {
+                doctorId,
+                dayOfWeek,
+            },
+        });
+        if (existingAvailability.length > 0) {
+            return res.status(400).json({ error: 'Availability for this day already exists.' });
+        }
+        // 🎯 If we reached here, all good – insert the slots
         yield prismaConnection_1.prisma.doctorAvailability.createMany({
             data: availabilityData,
         });
@@ -107,14 +118,12 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
         if (!dayOfWeek || !Array.isArray(timeSlots) || timeSlots.length === 0) {
             return res.status(400).json({ error: 'Invalid input. Please provide dayOfWeek and timeSlots.' });
         }
-        // Check if the doctor already has availability set for the given dayOfWeek
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
                 dayOfWeek,
             },
         });
-        // If no availability exists, prompt the doctor to create availability first
         if (existingAvailability.length === 0) {
             return res.status(400).json({ error: 'First create availability for this day before updating it.' });
         }
@@ -132,7 +141,10 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
             targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
             return targetDate;
         };
-        // Prepare new availability slots data
+        const isOverlapping = (startA, endA, startB, endB) => {
+            return startA < endB && startB < endA;
+        };
+        // Prepare new slots
         const availabilityData = timeSlots.map((slot) => {
             const startTime = buildDateTimeFromTimeString(dayOfWeek, slot.startTime);
             const endTime = buildDateTimeFromTimeString(dayOfWeek, slot.endTime);
@@ -143,14 +155,22 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
                 endTime,
             };
         });
-        // Optionally: Delete existing availability for that day before updating
+        // 🛡 Check for self-conflicts
+        for (let i = 0; i < availabilityData.length; i++) {
+            for (let j = i + 1; j < availabilityData.length; j++) {
+                if (isOverlapping(availabilityData[i].startTime, availabilityData[i].endTime, availabilityData[j].startTime, availabilityData[j].endTime)) {
+                    return res.status(400).json({ error: 'Conflict between provided time slots.' });
+                }
+            }
+        }
+        // 🚮 Delete old availability for that day
         yield prismaConnection_1.prisma.doctorAvailability.deleteMany({
             where: {
                 doctorId,
                 dayOfWeek,
             },
         });
-        // Insert updated availability slots
+        // 💾 Save the new updated slots
         yield prismaConnection_1.prisma.doctorAvailability.createMany({
             data: availabilityData,
         });
