@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { profileRoutes } from './routes/profile.route';
 import { dashboardRoutes } from './routes/dashboard.route';
 import { availabilityRoutes } from './routes/availability.route';
+import { appointmentRoutes } from './routes/appointment.route';
 // import { appointmentRoutes } from './routes/appointment.route';
 
 dotenv.config();
@@ -33,8 +34,10 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/dashboard", dashboardRoutes);
-// app.use("/patient", appointmentRoutes);
+app.use("/patient", appointmentRoutes);
 app.use("/availability", availabilityRoutes);
+app.use("/appointment", appointmentRoutes);
+
 
 
 app.listen(PORT, () => {
