@@ -9,92 +9,86 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPublicDoctorAvailability = exports.getApprovedDoctors = void 0;
-const CalculateExperience_1 = require("../helper/CalculateExperience");
+exports.getDynamicAppointmentSlots = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
-const getApprovedDoctors = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const approvedDoctors = yield prismaConnection_1.prisma.doctorProfile.findMany({
-            where: {
-                status: 'APPROVED',
-            },
-            include: {
-                user: {
-                    select: {
-                        firstName: true,
-                        lastName: true
-                    },
-                },
-            },
-        });
-        return res.status(200).json({
-            status: true,
-            message: 'Approved doctors fetched successfully',
-            data: approvedDoctors.map((doctor) => ({
-                doctorId: doctor.userId,
-                fullName: {
-                    firstName: doctor.user.firstName,
-                    lastName: doctor.user.lastName
-                },
-                specialization: doctor.specialization,
-                experience: (0, CalculateExperience_1.calculateExperience)(doctor.startedPracticeOn.toISOString()),
-                consultationFee: doctor.consultationFee,
-            })),
-        });
+const SLOT_DURATION_MINUTES = 30; // Duration of each appointment slot in minutes
+// Function to get doctor's availability for a specific day
+const getDoctorAvailabilityForDay = (doctorId, dayOfWeek) => __awaiter(void 0, void 0, void 0, function* () {
+    const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
+        where: {
+            doctorId,
+            dayOfWeek,
+        },
+        orderBy: {
+            startTime: 'asc', // Sort by start time
+        },
+    });
+    if (availability.length === 0) {
+        throw new Error('No availability found for this day.');
     }
-    catch (error) {
-        console.error('Error fetching doctors:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'Something went wrong while fetching doctors.',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
-    }
+    return availability;
 });
-exports.getApprovedDoctors = getApprovedDoctors;
-const getPublicDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { doctorId } = req.params; // Get doctorId from the URL params
-    try {
-        // Step 1: Fetch the doctor's profile and availability details
-        const doctorAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: {
-                doctorId: doctorId, // Filter by doctorId
-            },
-            include: {
-                timeSlots: true, // Include the time slots for the doctor
-            },
-        });
-        if (doctorAvailability.length === 0) {
-            return res.status(404).json({
-                status: false,
-                message: `No availability found for doctorId: ${doctorId}`,
-                error: {
-                    code: 'NO_AVAILABILITY',
-                    issue: `This doctor doesn't have any available time slots set.`,
-                },
-            });
+// Function to generate slots based on the doctor's availability
+const generateSlotsForAvailability = (availability) => {
+    const slots = [];
+    availability.forEach((avail) => {
+        let start = new Date(avail.startTime);
+        const end = new Date(avail.endTime);
+        while (start < end) {
+            const slotEnd = new Date(start);
+            slotEnd.setMinutes(start.getMinutes() + SLOT_DURATION_MINUTES);
+            // Only add slot if the end time is within the doctor's availability
+            if (slotEnd <= end) {
+                slots.push({
+                    startTime: start,
+                    endTime: slotEnd,
+                });
+            }
+            start = slotEnd; // Move to the next slot
         }
-        // Step 2: Format response to include the doctor details + available time slots
-        const availabilityResponse = doctorAvailability.map((availability) => ({
-            dayOfWeek: availability.dayOfWeek,
-            timeSlots: availability.timeSlots.map((slot) => ({
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-            })),
-        }));
-        return res.status(200).json({
-            status: true,
-            message: 'Doctor availability fetched successfully',
-            data: availabilityResponse,
-        });
+    });
+    return slots;
+};
+// Function to check for conflicts with existing appointments
+const checkForConflicts = (doctorId, newSlot) => __awaiter(void 0, void 0, void 0, function* () {
+    const existingAppointments = yield prismaConnection_1.prisma.appointment.findMany({
+        where: {
+            doctorId,
+            appointmentTime: {
+                gte: newSlot.startTime,
+                lt: newSlot.endTime, // Check if the new appointment ends before the existing one
+            },
+        },
+    });
+    if (existingAppointments.length > 0) {
+        return true; // Conflict exists
+    }
+    return false; // No conflict
+});
+// API endpoint to get dynamic appointment slots for a doctor
+const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { doctorId, dayOfWeek } = req.body;
+        if (!doctorId || !dayOfWeek) {
+            return res.status(400).json({ error: 'Doctor ID and dayOfWeek are required.' });
+        }
+        // Step 1: Get doctor's availability for the given day
+        const availability = yield getDoctorAvailabilityForDay(doctorId, dayOfWeek);
+        // Step 2: Generate dynamic slots for each availability period
+        const generatedSlots = generateSlotsForAvailability(availability);
+        // Step 3: Check for conflicts in each generated slot
+        const availableSlots = [];
+        for (const slot of generatedSlots) {
+            const conflict = yield checkForConflicts(doctorId, slot);
+            if (!conflict) {
+                availableSlots.push(slot);
+            }
+        }
+        return res.status(200).json({ availableSlots });
     }
     catch (error) {
-        console.error('Error fetching doctor availability:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'Something went wrong while fetching doctor availability.',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        console.error('Error generating appointment slots:', error);
+        return res.status(500).json({ error: 'Something went wrong while generating slots.' });
     }
 });
-exports.getPublicDoctorAvailability = getPublicDoctorAvailability;
+exports.getDynamicAppointmentSlots = getDynamicAppointmentSlots;

@@ -1,10 +1,8 @@
 "use strict";
-// import { Router } from 'express';
-// import { requireAuthAndRole } from '../middleware/requireAuthAndRole';
-// import {  getApprovedDoctors, getAvailableSlots,getPublicDoctorAvailability} from '../controller/appointment.controller';
-// const router = Router();
-// router.get('/get-doctors',requireAuthAndRole('DOCTOR'), getApprovedDoctors);
-// router.get('/get-doctor-availbility', getPublicDoctorAvailability);
-// router.get('/available-slots/:doctorId/:dayOfWeek', getAvailableSlots);
-// // router.post('/book-appointment',bookAppointment );
-// export const appointmentRoutes =  router;   
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.appointmentRoutes = void 0;
+const express_1 = require("express");
+const appointment_controller_1 = require("../controller/appointment.controller");
+const router = (0, express_1.Router)();
+router.get("/get-appointmentslot", appointment_controller_1.getDynamicAppointmentSlots);
+exports.appointmentRoutes = router;
