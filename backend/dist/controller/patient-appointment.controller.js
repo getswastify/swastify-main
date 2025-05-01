@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
+const emailConnection_1 = require("../utils/emailConnection");
 // API endpoint to get dynamic appointment slots for a doctor
 const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -162,7 +163,7 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
                 endTime: {
                     gte: appointmentDate, // Check if the requested appointment time is before the end time
                 },
-                dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }) // Ensure it's on a day the doctor is available
+                dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }), // Ensure it's on a day the doctor is available
             },
         });
         if (!doctorAvailability) {
@@ -186,7 +187,49 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
                 appointmentTime: appointmentDate,
                 status: 'PENDING', // Appointment is booked but not yet confirmed
             },
+            include: {
+                patient: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                    },
+                },
+                doctor: {
+                    select: {
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                            },
+                        },
+                        specialization: true,
+                    },
+                },
+            },
         });
+        // 4. Prepare appointment details directly
+        const appointmentDetails = {
+            patientName: `${newAppointment.patient.firstName} ${newAppointment.patient.lastName}`,
+            patientEmail: newAppointment.patient.email,
+            patientPhone: newAppointment.patient.phone,
+            appointmentTime: newAppointment.appointmentTime,
+            status: newAppointment.status,
+            doctorName: `${newAppointment.doctor.user.firstName} ${newAppointment.doctor.user.lastName}`,
+            doctorSpecialization: newAppointment.doctor.specialization,
+            doctorEmail: newAppointment.doctor.user.email,
+        };
+        // 5. Send appointment confirmation email to the patient
+        try {
+            yield (0, emailConnection_1.sendAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails); // Send email
+            console.log('Appointment confirmation email sent to:', newAppointment.patient.email);
+        }
+        catch (error) {
+            console.error('Error sending appointment confirmation email:', error);
+        }
+        // 6. Respond with the appointment details
         return res.status(201).json({
             message: 'Appointment booked successfully.',
             appointment: newAppointment,

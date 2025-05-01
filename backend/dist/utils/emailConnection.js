@@ -12,11 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendResetPassEmail = exports.sendOtpEmail = void 0;
+exports.sendAppointmentConfirmationEmail = exports.sendResetPassEmail = exports.sendOtpEmail = void 0;
 const communication_email_1 = require("@azure/communication-email");
 const otpEmail_1 = require("../email-templates/otpEmail");
 const resetPasswordTemplate_1 = require("../email-templates/resetPasswordTemplate");
 const dotenv_1 = __importDefault(require("dotenv"));
+const appointmentConfirm_1 = require("../email-templates/appointmentConfirm");
 dotenv_1.default.config();
 const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING || '';
 const senderEmail = 'donotreply@swastify.life';
@@ -67,3 +68,30 @@ const sendResetPassEmail = (email, resetLink) => __awaiter(void 0, void 0, void 
     }
 });
 exports.sendResetPassEmail = sendResetPassEmail;
+const sendAppointmentConfirmationEmail = (email, appointmentDetails) => __awaiter(void 0, void 0, void 0, function* () {
+    // Generate the email content based on the appointment details
+    const emailContent = {
+        subject: `Appointment Confirmation: ${appointmentDetails.appointmentTime}`,
+        html: (0, appointmentConfirm_1.appointmentConfirmationTemplate)(appointmentDetails),
+    };
+    // Prepare the email message with the content and recipient details
+    const emailMessage = {
+        senderAddress: senderEmail,
+        content: emailContent,
+        recipients: {
+            to: [{ address: email, displayName: `${appointmentDetails.patientName}` }],
+        },
+    };
+    try {
+        // Send the email using your email client (example: SendGrid, Mailgun, etc.)
+        const poller = yield emailClient.beginSend(emailMessage);
+        const operationState = poller.getOperationState();
+        // Log operation ID for debugging purposes
+        console.log('Appointment confirmation email send initiated! Operation ID:', operationState.id);
+    }
+    catch (error) {
+        console.error('Error sending appointment confirmation email:', error);
+        throw new Error('Error sending appointment confirmation email');
+    }
+});
+exports.sendAppointmentConfirmationEmail = sendAppointmentConfirmationEmail;

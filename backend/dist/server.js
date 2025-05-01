@@ -12,8 +12,8 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const profile_route_1 = require("./routes/profile.route");
 const dashboard_route_1 = require("./routes/dashboard.route");
 const availability_route_1 = require("./routes/availability.route");
-const appointment_route_1 = require("./routes/appointment.route");
-// import { appointmentRoutes } from './routes/appointment.route';
+const patient_appointment_route_1 = require("./routes/patient-appointment.route");
+const doctor_appointment_route_1 = require("./routes/doctor-appointment.route");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -34,9 +34,9 @@ app.get("/", (req, res) => {
 app.use("/auth", auth_routes_1.authRoutes);
 app.use("/profile", profile_route_1.profileRoutes);
 app.use("/dashboard", dashboard_route_1.dashboardRoutes);
-app.use("/patient", appointment_route_1.appointmentRoutes);
+app.use("/patient", patient_appointment_route_1.patientAppointmentRoutes);
 app.use("/availability", availability_route_1.availabilityRoutes);
-app.use("/appointment", appointment_route_1.appointmentRoutes);
+app.use("/doctor", doctor_appointment_route_1.doctorAppointmentRoutes);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
