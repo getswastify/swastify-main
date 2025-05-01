@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
+exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
 // API endpoint to get dynamic appointment slots for a doctor
@@ -91,3 +91,55 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getAvailableDatesForMonth = getAvailableDatesForMonth;
+const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { doctorId, date } = req.body; // Get doctorId and date from the request body
+        if (!doctorId || !date) {
+            return res.status(400).json({ error: 'doctorId and date are required.' });
+        }
+        // Convert the date string to a Date object
+        const selectedDate = new Date(date);
+        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0)); // Start of the selected day
+        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999)); // End of the selected day
+        // Fetch doctor’s availability for the selected date
+        const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
+            where: {
+                doctorId,
+                startTime: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
+            },
+            orderBy: {
+                startTime: 'asc',
+            },
+        });
+        if (!availability || availability.length === 0) {
+            return res.status(404).json({ error: 'No availability found for this doctor on the selected date.' });
+        }
+        // Generate 30-minute appointment slots based on the doctor's availability
+        const availableSlots = [];
+        for (const slot of availability) {
+            let currentStartTime = new Date(slot.startTime);
+            let currentEndTime = new Date(currentStartTime);
+            currentEndTime.setMinutes(currentEndTime.getMinutes() + 30); // Each slot is 30 minutes long
+            // Generate slots until the end of the availability period
+            while (currentEndTime <= slot.endTime) {
+                availableSlots.push({
+                    startTime: currentStartTime.toISOString(),
+                    endTime: currentEndTime.toISOString(),
+                });
+                // Move to the next 30-minute slot
+                currentStartTime = new Date(currentEndTime);
+                currentEndTime = new Date(currentStartTime);
+                currentEndTime.setMinutes(currentEndTime.getMinutes() + 30);
+            }
+        }
+        return res.status(200).json({ availableSlots });
+    }
+    catch (error) {
+        console.error('Error fetching appointment slots:', error);
+        return res.status(500).json({ error: 'Something went wrong while fetching appointment slots.' });
+    }
+});
+exports.getAvailableAppointmentSlots = getAvailableAppointmentSlots;
