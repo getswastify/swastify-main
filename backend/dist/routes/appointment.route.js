@@ -7,4 +7,5 @@ const router = (0, express_1.Router)();
 router.get("/get-appointmentslot", appointment_controller_1.getDynamicAppointmentSlots);
 router.get("/available-dates", appointment_controller_1.getAvailableDatesForMonth);
 router.get("/available-slots", appointment_controller_1.getAvailableAppointmentSlots);
+router.post("/book-appointment", appointment_controller_1.bookAppointment);
 exports.appointmentRoutes = router;

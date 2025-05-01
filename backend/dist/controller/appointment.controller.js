@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
+exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
 // API endpoint to get dynamic appointment slots for a doctor
@@ -143,3 +143,58 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
     }
 });
 exports.getAvailableAppointmentSlots = getAvailableAppointmentSlots;
+const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { patientId, doctorId, appointmentTime } = req.body;
+        // Validate the input
+        if (!patientId || !doctorId || !appointmentTime) {
+            return res.status(400).json({ error: 'patientId, doctorId, and appointmentTime are required.' });
+        }
+        // Convert appointment time to Date object
+        const appointmentDate = new Date(appointmentTime);
+        // 1. Check if the doctor has availability at the requested time
+        const doctorAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
+            where: {
+                doctorId,
+                startTime: {
+                    lte: appointmentDate, // Check if the requested appointment time is after the start time
+                },
+                endTime: {
+                    gte: appointmentDate, // Check if the requested appointment time is before the end time
+                },
+                dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }) // Ensure it's on a day the doctor is available
+            },
+        });
+        if (!doctorAvailability) {
+            return res.status(400).json({ error: 'The doctor is not available at this time.' });
+        }
+        // 2. Check if the time slot is already booked
+        const existingAppointment = yield prismaConnection_1.prisma.appointment.findFirst({
+            where: {
+                doctorId,
+                appointmentTime: appointmentDate,
+            },
+        });
+        if (existingAppointment) {
+            return res.status(400).json({ error: 'The selected time slot is already booked.' });
+        }
+        // 3. Create the new appointment
+        const newAppointment = yield prismaConnection_1.prisma.appointment.create({
+            data: {
+                patientId,
+                doctorId,
+                appointmentTime: appointmentDate,
+                status: 'PENDING', // Appointment is booked but not yet confirmed
+            },
+        });
+        return res.status(201).json({
+            message: 'Appointment booked successfully.',
+            appointment: newAppointment,
+        });
+    }
+    catch (error) {
+        console.error('Error booking appointment:', error);
+        return res.status(500).json({ error: 'Something went wrong while booking the appointment.' });
+    }
+});
+exports.bookAppointment = bookAppointment;
