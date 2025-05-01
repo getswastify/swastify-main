@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AppointmentSlot, checkForConflicts, generateSlotsForAvailability, getDoctorAvailabilityForDay } from '../helper/AppointmentUtils';
 import { prisma } from '../utils/prismaConnection';
+import { sendAppointmentConfirmationEmail } from '../utils/emailConnection';
 
 // API endpoint to get dynamic appointment slots for a doctor
 export const getDynamicAppointmentSlots = async (req: Request, res: Response): Promise<any> => {
@@ -96,7 +97,7 @@ export const getAvailableDatesForMonth = async (req: Request, res: Response): Pr
       return res.status(500).json({ error: "Something went wrong." });
     }
   };
-  
+
 
 export const getAvailableAppointmentSlots = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -159,7 +160,9 @@ export const getAvailableAppointmentSlots = async (req: Request, res: Response):
     }
   };
 
-export const bookAppointment = async (req: Request, res: Response): Promise<any> => {
+
+
+  export const bookAppointment = async (req: Request, res: Response): Promise<any> => {
     try {
       const { patientId, doctorId, appointmentTime } = req.body;
   
@@ -181,7 +184,7 @@ export const bookAppointment = async (req: Request, res: Response): Promise<any>
           endTime: {
             gte: appointmentDate, // Check if the requested appointment time is before the end time
           },
-          dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }) // Ensure it's on a day the doctor is available
+          dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }), // Ensure it's on a day the doctor is available
         },
       });
   
@@ -209,8 +212,51 @@ export const bookAppointment = async (req: Request, res: Response): Promise<any>
           appointmentTime: appointmentDate,
           status: 'PENDING', // Appointment is booked but not yet confirmed
         },
+        include: {
+          patient: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          doctor: {
+            select: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              specialization: true,
+            },
+          },
+        },
       });
   
+      // 4. Prepare appointment details directly
+      const appointmentDetails = {
+        patientName: `${newAppointment.patient.firstName} ${newAppointment.patient.lastName}`,
+        patientEmail: newAppointment.patient.email,
+        patientPhone: newAppointment.patient.phone,
+        appointmentTime: newAppointment.appointmentTime,
+        status: newAppointment.status,
+        doctorName: `${newAppointment.doctor.user.firstName} ${newAppointment.doctor.user.lastName}`,
+        doctorSpecialization: newAppointment.doctor.specialization,
+        doctorEmail: newAppointment.doctor.user.email,
+      };
+  
+      // 5. Send appointment confirmation email to the patient
+      try {
+        await sendAppointmentConfirmationEmail(newAppointment.patient.email, appointmentDetails); // Send email
+        console.log('Appointment confirmation email sent to:', newAppointment.patient.email);
+      } catch (error) {
+        console.error('Error sending appointment confirmation email:', error);
+      }
+  
+      // 6. Respond with the appointment details
       return res.status(201).json({
         message: 'Appointment booked successfully.',
         appointment: newAppointment,
@@ -221,3 +267,71 @@ export const bookAppointment = async (req: Request, res: Response): Promise<any>
     }
   };
   
+
+
+export const getDoctorAppointments = async (req: Request, res: Response): Promise<any> => {
+    try {
+      const doctorId = req.user?.userId;// Doctor's ID passed as URL parameter
+      console.log(doctorId);
+      
+  
+      // Validate the input
+      if (!doctorId) {
+        return res.status(400).json({ error: 'doctorId is required.' });
+      }
+  
+      // Fetch appointments for the doctor, include related patient and doctor data
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          doctorId,
+        },
+        include: {
+          patient: {  // Include patient details from the User model
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true, // Add any other fields you want to include
+            },
+          },
+          doctor: {   // Include doctor details from the DoctorProfile model
+            select: {
+              user: {  // Access User data for the doctor
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              specialization: true,
+            },
+          },
+        },
+      });
+  
+      // Check if no appointments are found
+      if (!appointments || appointments.length === 0) {
+        return res.status(404).json({ message: 'No appointments found for this doctor.' });
+      }
+  
+      // Return the list of appointments with patient and doctor details
+      return res.status(200).json({
+        appointments: appointments.map(appointment => ({
+          appointmentId: appointment.id,
+          patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+          patientEmail: appointment.patient.email,
+          patientPhone: appointment.patient.phone, // Optional: Add any additional patient info here
+          appointmentTime: appointment.appointmentTime,
+          status: appointment.status,
+          doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
+          doctorSpecialization: appointment.doctor.specialization,
+          doctorEmail: appointment.doctor.user.email, // Optional: Add email if needed
+          createdAt: appointment.createdAt,
+          updatedAt: appointment.updatedAt,
+        })),
+      });
+    } catch (error) {
+      console.error('Error fetching doctor appointments:', error);
+      return res.status(500).json({ error: 'Something went wrong while fetching the appointments.' });
+    }
+  };

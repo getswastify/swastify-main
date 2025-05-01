@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.patientAppointmentRoutes = void 0;
+const express_1 = require("express");
+const patient_appointment_controller_1 = require("../controller/patient-appointment.controller");
+const router = (0, express_1.Router)();
+router.get("/get-appointmentslot", patient_appointment_controller_1.getDynamicAppointmentSlots);
+router.get("/available-dates", patient_appointment_controller_1.getAvailableDatesForMonth);
+router.get("/available-slots", patient_appointment_controller_1.getAvailableAppointmentSlots);
+router.post("/book-appointment", patient_appointment_controller_1.bookAppointment);
+exports.patientAppointmentRoutes = router;

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { getAvailableAppointmentSlots, getAvailableDatesForMonth, getDynamicAppointmentSlots,bookAppointment } from '../controller/appointment.controller';
+import { getAvailableAppointmentSlots, getAvailableDatesForMonth, getDynamicAppointmentSlots,bookAppointment } from '../controller/patient-appointment.controller';
+
 
 const router = Router();
 
@@ -10,4 +11,6 @@ router.get("/available-slots",  getAvailableAppointmentSlots);
 router.post("/book-appointment",  bookAppointment);
 
 
-export const appointmentRoutes =  router;
+
+
+export const patientAppointmentRoutes =  router;
