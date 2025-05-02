@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { SetStateAction, useState } from "react"
 import { DoctorSearch } from "@/components/patient/appointment-booking/doctor-search"
 import { AppointmentCalendar } from "@/components/patient/appointment-booking/appointment-calendar"
 import { TimeSlotPicker } from "@/components/patient/appointment-booking/time-slot-picker"
@@ -14,12 +14,12 @@ import { useRouter } from "next/navigation"
 
 export default function BookAppointmentPage() {
   const [activeTab, setActiveTab] = useState("doctor")
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null)
+  const [selectedDoctor, setSelectedDoctor] = useState<{ id: string; name: string; specialty: string } | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null)
   const router = useRouter()
 
-  const handleDoctorSelect = (doctor: any) => {
+  const handleDoctorSelect = (doctor: SetStateAction<{ id: string; name: string; specialty: string } | null>) => {
     setSelectedDoctor(doctor)
   }
 
@@ -109,7 +109,7 @@ export default function BookAppointmentPage() {
 
             <TabsContent value="date" className="space-y-4">
               <AppointmentCalendar
-                doctorId={selectedDoctor?.id}
+                doctorId={selectedDoctor?.id || ""}
                 onDateSelect={handleDateSelect}
                 selectedDate={selectedDate}
               />
@@ -125,7 +125,7 @@ export default function BookAppointmentPage() {
 
             <TabsContent value="time" className="space-y-4">
               <TimeSlotPicker
-                doctorId={selectedDoctor?.id}
+                doctorId={selectedDoctor?.id || ""}
                 selectedDate={selectedDate}
                 onTimeSlotSelect={handleTimeSlotSelect}
                 selectedTimeSlot={selectedTimeSlot}
@@ -142,9 +142,9 @@ export default function BookAppointmentPage() {
 
             <TabsContent value="confirm" className="space-y-4">
               <BookingConfirmation
-                doctorId={selectedDoctor?.id}
-                doctorName={selectedDoctor?.name}
-                doctorSpecialty={selectedDoctor?.specialty}
+                doctorId={selectedDoctor?.id || ""}
+                doctorName={selectedDoctor?.name || ""}
+                doctorSpecialty={selectedDoctor?.specialty || ""}
                 selectedDate={selectedDate}
                 selectedTimeSlot={selectedTimeSlot}
                 onReset={handleReset}

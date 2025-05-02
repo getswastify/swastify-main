@@ -51,6 +51,7 @@ export function formatTime(isoTime: string): string {
     const date = new Date(isoTime)
     return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
   } catch (e) {
+    console.error(e)
     return isoTime // Return original if parsing fails
   }
 }
@@ -64,6 +65,7 @@ export function formatTimeFrom24h(time: string): string {
     const formattedHour = hour % 12 || 12
     return `${formattedHour}:${minutes} ${ampm}`
   } catch (e) {
+    console.error(e)
     return time // Return original if parsing fails
   }
 }

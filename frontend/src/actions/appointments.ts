@@ -72,6 +72,14 @@ export interface BookAppointmentResponse {
   }
 }
 
+type AxiosErrorResponse = {
+  response?: {
+    data?: {
+      error?: string;
+    }
+  }
+}
+
 /**
  * Get all doctors
  */
@@ -79,8 +87,9 @@ export const getDoctors = async (): Promise<DoctorsResponse> => {
   try {
     const response = await api.get<DoctorsResponse>("/patient/get-doctors")
     return response.data
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || "Failed to fetch doctors")
+  } catch (error: unknown) {
+    const axiosError = error as AxiosErrorResponse;
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch doctors");
   }
 }
 
@@ -99,8 +108,9 @@ export const getAvailableDates = async (
       },
     })
     return response.data
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || "Failed to fetch available dates")
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse;
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch available dates")
   }
 }
 
@@ -112,8 +122,9 @@ export const getAvailableSlots = async (doctorId: string, date: string): Promise
       date,
     })
     return response.data
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || "Failed to fetch available slots")
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse;
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch available slots")
   }
 }
 
@@ -121,7 +132,7 @@ export const getAvailableSlots = async (doctorId: string, date: string): Promise
  * Book an appointment with a doctor
  */
 export const bookAppointment = async (
-patientId: string, doctorId: string, appointmentTime: string, formattedDate: string,
+patientId: string, doctorId: string, appointmentTime: string
 ): Promise<BookAppointmentResponse> => {
   try {
     const response = await api.post<BookAppointmentResponse>("/patient/book-appointment", {
@@ -130,8 +141,9 @@ patientId: string, doctorId: string, appointmentTime: string, formattedDate: str
       appointmentTime,
     })
     return response.data
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || "Failed to book appointment")
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse;
+    throw new Error(axiosError.response?.data?.error || "Failed to book appointment");
   }
 }
 
@@ -142,8 +154,9 @@ export const getPatientAppointments = async (): Promise<AppointmentsResponse> =>
   try {
     const response = await api.get<AppointmentsResponse>("/patient/booked-appointment")
     return response.data
-  } catch (error: any) {
-    throw new Error(error.response?.data?.error || "Failed to fetch appointments")
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse;
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch appointments");
   }
 }
 

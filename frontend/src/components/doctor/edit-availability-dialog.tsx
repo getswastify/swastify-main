@@ -53,7 +53,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
 
   const handleSubmit = async (data: z.infer<typeof availabilitySchema>) => {
     const transformedData = {
-      dayOfWeek: data.dayOfWeek,
+      dayOfWeek: data.dayOfWeek.toString(),
       timeSlots: [{ startTime: data.startTime, endTime: data.endTime }],
     }
     await onAddAvailability(transformedData)

@@ -225,7 +225,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
                           </div>
                           <ul className="ml-6 mt-2 list-disc">
                             <li>Cancellations within 24 hours may incur a fee</li>
-                            <li>You'll need to book a new appointment if needed</li>
+                            <li>You will need to book a new appointment if needed</li>
                           </ul>
                         </div>
                       </div>

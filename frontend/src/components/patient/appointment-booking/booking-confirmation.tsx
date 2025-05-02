@@ -40,8 +40,7 @@ export function BookingConfirmation({
 
     setIsBooking(true)
     try {
-      const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
-      await bookAppointment(user.id, doctorId, selectedTimeSlot.startTime, formattedDate)
+      await bookAppointment(user.id, doctorId, selectedTimeSlot.startTime)
       setIsBooked(true)
       toast.success("Appointment booked successfully!")
     } catch (error) {
