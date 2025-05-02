@@ -7,7 +7,7 @@ const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
 const router = (0, express_1.Router)();
 router.get("/get-appointmentslot", patient_appointment_controller_1.getDynamicAppointmentSlots);
 router.get("/available-dates", patient_appointment_controller_1.getAvailableDatesForMonth);
-router.get("/available-slots", patient_appointment_controller_1.getAvailableAppointmentSlots);
+router.post("/available-slots", patient_appointment_controller_1.getAvailableAppointmentSlots);
 router.get("/booked-appointment", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.getPatientAppointments);
 router.get("/get-doctors", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.searchDoctors);
 router.post("/book-appointment", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.bookAppointment);

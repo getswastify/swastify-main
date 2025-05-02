@@ -40,40 +40,72 @@ const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 
     }
 });
 exports.getDynamicAppointmentSlots = getDynamicAppointmentSlots;
+// export const getAvailableDatesForMonth = async (req: Request, res: Response): Promise<any> => {
+//     try {
+//       const { doctorId, year, month } = req.body;
+//       if (!doctorId || !year || !month) {
+//         return res.status(400).json({ error: "doctorId, year, and month are required" });
+//       }
+//       // Fetch doctor's weekly availability (days of week)
+//       const weeklyAvailability = await prisma.doctorAvailability.findMany({
+//         where: { doctorId },
+//         select: { dayOfWeek: true },
+//       });
+//       if (!weeklyAvailability || weeklyAvailability.length === 0) {
+//         return res.status(404).json({ error: "No availability found for the doctor." });
+//       }
+//       const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
+//       console.log("Available weekdays for doctor:", availableWeekdays); // Debugging log
+//       const daysInMonth = new Date(year, month, 0).getDate(); // Get last day of the month
+//       const availableDates: string[] = [];
+//       console.log(`Days in month: ${daysInMonth}`); // Debugging line to check the days in the month
+//       // Loop through each day of the month and check if it's an available day
+//       for (let day = 1; day <= daysInMonth; day++) {
+//         const date = new Date(year, month - 1, day); // JS months are 0-indexed
+//         const weekday = date.toLocaleDateString("en-US", { weekday: "long" }); // Get correct weekday in local timezone
+//         console.log(`Checking date: ${date.toString()} (Weekday: ${weekday})`); // Debugging line
+//         // Check if this weekday is available for the doctor
+//         if (availableWeekdays.has(weekday)) {
+//           console.log(`Date ${date.toLocaleDateString("en-CA")} is available.`); // Debug log when the date is available
+//           availableDates.push(date.toLocaleDateString("en-CA")); // Push date in "YYYY-MM-DD" format
+//         } else {
+//           console.log(`Date ${date.toLocaleDateString("en-CA")} is NOT available.`); // Debug log when the date is NOT available
+//         }
+//       }
+//       console.log(`Available dates: ${availableDates}`); // Final list of available dates
+//       return res.status(200).json({ availableDates });
+//     } catch (error) {
+//       console.error("Error fetching available dates:", error);
+//       return res.status(500).json({ error: "Something went wrong." });
+//     }
+//   };
 const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { doctorId, year, month } = req.body;
+        const { doctorId, year, month } = req.query;
         if (!doctorId || !year || !month) {
             return res.status(400).json({ error: "doctorId, year, and month are required" });
         }
+        // Convert year and month to numbers
+        const parsedYear = parseInt(year);
+        const parsedMonth = parseInt(month);
         // Fetch doctor's weekly availability (days of week)
         const weeklyAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: { doctorId },
+            where: { doctorId: doctorId },
             select: { dayOfWeek: true },
         });
         if (!weeklyAvailability || weeklyAvailability.length === 0) {
             return res.status(404).json({ error: "No availability found for the doctor." });
         }
         const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
-        console.log("Available weekdays for doctor:", availableWeekdays); // Debugging log
-        const daysInMonth = new Date(year, month, 0).getDate(); // Get last day of the month
+        const daysInMonth = new Date(parsedYear, parsedMonth, 0).getDate(); // Get last day of the month
         const availableDates = [];
-        console.log(`Days in month: ${daysInMonth}`); // Debugging line to check the days in the month
-        // Loop through each day of the month and check if it's an available day
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month - 1, day); // JS months are 0-indexed
-            const weekday = date.toLocaleDateString("en-US", { weekday: "long" }); // Get correct weekday in local timezone
-            console.log(`Checking date: ${date.toString()} (Weekday: ${weekday})`); // Debugging line
-            // Check if this weekday is available for the doctor
+            const date = new Date(parsedYear, parsedMonth - 1, day); // JS months are 0-indexed
+            const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
             if (availableWeekdays.has(weekday)) {
-                console.log(`Date ${date.toLocaleDateString("en-CA")} is available.`); // Debug log when the date is available
-                availableDates.push(date.toLocaleDateString("en-CA")); // Push date in "YYYY-MM-DD" format
-            }
-            else {
-                console.log(`Date ${date.toLocaleDateString("en-CA")} is NOT available.`); // Debug log when the date is NOT available
+                availableDates.push(date.toLocaleDateString("en-CA")); // Format: YYYY-MM-DD
             }
         }
-        console.log(`Available dates: ${availableDates}`); // Final list of available dates
         return res.status(200).json({ availableDates });
     }
     catch (error) {
@@ -380,12 +412,13 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             },
         });
         const formattedDoctors = doctors.map((doc) => {
-            var _a, _b, _c, _d;
+            var _a, _b, _c;
             return ({
-                id: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.id) || '',
+                id: doc.id,
                 name: `${doc.firstName} ${doc.lastName}`,
-                specialty: ((_b = doc.doctorProfile) === null || _b === void 0 ? void 0 : _b.specialization) || '',
-                experience: new Date().getFullYear() - new Date((_d = (_c = doc.doctorProfile) === null || _c === void 0 ? void 0 : _c.startedPracticeOn) !== null && _d !== void 0 ? _d : new Date()).getFullYear(),
+                specialty: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.specialization) || '',
+                experience: new Date().getFullYear() -
+                    new Date((_c = (_b = doc.doctorProfile) === null || _b === void 0 ? void 0 : _b.startedPracticeOn) !== null && _c !== void 0 ? _c : new Date()).getFullYear(),
             });
         });
         return res.status(200).json({ doctors: formattedDoctors });
