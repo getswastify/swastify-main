@@ -11,30 +11,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteDoctorAvailability = exports.updateDoctorAvailability = exports.setDoctorAvailability = exports.getDoctorAvailability = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
+const formatSuccess = (message, data = null) => ({
+    status: true,
+    message,
+    data
+});
+const formatError = (message, error = null) => ({
+    status: false,
+    message,
+    error
+});
 const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const doctorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId; // Assuming the doctorId comes from the authenticated user's session
+        const doctorId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
         if (!doctorId) {
-            return res.status(400).json({ error: 'Doctor ID is required.' });
+            return res.status(400).json(formatError('Doctor ID is required.'));
         }
-        // Fetch all availability slots for the given doctor
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: {
-                doctorId,
-            },
-            orderBy: {
-                startTime: 'asc', // Sort the availability slots by start time
-            },
+            where: { doctorId },
+            orderBy: { startTime: 'asc' }
         });
         if (availability.length === 0) {
-            return res.status(404).json({ error: 'No availability found for the doctor.' });
+            return res.status(404).json(formatError('No availability found for the doctor.'));
         }
-        return res.status(200).json(availability);
+        return res.status(200).json(formatSuccess('Availability fetched successfully.', availability));
     }
     catch (error) {
         console.error('Error fetching doctor availability:', error);
-        return res.status(500).json({ error: 'Something went wrong while fetching availability.' });
+        return res.status(500).json(formatError('Something went wrong while fetching availability.', error));
     }
 });
 exports.getDoctorAvailability = getDoctorAvailability;
@@ -43,11 +48,11 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
     try {
         const doctorId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
         if (!doctorId) {
-            return res.status(400).json({ error: 'Doctor ID is required.' });
+            return res.status(400).json(formatError('Doctor ID is required.'));
         }
         const { dayOfWeek, timeSlots } = req.body;
         if (!dayOfWeek || !Array.isArray(timeSlots) || timeSlots.length === 0) {
-            return res.status(400).json({ error: 'Invalid input. Please provide dayOfWeek and timeSlots.' });
+            return res.status(400).json(formatError('Invalid input. Please provide dayOfWeek and timeSlots.'));
         }
         const buildDateTimeFromTimeString = (dayOfWeek, timeStr) => {
             const now = new Date();
@@ -66,44 +71,31 @@ const setDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, fu
         const isOverlapping = (startA, endA, startB, endB) => {
             return startA < endB && startB < endA;
         };
-        // Convert slots first
-        const availabilityData = timeSlots.map((slot) => {
-            const startTime = buildDateTimeFromTimeString(dayOfWeek, slot.startTime);
-            const endTime = buildDateTimeFromTimeString(dayOfWeek, slot.endTime);
-            return {
-                doctorId,
-                dayOfWeek,
-                startTime,
-                endTime,
-            };
-        });
-        // 🚨 Check for internal conflicts (in the submitted timeSlots)
+        const availabilityData = timeSlots.map((slot) => ({
+            doctorId,
+            dayOfWeek,
+            startTime: buildDateTimeFromTimeString(dayOfWeek, slot.startTime),
+            endTime: buildDateTimeFromTimeString(dayOfWeek, slot.endTime),
+        }));
         for (let i = 0; i < availabilityData.length; i++) {
             for (let j = i + 1; j < availabilityData.length; j++) {
                 if (isOverlapping(availabilityData[i].startTime, availabilityData[i].endTime, availabilityData[j].startTime, availabilityData[j].endTime)) {
-                    return res.status(400).json({ error: 'Conflict between provided time slots.' });
+                    return res.status(400).json(formatError('Conflict between provided time slots.'));
                 }
             }
         }
-        // ✅ Check if existing availability exists for the day
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: {
-                doctorId,
-                dayOfWeek,
-            },
+            where: { doctorId, dayOfWeek },
         });
         if (existingAvailability.length > 0) {
-            return res.status(400).json({ error: 'Availability for this day already exists.' });
+            return res.status(400).json(formatError('Availability for this day already exists.'));
         }
-        // 🎯 If we reached here, all good – insert the slots
-        yield prismaConnection_1.prisma.doctorAvailability.createMany({
-            data: availabilityData,
-        });
-        return res.status(201).json({ message: 'Availability set successfully 🎯' });
+        yield prismaConnection_1.prisma.doctorAvailability.createMany({ data: availabilityData });
+        return res.status(201).json(formatSuccess('Availability set successfully.'));
     }
     catch (error) {
         console.error('Error setting doctor availability:', error);
-        return res.status(500).json({ error: 'Something went wrong while setting availability.' });
+        return res.status(500).json(formatError('Something went wrong while setting availability.', error));
     }
 });
 exports.setDoctorAvailability = setDoctorAvailability;
@@ -112,20 +104,17 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
     try {
         const doctorId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
         if (!doctorId) {
-            return res.status(400).json({ error: 'Doctor ID is required.' });
+            return res.status(400).json(formatError('Doctor ID is required.'));
         }
         const { dayOfWeek, timeSlots } = req.body;
         if (!dayOfWeek || !Array.isArray(timeSlots) || timeSlots.length === 0) {
-            return res.status(400).json({ error: 'Invalid input. Please provide dayOfWeek and timeSlots.' });
+            return res.status(400).json(formatError('Invalid input. Please provide dayOfWeek and timeSlots.'));
         }
         const existingAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: {
-                doctorId,
-                dayOfWeek,
-            },
+            where: { doctorId, dayOfWeek },
         });
         if (existingAvailability.length === 0) {
-            return res.status(400).json({ error: 'First create availability for this day before updating it.' });
+            return res.status(400).json(formatError('First create availability for this day before updating it.'));
         }
         const buildDateTimeFromTimeString = (dayOfWeek, timeStr) => {
             const now = new Date();
@@ -144,78 +133,59 @@ const updateDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0,
         const isOverlapping = (startA, endA, startB, endB) => {
             return startA < endB && startB < endA;
         };
-        // Prepare new slots
-        const availabilityData = timeSlots.map((slot) => {
-            const startTime = buildDateTimeFromTimeString(dayOfWeek, slot.startTime);
-            const endTime = buildDateTimeFromTimeString(dayOfWeek, slot.endTime);
-            return {
-                doctorId,
-                dayOfWeek,
-                startTime,
-                endTime,
-            };
-        });
-        // 🛡 Check for self-conflicts
+        const availabilityData = timeSlots.map((slot) => ({
+            doctorId,
+            dayOfWeek,
+            startTime: buildDateTimeFromTimeString(dayOfWeek, slot.startTime),
+            endTime: buildDateTimeFromTimeString(dayOfWeek, slot.endTime),
+        }));
         for (let i = 0; i < availabilityData.length; i++) {
             for (let j = i + 1; j < availabilityData.length; j++) {
                 if (isOverlapping(availabilityData[i].startTime, availabilityData[i].endTime, availabilityData[j].startTime, availabilityData[j].endTime)) {
-                    return res.status(400).json({ error: 'Conflict between provided time slots.' });
+                    return res.status(400).json(formatError('Conflict between provided time slots.'));
                 }
             }
         }
-        // 🚮 Delete old availability for that day
         yield prismaConnection_1.prisma.doctorAvailability.deleteMany({
-            where: {
-                doctorId,
-                dayOfWeek,
-            },
+            where: { doctorId, dayOfWeek },
         });
-        // 💾 Save the new updated slots
-        yield prismaConnection_1.prisma.doctorAvailability.createMany({
-            data: availabilityData,
-        });
-        return res.status(200).json({ message: 'Availability updated successfully 🎯' });
+        yield prismaConnection_1.prisma.doctorAvailability.createMany({ data: availabilityData });
+        return res.status(200).json(formatSuccess('Availability updated successfully.'));
     }
     catch (error) {
         console.error('Error updating doctor availability:', error);
-        return res.status(500).json({ error: 'Something went wrong while updating availability.' });
+        return res.status(500).json(formatError('Something went wrong while updating availability.', error));
     }
 });
 exports.updateDoctorAvailability = updateDoctorAvailability;
 const deleteDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _d;
     try {
-        const doctorId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.userId; // Assuming doctorId comes from authenticated user
+        const doctorId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.userId;
         if (!doctorId) {
-            return res.status(400).json({ error: 'Doctor ID is required.' });
+            return res.status(400).json(formatError('Doctor ID is required.'));
         }
-        const { availabilityId } = req.body; // Get the availability id from request body
+        const { availabilityId } = req.body;
         if (!availabilityId) {
-            return res.status(400).json({ error: 'Availability ID is required.' });
+            return res.status(400).json(formatError('Availability ID is required.'));
         }
-        // Check if the availability slot exists and belongs to the current doctor
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findUnique({
-            where: {
-                id: availabilityId,
-            },
+            where: { id: availabilityId },
         });
         if (!availability) {
-            return res.status(404).json({ error: 'Availability slot not found.' });
+            return res.status(404).json(formatError('Availability slot not found.'));
         }
         if (availability.doctorId !== doctorId) {
-            return res.status(403).json({ error: 'You are not authorized to delete this availability.' });
+            return res.status(403).json(formatError('You are not authorized to delete this availability.'));
         }
-        // Proceed to delete the availability slot
         yield prismaConnection_1.prisma.doctorAvailability.delete({
-            where: {
-                id: availabilityId,
-            },
+            where: { id: availabilityId },
         });
-        return res.status(200).json({ message: 'Availability slot deleted successfully.' });
+        return res.status(200).json(formatSuccess('Availability slot deleted successfully.'));
     }
     catch (error) {
         console.error('Error deleting doctor availability:', error);
-        return res.status(500).json({ error: 'Something went wrong while deleting availability.' });
+        return res.status(500).json(formatError('Something went wrong while deleting availability.', error));
     }
 });
 exports.deleteDoctorAvailability = deleteDoctorAvailability;

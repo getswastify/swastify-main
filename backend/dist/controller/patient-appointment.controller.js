@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
+exports.searchDoctors = exports.getPatientAppointments = exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
 const emailConnection_1 = require("../utils/emailConnection");
@@ -40,50 +40,72 @@ const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 
     }
 });
 exports.getDynamicAppointmentSlots = getDynamicAppointmentSlots;
+// export const getAvailableDatesForMonth = async (req: Request, res: Response): Promise<any> => {
+//     try {
+//       const { doctorId, year, month } = req.body;
+//       if (!doctorId || !year || !month) {
+//         return res.status(400).json({ error: "doctorId, year, and month are required" });
+//       }
+//       // Fetch doctor's weekly availability (days of week)
+//       const weeklyAvailability = await prisma.doctorAvailability.findMany({
+//         where: { doctorId },
+//         select: { dayOfWeek: true },
+//       });
+//       if (!weeklyAvailability || weeklyAvailability.length === 0) {
+//         return res.status(404).json({ error: "No availability found for the doctor." });
+//       }
+//       const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
+//       console.log("Available weekdays for doctor:", availableWeekdays); // Debugging log
+//       const daysInMonth = new Date(year, month, 0).getDate(); // Get last day of the month
+//       const availableDates: string[] = [];
+//       console.log(`Days in month: ${daysInMonth}`); // Debugging line to check the days in the month
+//       // Loop through each day of the month and check if it's an available day
+//       for (let day = 1; day <= daysInMonth; day++) {
+//         const date = new Date(year, month - 1, day); // JS months are 0-indexed
+//         const weekday = date.toLocaleDateString("en-US", { weekday: "long" }); // Get correct weekday in local timezone
+//         console.log(`Checking date: ${date.toString()} (Weekday: ${weekday})`); // Debugging line
+//         // Check if this weekday is available for the doctor
+//         if (availableWeekdays.has(weekday)) {
+//           console.log(`Date ${date.toLocaleDateString("en-CA")} is available.`); // Debug log when the date is available
+//           availableDates.push(date.toLocaleDateString("en-CA")); // Push date in "YYYY-MM-DD" format
+//         } else {
+//           console.log(`Date ${date.toLocaleDateString("en-CA")} is NOT available.`); // Debug log when the date is NOT available
+//         }
+//       }
+//       console.log(`Available dates: ${availableDates}`); // Final list of available dates
+//       return res.status(200).json({ availableDates });
+//     } catch (error) {
+//       console.error("Error fetching available dates:", error);
+//       return res.status(500).json({ error: "Something went wrong." });
+//     }
+//   };
 const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { doctorId, year, month } = req.body;
+        const { doctorId, year, month } = req.query;
         if (!doctorId || !year || !month) {
             return res.status(400).json({ error: "doctorId, year, and month are required" });
         }
+        // Convert year and month to numbers
+        const parsedYear = parseInt(year);
+        const parsedMonth = parseInt(month);
         // Fetch doctor's weekly availability (days of week)
         const weeklyAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
-            where: { doctorId },
+            where: { doctorId: doctorId },
             select: { dayOfWeek: true },
         });
         if (!weeklyAvailability || weeklyAvailability.length === 0) {
             return res.status(404).json({ error: "No availability found for the doctor." });
         }
         const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
-        console.log("Available weekdays for doctor:", availableWeekdays); // Debugging log
-        // Map days of the week to JS number representation (0: Sunday, 1: Monday, etc.)
-        const dayMap = {
-            "Sunday": 0,
-            "Monday": 1,
-            "Tuesday": 2,
-            "Wednesday": 3,
-            "Thursday": 4,
-            "Friday": 5,
-            "Saturday": 6
-        };
-        const daysInMonth = new Date(year, month, 0).getDate(); // Get last day of the month
+        const daysInMonth = new Date(parsedYear, parsedMonth, 0).getDate(); // Get last day of the month
         const availableDates = [];
-        console.log(`Days in month: ${daysInMonth}`); // Debugging line to check the days in the month
-        // Loop through each day of the month and check if it's an available day
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month - 1, day); // JS months are 0-indexed
-            const weekday = date.toLocaleDateString("en-US", { weekday: "long" }); // Get correct weekday in local timezone
-            console.log(`Checking date: ${date.toString()} (Weekday: ${weekday})`); // Debugging line
-            // Check if this weekday is available for the doctor
+            const date = new Date(parsedYear, parsedMonth - 1, day); // JS months are 0-indexed
+            const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
             if (availableWeekdays.has(weekday)) {
-                console.log(`Date ${date.toLocaleDateString("en-CA")} is available.`); // Debug log when the date is available
-                availableDates.push(date.toLocaleDateString("en-CA")); // Push date in "YYYY-MM-DD" format
-            }
-            else {
-                console.log(`Date ${date.toLocaleDateString("en-CA")} is NOT available.`); // Debug log when the date is NOT available
+                availableDates.push(date.toLocaleDateString("en-CA")); // Format: YYYY-MM-DD
             }
         }
-        console.log(`Available dates: ${availableDates}`); // Final list of available dates
         return res.status(200).json({ availableDates });
     }
     catch (error) {
@@ -94,15 +116,14 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
 exports.getAvailableDatesForMonth = getAvailableDatesForMonth;
 const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { doctorId, date } = req.body; // Get doctorId and date from the request body
+        const { doctorId, date } = req.body;
         if (!doctorId || !date) {
             return res.status(400).json({ error: 'doctorId and date are required.' });
         }
-        // Convert the date string to a Date object
         const selectedDate = new Date(date);
-        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0)); // Start of the selected day
-        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999)); // End of the selected day
-        // Fetch doctor’s availability for the selected date
+        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
+        // 1. Fetch doctor availability
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
@@ -118,19 +139,33 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
         if (!availability || availability.length === 0) {
             return res.status(404).json({ error: 'No availability found for this doctor on the selected date.' });
         }
-        // Generate 30-minute appointment slots based on the doctor's availability
+        // 2. Fetch already booked appointments for the doctor on that day
+        const bookedAppointments = yield prismaConnection_1.prisma.appointment.findMany({
+            where: {
+                doctorId,
+                appointmentTime: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
+            },
+            select: {
+                appointmentTime: true,
+            },
+        });
+        const bookedTimestamps = new Set(bookedAppointments.map((appt) => new Date(appt.appointmentTime).getTime()));
+        // 3. Generate 30-minute slots, skipping booked ones
         const availableSlots = [];
         for (const slot of availability) {
             let currentStartTime = new Date(slot.startTime);
             let currentEndTime = new Date(currentStartTime);
-            currentEndTime.setMinutes(currentEndTime.getMinutes() + 30); // Each slot is 30 minutes long
-            // Generate slots until the end of the availability period
+            currentEndTime.setMinutes(currentEndTime.getMinutes() + 30);
             while (currentEndTime <= slot.endTime) {
-                availableSlots.push({
-                    startTime: currentStartTime.toISOString(),
-                    endTime: currentEndTime.toISOString(),
-                });
-                // Move to the next 30-minute slot
+                if (!bookedTimestamps.has(currentStartTime.getTime())) {
+                    availableSlots.push({
+                        startTime: currentStartTime.toISOString(),
+                        endTime: currentEndTime.toISOString(),
+                    });
+                }
                 currentStartTime = new Date(currentEndTime);
                 currentEndTime = new Date(currentStartTime);
                 currentEndTime.setMinutes(currentEndTime.getMinutes() + 30);
@@ -305,3 +340,92 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getDoctorAppointments = getDoctorAppointments;
+const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    try {
+        const patientId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId; // assumes user is logged in as a patient
+        if (!patientId) {
+            return res.status(400).json({ error: 'Patient ID is required.' });
+        }
+        const appointments = yield prismaConnection_1.prisma.appointment.findMany({
+            where: {
+                patientId,
+            },
+            orderBy: {
+                appointmentTime: 'asc',
+            },
+            include: {
+                doctor: {
+                    include: {
+                        user: true, // to get doctor's name and email
+                    },
+                },
+            },
+        });
+        if (appointments.length === 0) {
+            return res.status(404).json({ error: 'No appointments found for this patient.' });
+        }
+        // Format the response
+        const formattedAppointments = appointments.map((appt) => ({
+            appointmentId: appt.id,
+            appointmentTime: appt.appointmentTime,
+            status: appt.status,
+            doctorName: `${appt.doctor.user.firstName} ${appt.doctor.user.lastName}`,
+            doctorEmail: appt.doctor.user.email,
+            doctorSpecialization: appt.doctor.specialization,
+        }));
+        return res.status(200).json({ appointments: formattedAppointments });
+    }
+    catch (error) {
+        console.error('Error fetching patient appointments:', error);
+        return res.status(500).json({ error: 'Something went wrong while fetching appointments.' });
+    }
+});
+exports.getPatientAppointments = getPatientAppointments;
+const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { search, specialty } = req.query;
+        const doctors = yield prismaConnection_1.prisma.user.findMany({
+            where: Object.assign({ role: 'DOCTOR', doctorProfile: Object.assign({ status: 'APPROVED' }, (specialty && {
+                    specialization: {
+                        contains: specialty,
+                        mode: 'insensitive',
+                    },
+                })) }, (search && {
+                OR: [
+                    {
+                        firstName: {
+                            contains: search,
+                            mode: 'insensitive',
+                        },
+                    },
+                    {
+                        lastName: {
+                            contains: search,
+                            mode: 'insensitive',
+                        },
+                    },
+                ],
+            })),
+            include: {
+                doctorProfile: true,
+            },
+        });
+        const formattedDoctors = doctors.map((doc) => {
+            var _a, _b, _c;
+            return ({
+                id: doc.id,
+                name: `${doc.firstName} ${doc.lastName}`,
+                specialty: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.specialization) || '',
+                experience: new Date().getFullYear() -
+                    new Date((_c = (_b = doc.doctorProfile) === null || _b === void 0 ? void 0 : _b.startedPracticeOn) !== null && _c !== void 0 ? _c : new Date()).getFullYear(),
+            });
+        });
+        return res.status(200).json({ doctors: formattedDoctors });
+    }
+    catch (error) {
+        console.error('Error searching doctors:', error);
+        return res.status(500).json({ error: 'Something went wrong while searching for doctors.' });
+    }
+});
+exports.searchDoctors = searchDoctors;
