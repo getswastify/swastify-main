@@ -10,7 +10,6 @@ import { Calendar, Clock, Loader2, Plus, X } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
-import type { Availability } from "@/types/availability"
 import { DAY_NAMES } from "@/types/availability"
 
 // Form schema with validation for time slots
@@ -38,12 +37,12 @@ const timeSlotSchema = z
 
 // Form schema with validation
 const availabilitySchema = z.object({
-  dayOfWeek: z.number().min(0).max(6),
+  dayOfWeek: z.string(),
   timeSlots: z.array(timeSlotSchema).min(1, "At least one time slot is required"),
 })
 
 interface EmptyAvailabilityStateProps {
-  onAddAvailability: (data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">) => Promise<void>
+  onAddAvailability: (data: { dayOfWeek: string; timeSlots: { startTime: string; endTime: string }[] }) => Promise<void>
   isSubmitting: boolean
 }
 
@@ -51,7 +50,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
   const form = useForm<z.infer<typeof availabilitySchema>>({
     resolver: zodResolver(availabilitySchema),
     defaultValues: {
-      dayOfWeek: 1, // Monday
+      dayOfWeek: "Monday",
       timeSlots: [{ startTime: "09:00", endTime: "17:00" }],
     },
   })
@@ -122,18 +121,15 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Day of Week</FormLabel>
-                        <Select
-                          onValueChange={(value) => field.onChange(Number.parseInt(value))}
-                          defaultValue={field.value.toString()}
-                        >
+                        <Select onValueChange={(value) => field.onChange(value)} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select day" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {DAY_NAMES.map((day, index) => (
-                              <SelectItem key={day} value={index.toString()}>
+                            {DAY_NAMES.map((day) => (
+                              <SelectItem key={day} value={day}>
                                 {day}
                               </SelectItem>
                             ))}

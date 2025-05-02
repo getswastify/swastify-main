@@ -13,12 +13,11 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, getDayName } from "@/types/availability"
+import { DAY_NAMES, formatTimeFrom24h } from "@/types/availability"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
   .object({
-    id: z.string().optional(),
     startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
     endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   })
@@ -41,25 +40,48 @@ const timeSlotSchema = z
 
 // Form schema with validation
 const availabilitySchema = z.object({
-  dayOfWeek: z.number().min(0).max(6),
+  dayOfWeek: z.string(),
   timeSlots: z.array(timeSlotSchema),
 })
 
 interface AvailabilityCardProps {
-  availability: Availability
-  onUpdate: (data: Availability) => Promise<void>
-  onDeleteTimeSlot: (availabilityId: string, timeSlotId: string) => Promise<void>
+  dayOfWeek: string
+  availabilities: Availability[]
+  onUpdate: (data: { dayOfWeek: string; timeSlots: { startTime: string; endTime: string }[] }) => Promise<void>
+  onDeleteAvailability: (availabilityId: number) => Promise<void>
   isSubmitting: boolean
 }
 
-export function AvailabilityCard({ availability, onUpdate, onDeleteTimeSlot, isSubmitting }: AvailabilityCardProps) {
+export function AvailabilityCard({
+  dayOfWeek,
+  availabilities,
+  onUpdate,
+  onDeleteAvailability,
+  isSubmitting,
+}: AvailabilityCardProps) {
   const [isEditing, setIsEditing] = useState(false)
+
+  // Extract time slots from availabilities
+  const extractTimeSlots = () => {
+    return availabilities.map((avail) => {
+      // Extract HH:MM from ISO string or use as is if already in that format
+      const startTime = avail.startTime?.includes("T") ? avail.startTime.split("T")[1].substring(0, 5) : avail.startTime
+
+      const endTime = avail.endTime?.includes("T") ? avail.endTime.split("T")[1].substring(0, 5) : avail.endTime
+
+      return {
+        id: avail.id,
+        startTime: startTime || "",
+        endTime: endTime || "",
+      }
+    })
+  }
 
   const form = useForm<z.infer<typeof availabilitySchema>>({
     resolver: zodResolver(availabilitySchema),
     defaultValues: {
-      dayOfWeek: availability.dayOfWeek,
-      timeSlots: availability.timeSlots,
+      dayOfWeek: dayOfWeek,
+      timeSlots: extractTimeSlots(),
     },
   })
 
@@ -68,27 +90,18 @@ export function AvailabilityCard({ availability, onUpdate, onDeleteTimeSlot, isS
     name: "timeSlots",
   })
 
-  // Format time for display (24h to 12h format)
-  const formatTime = (time: string): string => {
-    const [hours, minutes] = time.split(":")
-    const hour = Number.parseInt(hours, 10)
-    const ampm = hour >= 12 ? "PM" : "AM"
-    const formattedHour = hour % 12 || 12
-    return `${formattedHour}:${minutes} ${ampm}`
-  }
-
   const handleSubmit = async (data: z.infer<typeof availabilitySchema>) => {
     await onUpdate({
-      ...data,
-      id: availability.id,
+      dayOfWeek: data.dayOfWeek,
+      timeSlots: data.timeSlots,
     })
     setIsEditing(false)
   }
 
   const handleCancel = () => {
     form.reset({
-      dayOfWeek: availability.dayOfWeek,
-      timeSlots: availability.timeSlots,
+      dayOfWeek: dayOfWeek,
+      timeSlots: extractTimeSlots(),
     })
     setIsEditing(false)
   }
@@ -106,7 +119,7 @@ export function AvailabilityCard({ availability, onUpdate, onDeleteTimeSlot, isS
             {isEditing ? (
               <span className="font-medium">Edit Schedule</span>
             ) : (
-              <CardTitle className="text-base">{getDayName(availability.dayOfWeek)}</CardTitle>
+              <CardTitle className="text-base">{dayOfWeek}</CardTitle>
             )}
           </div>
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -123,18 +136,15 @@ export function AvailabilityCard({ availability, onUpdate, onDeleteTimeSlot, isS
                 name="dayOfWeek"
                 render={({ field }) => (
                   <FormItem>
-                    <Select
-                      onValueChange={(value) => field.onChange(Number.parseInt(value))}
-                      defaultValue={field.value.toString()}
-                    >
+                    <Select onValueChange={(value) => field.onChange(value)} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select day" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {DAY_NAMES.map((day, index) => (
-                          <SelectItem key={day} value={index.toString()}>
+                        {DAY_NAMES.map((day) => (
+                          <SelectItem key={day} value={day}>
                             {day}
                           </SelectItem>
                         ))}
@@ -225,28 +235,41 @@ export function AvailabilityCard({ availability, onUpdate, onDeleteTimeSlot, isS
         ) : (
           <>
             <div className="space-y-3 mb-4">
-              {availability.timeSlots.map((slot, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                    </span>
+              {availabilities.map((avail, index) => {
+                // Extract time from ISO string or use directly if already in HH:MM format
+                const startTime = avail.startTime?.includes("T")
+                  ? avail.startTime.split("T")[1].substring(0, 5)
+                  : avail.startTime
+
+                const endTime = avail.endTime?.includes("T")
+                  ? avail.endTime.split("T")[1].substring(0, 5)
+                  : avail.endTime
+
+                return (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {startTime && endTime
+                          ? `${formatTimeFrom24h(startTime)} - ${formatTimeFrom24h(endTime)}`
+                          : "Time not available"}
+                      </span>
+                    </div>
+                    {avail.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        onClick={() => onDeleteAvailability(avail.id!)}
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    )}
                   </div>
-                  {slot.id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                      onClick={() => availability.id && onDeleteTimeSlot(availability.id, slot.id!)}
-                      disabled={isSubmitting}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsEditing(true)}>

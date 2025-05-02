@@ -16,11 +16,12 @@ export const fetchDoctorAvailability = async (): Promise<AvailabilityResponse<Av
 /**
  * Create doctor availability for a specific day
  */
-export const createDoctorAvailability = async (
-  data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">,
-): Promise<AvailabilityResponse<Availability>> => {
+export const createDoctorAvailability = async (data: {
+  dayOfWeek: string
+  timeSlots: { startTime: string; endTime: string }[]
+}): Promise<AvailabilityResponse<null>> => {
   try {
-    const response = await api.post<AvailabilityResponse<Availability>>("/availability/doctor-availability", data)
+    const response = await api.post<AvailabilityResponse<null>>("/availability/doctor-availability", data)
     return response.data
   } catch (error) {
     return error as AvailabilityResponse<never>
@@ -30,11 +31,12 @@ export const createDoctorAvailability = async (
 /**
  * Update doctor availability for a specific day
  */
-export const updateDoctorAvailability = async (
-  data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">,
-): Promise<AvailabilityResponse<Availability>> => {
+export const updateDoctorAvailability = async (data: {
+  dayOfWeek: string
+  timeSlots: { startTime: string; endTime: string }[]
+}): Promise<AvailabilityResponse<null>> => {
   try {
-    const response = await api.put<AvailabilityResponse<Availability>>("/availability/doctor-availability", data)
+    const response = await api.put<AvailabilityResponse<null>>("/availability/doctor-availability", data)
     return response.data
   } catch (error) {
     return error as AvailabilityResponse<never>
@@ -42,16 +44,15 @@ export const updateDoctorAvailability = async (
 }
 
 /**
- * Delete a specific time slot from doctor availability
+ * Delete a specific availability slot
  */
-export const deleteTimeSlot = async (availabilityId: string, timeSlotId: string): Promise<AvailabilityResponse<unknown>> => {
+export const deleteAvailabilitySlot = async (availabilityId: number): Promise<AvailabilityResponse<null>> => {
   try {
-    const response = await api.delete<AvailabilityResponse<unknown>>(`/availability/doctor-availability/${availabilityId}`, {
-      data: { timeSlotId },
+    const response = await api.delete<AvailabilityResponse<null>>(`/availability/doctor-availability`, {
+      data: { availabilityId },
     })
     return response.data
   } catch (error) {
     return error as AvailabilityResponse<never>
   }
 }
-
