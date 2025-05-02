@@ -12,10 +12,10 @@ import {
   fetchDoctorAvailability,
   createDoctorAvailability,
   updateDoctorAvailability,
-  deleteTimeSlot,
+  deleteAvailabilitySlot,
 } from "@/actions/availability"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, getDayName } from "@/types/availability"
+import { DAY_NAMES, groupAvailabilityByDay } from "@/types/availability"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
@@ -49,7 +49,7 @@ const timeSlotSchema = z
 
 // Form schema with validation
 const availabilitySchema = z.object({
-  dayOfWeek: z.number().min(0).max(6),
+  dayOfWeek: z.string(),
   timeSlots: z.array(timeSlotSchema).min(1, "At least one time slot is required"),
 })
 
@@ -58,18 +58,18 @@ function AddAvailabilityPopover({
   isSubmitting,
   existingDays,
 }: {
-  onSubmit: (data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">) => Promise<void>
+  onSubmit: (data: { dayOfWeek: string; timeSlots: { startTime: string; endTime: string }[] }) => Promise<void>
   isSubmitting: boolean
-  existingDays: number[]
+  existingDays: string[]
 }) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 
-  const availableDayNumbers = [0, 1, 2, 3, 4, 5, 6].filter((day) => !existingDays.includes(day))
+  const availableDays = DAY_NAMES.filter((day) => !existingDays.includes(day))
 
   const form = useForm<z.infer<typeof availabilitySchema>>({
     resolver: zodResolver(availabilitySchema),
     defaultValues: {
-      dayOfWeek: availableDayNumbers.length > 0 ? availableDayNumbers[0] : 1, // Use first available day
+      dayOfWeek: availableDays.length > 0 ? availableDays[0] : "Monday",
       timeSlots: [{ startTime: "09:00", endTime: "17:00" }],
     },
   })
@@ -80,20 +80,17 @@ function AddAvailabilityPopover({
   })
 
   const handleSubmit = async (data: z.infer<typeof availabilitySchema>) => {
-    // Add this right before the existingDays check
-    console.log("Selected day:", data.dayOfWeek, "Existing days:", existingDays)
-
     // Check if day already exists
     if (existingDays.includes(data.dayOfWeek)) {
       toast.error("Day already exists", {
-        description: `You already have availability set for ${getDayName(data.dayOfWeek)}. Please edit the existing entry instead.`,
+        description: `You already have availability set for ${data.dayOfWeek}. Please edit the existing entry instead.`,
       })
       return
     }
 
     await onSubmit(data)
     form.reset({
-      dayOfWeek: availableDayNumbers.length > 0 ? availableDayNumbers[0] : 1,
+      dayOfWeek: availableDays.length > 0 ? availableDays[0] : "Monday",
       timeSlots: [{ startTime: "09:00", endTime: "17:00" }],
     })
     setIsPopoverOpen(false)
@@ -103,13 +100,10 @@ function AddAvailabilityPopover({
     append({ startTime: "09:00", endTime: "17:00" })
   }
 
-  // Filter out days that already have availability
-  // const availableDayNumbers = [0, 1, 2, 3, 4, 5, 6].filter((day) => !existingDays.includes(day))
-
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button disabled={availableDayNumbers.length === 0}>
+        <Button disabled={availableDays.length === 0}>
           <Plus className="h-4 w-4 mr-2" /> Add Availability
         </Button>
       </PopoverTrigger>
@@ -117,7 +111,7 @@ function AddAvailabilityPopover({
         <div className="space-y-4">
           <h4 className="font-medium leading-none">Add Availability</h4>
           <p className="text-sm text-muted-foreground">Set your available time slots for a specific day.</p>
-          {availableDayNumbers.length === 0 ? (
+          {availableDays.length === 0 ? (
             <div className="text-sm text-muted-foreground">
               You have set availability for all days of the week. Edit existing entries to make changes.
             </div>
@@ -130,22 +124,16 @@ function AddAvailabilityPopover({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Day of Week</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          // Explicitly convert to number to ensure proper type
-                          field.onChange(Number(value))
-                        }}
-                        defaultValue={field.value.toString()}
-                      >
+                      <Select onValueChange={(value) => field.onChange(value)} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select day" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {availableDayNumbers.map((dayNum) => (
-                            <SelectItem key={dayNum} value={dayNum.toString()}>
-                              {DAY_NAMES[dayNum]}
+                          {availableDays.map((day) => (
+                            <SelectItem key={day} value={day}>
+                              {day}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -254,8 +242,8 @@ export function DoctorAvailabilityManager() {
         if (response.status) {
           setAvailabilities(response.data || [])
         } else {
-          // If error code is DOCTOR_NOT_FOUND or AVAILABILITY_NOT_FOUND, it means doctor hasn't set availability yet
-          if (response.error?.code === "DOCTOR_NOT_FOUND" || response.error?.code === "AVAILABILITY_NOT_FOUND") {
+          // If no availability found, set empty array
+          if (response.message === "No availability found for the doctor.") {
             setAvailabilities([])
           } else {
             setError(response.message || "Failed to fetch availability")
@@ -279,14 +267,22 @@ export function DoctorAvailabilityManager() {
   }, [])
 
   // Handle form submission for creating new availability
-  const handleCreateAvailability = async (data: Omit<Availability, "id" | "doctorId" | "createdAt" | "updatedAt">) => {
+  const handleCreateAvailability = async (data: {
+    dayOfWeek: string
+    timeSlots: { startTime: string; endTime: string }[]
+  }) => {
     setIsSubmitting(true)
 
     try {
       const response = await createDoctorAvailability(data)
 
-      if (response.status && response.data) {
-        setAvailabilities((prev) => [...prev, response.data as Availability])
+      if (response.status) {
+        // Refetch availability after creating
+        const updatedResponse = await fetchDoctorAvailability()
+        if (updatedResponse.status) {
+          setAvailabilities(updatedResponse.data || [])
+        }
+
         toast.success("Success", {
           description: "Availability has been added successfully.",
         })
@@ -306,23 +302,22 @@ export function DoctorAvailabilityManager() {
   }
 
   // Handle updating an existing availability
-  const handleUpdateAvailability = async (data: Availability) => {
+  const handleUpdateAvailability = async (data: {
+    dayOfWeek: string
+    timeSlots: { startTime: string; endTime: string }[]
+  }) => {
     setIsSubmitting(true)
 
     try {
-      // Extract only the necessary fields for the API
-      const updateData = {
-        dayOfWeek: data.dayOfWeek,
-        timeSlots: data.timeSlots,
-      }
-
-      const response = await updateDoctorAvailability(updateData)
+      const response = await updateDoctorAvailability(data)
 
       if (response.status) {
-        // Update the availability in the state
-        if (response.data) {
-          setAvailabilities((prev) => prev.map((item) => (item.dayOfWeek === data.dayOfWeek ? response.data! : item)))
+        // Refetch availability after updating
+        const updatedResponse = await fetchDoctorAvailability()
+        if (updatedResponse.status) {
+          setAvailabilities(updatedResponse.data || [])
         }
+
         toast.success("Success", {
           description: "Availability has been updated successfully.",
         })
@@ -341,8 +336,8 @@ export function DoctorAvailabilityManager() {
     }
   }
 
-  // Handle deleting a time slot
-  const handleDeleteTimeSlot = async (availabilityId: string, timeSlotId: string) => {
+  // Handle deleting an availability slot
+  const handleDeleteAvailability = async (availabilityId: number) => {
     if (!confirm("Are you sure you want to delete this time slot?")) {
       return
     }
@@ -350,32 +345,11 @@ export function DoctorAvailabilityManager() {
     setIsSubmitting(true)
 
     try {
-      const response = await deleteTimeSlot(availabilityId, timeSlotId)
+      const response = await deleteAvailabilitySlot(availabilityId)
 
       if (response.status) {
-        // Update the availability in the state by removing the time slot
-        setAvailabilities((prev) => {
-          return prev
-            .map((availability) => {
-              if (availability.id === availabilityId) {
-                // Filter out the deleted time slot
-                const updatedTimeSlots = availability.timeSlots.filter((slot) => slot.id !== timeSlotId)
-
-                // If no time slots left, remove the entire availability
-                if (updatedTimeSlots.length === 0) {
-                  return null
-                }
-
-                // Otherwise, return the availability with updated time slots
-                return {
-                  ...availability,
-                  timeSlots: updatedTimeSlots,
-                }
-              }
-              return availability
-            })
-            .filter(Boolean) as Availability[] // Remove null entries
-        })
+        // Update the state by removing the deleted availability
+        setAvailabilities((prev) => prev.filter((avail) => avail.id !== availabilityId))
 
         toast.success("Success", {
           description: "Time slot has been deleted successfully.",
@@ -395,11 +369,11 @@ export function DoctorAvailabilityManager() {
     }
   }
 
-  // Get list of days that already have availability set
-  const existingDays = availabilities.map((a) => a.dayOfWeek)
+  // Group availabilities by day of week
+  const groupedAvailabilities = groupAvailabilityByDay(availabilities)
 
-  // Sort availabilities by day of week (Sunday first, then Monday, etc.)
-  const sortedAvailabilities = [...availabilities].sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+  // Get list of days that already have availability set
+  const existingDays = Object.keys(groupedAvailabilities)
 
   if (isLoading) {
     return (
@@ -444,9 +418,9 @@ export function DoctorAvailabilityManager() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <AnimatePresence>
-                  {sortedAvailabilities.map((availability) => (
+                  {Object.entries(groupedAvailabilities).map(([day, dayAvailabilities]) => (
                     <motion.div
-                      key={availability.id || availability.dayOfWeek.toString()}
+                      key={day}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
@@ -454,9 +428,10 @@ export function DoctorAvailabilityManager() {
                       className="relative"
                     >
                       <AvailabilityCard
-                        availability={availability}
+                        dayOfWeek={day}
+                        availabilities={dayAvailabilities}
                         onUpdate={handleUpdateAvailability}
-                        onDeleteTimeSlot={handleDeleteTimeSlot}
+                        onDeleteAvailability={handleDeleteAvailability}
                         isSubmitting={isSubmitting}
                       />
                     </motion.div>
