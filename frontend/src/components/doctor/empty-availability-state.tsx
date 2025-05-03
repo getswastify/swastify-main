@@ -8,9 +8,9 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { DAY_NAMES } from "@/types/availability"
 import { Card, CardContent } from "@/components/ui/card"
+import { TimePicker } from "@/components/ui/time-picker"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
@@ -121,7 +121,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
 
                   {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2 p-3 rounded-md bg-muted/50">
-                      <div className="grid grid-cols-2 gap-3 flex-1">
+                      <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name={`timeSlots.${index}.startTime`}
@@ -129,7 +129,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
                             <FormItem>
                               <FormLabel className="text-xs">Start Time</FormLabel>
                               <FormControl>
-                                <Input type="time" {...field} className="w-full" />
+                                <TimePicker value={field.value} onChange={field.onChange} className="w-full" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -143,7 +143,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
                             <FormItem>
                               <FormLabel className="text-xs">End Time</FormLabel>
                               <FormControl>
-                                <Input type="time" {...field} className="w-full" />
+                                <TimePicker value={field.value} onChange={field.onChange} className="w-full" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -210,8 +210,8 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
             </div>
             <h2 className="text-2xl font-semibold mb-2">No Availability Set</h2>
             <p className="text-muted-foreground max-w-md mb-6">
-              You have not set any availability yet. Set your weekly schedule to allow patients to book appointments with
-              you.
+              You have not set any availability yet. Set your weekly schedule to allow patients to book appointments
+              with you.
             </p>
             <Button onClick={() => setIsFormVisible(true)} className="gap-2">
               <Plus className="h-4 w-4" /> Set Availability

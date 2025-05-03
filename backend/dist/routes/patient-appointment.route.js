@@ -11,4 +11,5 @@ router.post("/available-slots", patient_appointment_controller_1.getAvailableApp
 router.get("/booked-appointment", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.getPatientAppointments);
 router.get("/get-doctors", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.searchDoctors);
 router.post("/book-appointment", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.bookAppointment);
+router.delete("/cancel-appointment/:appointmentId", (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), patient_appointment_controller_1.cancelAppointment);
 exports.patientAppointmentRoutes = router;

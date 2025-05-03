@@ -1,15 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RoleGuard } from "@/components/role-guard"
-import { useRouter } from "next/navigation"
-import { Calendar, Clock, Plus, User, MapPin, X, AlertCircle } from "lucide-react"
-import { formatAppointmentTime, getPatientAppointments, type Appointment } from "@/actions/appointments"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RoleGuard } from "@/components/role-guard";
+import { useRouter } from "next/navigation";
+import { Calendar, Clock, Plus, User, X, AlertCircle } from "lucide-react";
+import {
+  formatAppointmentTime,
+  getPatientAppointments,
+  type Appointment,
+} from "@/actions/appointments";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,62 +27,83 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { toast } from "sonner"
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import api from "@/lib/axios";
 
 // Helper function to get status badge
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "CONFIRMED":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">Confirmed</Badge>
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+          Confirmed
+        </Badge>
+      );
     case "PENDING":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">Pending</Badge>
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
+          Pending
+        </Badge>
+      );
     case "COMPLETED":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">Completed</Badge>
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">
+          Completed
+        </Badge>
+      );
     case "CANCELLED":
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">Cancelled</Badge>
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">
+          Cancelled
+        </Badge>
+      );
     default:
-      return <Badge variant="outline">{status}</Badge>
+      return <Badge variant="outline">{status}</Badge>;
   }
-}
+};
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("upcoming")
-  const router = useRouter()
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("upcoming");
+  const router = useRouter();
 
   useEffect(() => {
     const fetchAppointments = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        const response = await getPatientAppointments()
-        setAppointments(response.appointments)
+        const response = await getPatientAppointments();
+        setAppointments(response.appointments);
       } catch (error) {
-        console.error("Error fetching appointments:", error)
-        toast.error("Failed to load appointments")
+        console.error("Error fetching appointments:", error);
+        toast.error("Failed to load appointments");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchAppointments()
-  }, [])
+    fetchAppointments();
+  }, []);
 
   // Filter appointments based on active tab
   const filteredAppointments = appointments.filter((appointment) => {
-    const appointmentDate = new Date(appointment.appointmentTime)
-    const now = new Date()
+    const appointmentDate = new Date(appointment.appointmentTime);
+    const now = new Date();
 
     if (activeTab === "upcoming") {
-      return (appointment.status === "CONFIRMED" || appointment.status === "PENDING") && appointmentDate > now
+      return (
+        (appointment.status === "CONFIRMED" ||
+          appointment.status === "PENDING") &&
+        appointmentDate > now
+      );
     } else if (activeTab === "past") {
-      return appointment.status === "COMPLETED" || appointmentDate < now
+      return appointment.status === "COMPLETED" || appointmentDate < now;
     } else if (activeTab === "cancelled") {
-      return appointment.status === "CANCELLED"
+      return appointment.status === "CANCELLED";
     }
-    return true
-  })
+    return true;
+  });
 
   return (
     <RoleGuard requiredRole="USER">
@@ -81,15 +111,22 @@ export default function AppointmentsPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">My Appointments</h1>
-            <p className="text-muted-foreground">View and manage your appointments</p>
+            <p className="text-muted-foreground">
+              View and manage your appointments
+            </p>
           </div>
-          <Button onClick={() => router.push("/patient/book-appointment")} className="mt-4 md:mt-0">
+          <Button
+            onClick={() => router.push("/patient/book-appointment")}
+            className="mt-4 md:mt-0">
             <Plus className="mr-2 h-4 w-4" />
             Book New Appointment
           </Button>
         </div>
 
-        <Tabs defaultValue="upcoming" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs
+          defaultValue="upcoming"
+          value={activeTab}
+          onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
@@ -108,7 +145,10 @@ export default function AppointmentsPage() {
             ) : (
               <div className="grid gap-4">
                 {filteredAppointments.map((appointment) => (
-                  <AppointmentCard key={appointment.appointmentId} appointment={appointment} />
+                  <AppointmentCard
+                    key={appointment.appointmentId}
+                    appointment={appointment}
+                  />
                 ))}
               </div>
             )}
@@ -126,7 +166,10 @@ export default function AppointmentsPage() {
             ) : (
               <div className="grid gap-4">
                 {filteredAppointments.map((appointment) => (
-                  <AppointmentCard key={appointment.appointmentId} appointment={appointment} />
+                  <AppointmentCard
+                    key={appointment.appointmentId}
+                    appointment={appointment}
+                  />
                 ))}
               </div>
             )}
@@ -144,7 +187,10 @@ export default function AppointmentsPage() {
             ) : (
               <div className="grid gap-4">
                 {filteredAppointments.map((appointment) => (
-                  <AppointmentCard key={appointment.appointmentId} appointment={appointment} />
+                  <AppointmentCard
+                    key={appointment.appointmentId}
+                    appointment={appointment}
+                  />
                 ))}
               </div>
             )}
@@ -152,20 +198,19 @@ export default function AppointmentsPage() {
         </Tabs>
       </div>
     </RoleGuard>
-  )
+  );
 }
 
 function AppointmentCard({ appointment }: { appointment: Appointment }) {
-  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const handleCancelAppointment = async () => {
-    // In a real app, you would call an API to cancel the appointment
-    // await api.post(`/patient/cancel-appointment/${appointment.appointmentId}`)
 
-    // For now, just close the dialog and show a toast
-    setShowCancelDialog(false)
-    toast.success("Appointment cancelled successfully")
-  }
+    await api.delete(`/patient/cancel-appointment/${appointment.appointmentId}`)
+
+    setShowCancelDialog(false);
+    toast.success("Appointment cancelled successfully");
+  };
 
   return (
     <Card>
@@ -176,7 +221,9 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
               <User className="h-5 w-5 text-primary mt-0.5" />
               <div>
                 <p className="font-medium">{appointment.doctorName}</p>
-                <p className="text-sm text-muted-foreground">{appointment.doctorSpecialization}</p>
+                <p className="text-sm text-muted-foreground">
+                  {appointment.doctorSpecialization}
+                </p>
               </div>
             </div>
 
@@ -184,15 +231,9 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
               <Calendar className="h-5 w-5 text-primary mt-0.5" />
               <div>
                 <p className="font-medium">Date & Time</p>
-                <p className="text-sm text-muted-foreground">{formatAppointmentTime(appointment.appointmentTime)}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <MapPin className="h-5 w-5 text-primary mt-0.5" />
-              <div>
-                <p className="font-medium">Location</p>
-                <p className="text-sm text-muted-foreground">Main Hospital</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatAppointmentTime(appointment.appointmentTime)}
+                </p>
               </div>
             </div>
           </div>
@@ -201,9 +242,12 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
             <div>{getStatusBadge(appointment.status)}</div>
 
             <div className="flex gap-2">
-              {(appointment.status === "CONFIRMED" || appointment.status === "PENDING") && (
+              {(appointment.status === "CONFIRMED" ||
+                appointment.status === "PENDING") && (
                 <>
-                  <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                  <Dialog
+                    open={showCancelDialog}
+                    onOpenChange={setShowCancelDialog}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <X className="h-4 w-4 mr-2" />
@@ -214,7 +258,8 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
                       <DialogHeader>
                         <DialogTitle>Cancel Appointment</DialogTitle>
                         <DialogDescription>
-                          Are you sure you want to cancel this appointment? This action cannot be undone.
+                          Are you sure you want to cancel this appointment? This
+                          action cannot be undone.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="py-4">
@@ -224,26 +269,29 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
                             <p className="font-medium">Please note:</p>
                           </div>
                           <ul className="ml-6 mt-2 list-disc">
-                            <li>Cancellations within 24 hours may incur a fee</li>
-                            <li>You will need to book a new appointment if needed</li>
+                            <li>
+                              Cancellations within 24 hours may incur a fee
+                            </li>
+                            <li>
+                              You will need to book a new appointment if needed
+                            </li>
                           </ul>
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowCancelDialog(false)}>
                           Keep Appointment
                         </Button>
-                        <Button variant="destructive" onClick={handleCancelAppointment}>
+                        <Button
+                          variant="destructive"
+                          onClick={handleCancelAppointment}>
                           Cancel Appointment
                         </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-
-                  <Button size="sm">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Reschedule
-                  </Button>
                 </>
               )}
             </div>
@@ -251,7 +299,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function EmptyAppointments({
@@ -260,10 +308,10 @@ function EmptyAppointments({
   actionText,
   onAction,
 }: {
-  title: string
-  description: string
-  actionText: string
-  onAction: () => void
+  title: string;
+  description: string;
+  actionText: string;
+  onAction: () => void;
 }) {
   return (
     <Card>
@@ -277,7 +325,7 @@ function EmptyAppointments({
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function AppointmentsSkeleton() {
@@ -328,5 +376,5 @@ function AppointmentsSkeleton() {
         </Card>
       ))}
     </div>
-  )
+  );
 }

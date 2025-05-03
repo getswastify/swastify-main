@@ -15,15 +15,21 @@ import {
   deleteAvailabilitySlot,
 } from "@/actions/availability"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, groupAvailabilityByDay, getTimezoneName, logTimezoneInfo } from "@/types/availability"
+import {
+  DAY_NAMES,
+  groupAvailabilityByDay,
+  getTimezoneName,
+  logTimezoneInfo,
+  normalizeTimeFormat,
+} from "@/types/availability"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TimePicker } from "@/components/ui/time-picker"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
@@ -179,7 +185,7 @@ function AddAvailabilityPopover({
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input type="time" {...field} placeholder="09:00" />
+                                <TimePicker value={field.value} onChange={field.onChange} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -192,7 +198,7 @@ function AddAvailabilityPopover({
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input type="time" {...field} placeholder="17:00" />
+                                <TimePicker value={field.value} onChange={field.onChange} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -249,7 +255,6 @@ export function DoctorAvailabilityManager() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-
   // Log timezone info for debugging
   useEffect(() => {
     logTimezoneInfo()
@@ -299,7 +304,16 @@ export function DoctorAvailabilityManager() {
     setIsSubmitting(true)
 
     try {
-      const response = await createDoctorAvailability(data)
+      // Normalize all time formats before sending to the server
+      const normalizedData = {
+        dayOfWeek: data.dayOfWeek,
+        timeSlots: data.timeSlots.map((slot) => ({
+          startTime: normalizeTimeFormat(slot.startTime),
+          endTime: normalizeTimeFormat(slot.endTime),
+        })),
+      }
+
+      const response = await createDoctorAvailability(normalizedData)
 
       if (response.status) {
         // Refetch availability after creating
@@ -334,7 +348,16 @@ export function DoctorAvailabilityManager() {
     setIsSubmitting(true)
 
     try {
-      const response = await updateDoctorAvailability(data)
+      // Normalize all time formats before sending to the server
+      const normalizedData = {
+        dayOfWeek: data.dayOfWeek,
+        timeSlots: data.timeSlots.map((slot) => ({
+          startTime: normalizeTimeFormat(slot.startTime),
+          endTime: normalizeTimeFormat(slot.endTime),
+        })),
+      }
+
+      const response = await updateDoctorAvailability(normalizedData)
 
       if (response.status) {
         // Refetch availability after updating
@@ -466,8 +489,6 @@ export function DoctorAvailabilityManager() {
                   ))}
                 </AnimatePresence>
               </div>
-
-
             </CardContent>
           </Card>
         </>

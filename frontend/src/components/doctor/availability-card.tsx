@@ -6,15 +6,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Edit2, Trash2, Save, X, Plus, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, formatTimeFrom24h, utcToLocalTimeHHMM, getTimezoneName } from "@/types/availability"
+import {
+  DAY_NAMES,
+  formatTimeFrom24h,
+  utcToLocalTimeHHMM,
+  getTimezoneName,
+  normalizeTimeFormat,
+} from "@/types/availability"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TimePicker } from "@/components/ui/time-picker"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
@@ -73,15 +79,11 @@ export function AvailabilityCard({
     return availabilities.map((avail) => {
       let startTime = avail.startTime || ""
       let endTime = avail.endTime || ""
-  
-      if (startTime.includes("T")) {
-        startTime = utcToLocalTimeHHMM(startTime)
-      }
-  
-      if (endTime.includes("T")) {
-        endTime = utcToLocalTimeHHMM(endTime)
-      }
-  
+
+      // Normalize time formats
+      startTime = normalizeTimeFormat(startTime)
+      endTime = normalizeTimeFormat(endTime)
+
       return {
         id: avail.id,
         startTime,
@@ -105,7 +107,6 @@ export function AvailabilityCard({
       timeSlots: extractTimeSlots(),
     })
   }, [availabilities, dayOfWeek, form, extractTimeSlots])
-  
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -206,7 +207,7 @@ export function AvailabilityCard({
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full" />
+                              <TimePicker value={field.value} onChange={field.onChange} className="w-full" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -219,7 +220,7 @@ export function AvailabilityCard({
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full" />
+                              <TimePicker value={field.value} onChange={field.onChange} className="w-full" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
