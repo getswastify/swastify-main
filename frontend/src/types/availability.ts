@@ -101,6 +101,41 @@ export function utcToLocalTimeHHMM(utcTimeStr: string): string {
   }
 }
 
+// Ensure time is in HH:MM format regardless of input format
+export function normalizeTimeFormat(time: string): string {
+  // If it's already in HH:MM format
+  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+    // Ensure it's padded properly
+    const [hours, minutes] = time.split(":").map(Number)
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+  }
+
+  // If it's an ISO string
+  if (time.includes("T")) {
+    return utcToLocalTimeHHMM(time)
+  }
+
+  // If it's in 12-hour format (e.g., "2:30 PM")
+  const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (match) {
+    const [_, hours, minutes, ampm] = match
+    let hour = Number.parseInt(hours, 10)
+
+    // Convert to 24-hour format
+    if (ampm.toUpperCase() === "PM" && hour < 12) {
+      hour += 12
+    } else if (ampm.toUpperCase() === "AM" && hour === 12) {
+      hour = 0
+    }
+
+    return `${String(hour).padStart(2, "0")}:${minutes.padStart(2, "0")}`
+  }
+
+  // Return original if we can't parse it
+  console.warn("Could not normalize time format:", time)
+  return time
+}
+
 // Get the current timezone offset in minutes
 export function getTimezoneOffset(): number {
   return new Date().getTimezoneOffset()

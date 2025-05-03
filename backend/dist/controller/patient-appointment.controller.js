@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchDoctors = exports.getPatientAppointments = exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
+exports.cancelAppointment = exports.searchDoctors = exports.getPatientAppointments = exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
 const emailConnection_1 = require("../utils/emailConnection");
@@ -442,3 +442,36 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.searchDoctors = searchDoctors;
+const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c;
+    try {
+        const patientId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
+        const { appointmentId } = req.params;
+        if (!appointmentId) {
+            return res.status(400).json({ error: 'Appointment ID is required.' });
+        }
+        // Check if the appointment exists and belongs to this patient
+        const appointment = yield prismaConnection_1.prisma.appointment.findUnique({
+            where: { id: appointmentId },
+        });
+        if (!appointment) {
+            return res.status(404).json({ error: 'Appointment not found.' });
+        }
+        if (appointment.patientId !== patientId) {
+            return res.status(403).json({ error: 'You are not authorized to cancel this appointment.' });
+        }
+        // Update the appointment status to CANCELLED
+        yield prismaConnection_1.prisma.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                status: 'CANCELLED',
+            },
+        });
+        return res.status(200).json({ message: 'Appointment cancelled successfully 🚫' });
+    }
+    catch (error) {
+        console.error('Error cancelling appointment:', error);
+        return res.status(500).json({ error: 'Something went wrong while cancelling the appointment.' });
+    }
+});
+exports.cancelAppointment = cancelAppointment;

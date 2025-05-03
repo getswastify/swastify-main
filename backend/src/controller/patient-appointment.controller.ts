@@ -527,3 +527,40 @@ export const searchDoctors = async (req: Request, res: Response): Promise<any> =
       return res.status(500).json({ error: 'Something went wrong while searching for doctors.' });
     }
   };
+
+export const cancelAppointment = async (req: Request, res: Response): Promise<any> => {
+    try {
+      const patientId = req.user?.userId;
+      const { appointmentId } = req.params;
+  
+      if (!appointmentId) {
+        return res.status(400).json({ error: 'Appointment ID is required.' });
+      }
+  
+      // Check if the appointment exists and belongs to this patient
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+      });
+  
+      if (!appointment) {
+        return res.status(404).json({ error: 'Appointment not found.' });
+      }
+  
+      if (appointment.patientId !== patientId) {
+        return res.status(403).json({ error: 'You are not authorized to cancel this appointment.' });
+      }
+  
+      // Update the appointment status to CANCELLED
+      await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          status: 'CANCELLED',
+        },
+      });
+  
+      return res.status(200).json({ message: 'Appointment cancelled successfully 🚫' });
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      return res.status(500).json({ error: 'Something went wrong while cancelling the appointment.' });
+    }
+  };
