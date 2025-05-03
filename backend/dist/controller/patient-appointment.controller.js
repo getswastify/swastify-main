@@ -87,23 +87,26 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
         }
         // Convert year and month to numbers
         const parsedYear = parseInt(year);
-        const parsedMonth = parseInt(month);
-        // Fetch doctor's weekly availability (days of week)
+        const parsedMonth = parseInt(month); // 1-indexed (e.g., May = 5)
+        // Fetch doctor's availability (dayOfWeek field is important)
         const weeklyAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: { doctorId: doctorId },
             select: { dayOfWeek: true },
+            distinct: ['dayOfWeek'], // Just in case duplicates exist
         });
         if (!weeklyAvailability || weeklyAvailability.length === 0) {
             return res.status(404).json({ error: "No availability found for the doctor." });
         }
+        // Make a set of available weekdays (e.g., "Monday", "Wednesday")
         const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
-        const daysInMonth = new Date(parsedYear, parsedMonth, 0).getDate(); // Get last day of the month
+        // Get number of days in that month
+        const daysInMonth = new Date(parsedYear, parsedMonth, 0).getDate();
         const availableDates = [];
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(parsedYear, parsedMonth - 1, day); // JS months are 0-indexed
-            const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+            const date = new Date(Date.UTC(parsedYear, parsedMonth - 1, day)); // UTC date
+            const weekday = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }); // Force weekday in UTC
             if (availableWeekdays.has(weekday)) {
-                availableDates.push(date.toLocaleDateString("en-CA")); // Format: YYYY-MM-DD
+                availableDates.push(date.toISOString().split("T")[0]); // Format: YYYY-MM-DD
             }
         }
         return res.status(200).json({ availableDates });
@@ -120,32 +123,32 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
         if (!doctorId || !date) {
             return res.status(400).json({ error: 'doctorId and date are required.' });
         }
-        const selectedDate = new Date(date);
-        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
-        // 1. Fetch doctor availability
+        // Step 1: Parse date and find the weekday
+        const selectedDate = new Date(date); // Expecting YYYY-MM-DD
+        const dayOfWeek = selectedDate.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+        // Step 2: Fetch availability for that weekday
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
-                startTime: {
-                    gte: startOfDay,
-                    lte: endOfDay,
-                },
+                dayOfWeek, // e.g., "Monday"
             },
-            orderBy: {
-                startTime: 'asc',
+            select: {
+                startTime: true,
+                endTime: true,
             },
         });
         if (!availability || availability.length === 0) {
             return res.status(404).json({ error: 'No availability found for this doctor on the selected date.' });
         }
-        // 2. Fetch already booked appointments for the doctor on that day
+        // Step 3: Fetch existing appointments for this doctor on that date
+        const startOfDayUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), 0, 0, 0));
+        const endOfDayUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), 23, 59, 59));
         const bookedAppointments = yield prismaConnection_1.prisma.appointment.findMany({
             where: {
                 doctorId,
                 appointmentTime: {
-                    gte: startOfDay,
-                    lte: endOfDay,
+                    gte: startOfDayUTC,
+                    lte: endOfDayUTC,
                 },
             },
             select: {
@@ -153,22 +156,31 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             },
         });
         const bookedTimestamps = new Set(bookedAppointments.map((appt) => new Date(appt.appointmentTime).getTime()));
-        // 3. Generate 30-minute slots, skipping booked ones
+        // Step 4: Generate slots for each availability period
         const availableSlots = [];
         for (const slot of availability) {
-            let currentStartTime = new Date(slot.startTime);
-            let currentEndTime = new Date(currentStartTime);
-            currentEndTime.setMinutes(currentEndTime.getMinutes() + 30);
-            while (currentEndTime <= slot.endTime) {
-                if (!bookedTimestamps.has(currentStartTime.getTime())) {
+            // Combine selectedDate with startTime and endTime (which are time-only in UTC)
+            const startParts = new Date(slot.startTime);
+            const endParts = new Date(slot.endTime);
+            const startHour = startParts.getUTCHours();
+            const startMin = startParts.getUTCMinutes();
+            const endHour = endParts.getUTCHours();
+            const endMin = endParts.getUTCMinutes();
+            let slotStart = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), startHour, startMin));
+            let slotEnd = new Date(slotStart);
+            slotEnd.setMinutes(slotStart.getMinutes() + 30);
+            // Generate 30-minute slots within this availability
+            const availabilityEnd = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), endHour, endMin));
+            while (slotEnd <= availabilityEnd) {
+                if (!bookedTimestamps.has(slotStart.getTime())) {
                     availableSlots.push({
-                        startTime: currentStartTime.toISOString(),
-                        endTime: currentEndTime.toISOString(),
+                        startTime: slotStart.toISOString(),
+                        endTime: slotEnd.toISOString(),
                     });
                 }
-                currentStartTime = new Date(currentEndTime);
-                currentEndTime = new Date(currentStartTime);
-                currentEndTime.setMinutes(currentEndTime.getMinutes() + 30);
+                slotStart = new Date(slotEnd);
+                slotEnd = new Date(slotStart);
+                slotEnd.setMinutes(slotStart.getMinutes() + 30);
             }
         }
         return res.status(200).json({ availableSlots });
@@ -182,29 +194,34 @@ exports.getAvailableAppointmentSlots = getAvailableAppointmentSlots;
 const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { patientId, doctorId, appointmentTime } = req.body;
-        // Validate the input
         if (!patientId || !doctorId || !appointmentTime) {
             return res.status(400).json({ error: 'patientId, doctorId, and appointmentTime are required.' });
         }
-        // Convert appointment time to Date object
         const appointmentDate = new Date(appointmentTime);
-        // 1. Check if the doctor has availability at the requested time
-        const doctorAvailability = yield prismaConnection_1.prisma.doctorAvailability.findFirst({
+        const weekday = appointmentDate.toLocaleString('en-US', { weekday: 'long' });
+        // Fetch all availabilities for that weekday
+        const doctorAvailabilities = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
-                startTime: {
-                    lte: appointmentDate, // Check if the requested appointment time is after the start time
-                },
-                endTime: {
-                    gte: appointmentDate, // Check if the requested appointment time is before the end time
-                },
-                dayOfWeek: appointmentDate.toLocaleString('en-US', { weekday: 'long' }), // Ensure it's on a day the doctor is available
+                dayOfWeek: weekday,
             },
         });
-        if (!doctorAvailability) {
+        // Extract the time from appointmentDate (hours and minutes)
+        const appointmentHours = appointmentDate.getHours();
+        const appointmentMinutes = appointmentDate.getMinutes();
+        const isWithinAvailability = doctorAvailabilities.some((slot) => {
+            const slotStartHours = slot.startTime.getHours();
+            const slotStartMinutes = slot.startTime.getMinutes();
+            const slotEndHours = slot.endTime.getHours();
+            const slotEndMinutes = slot.endTime.getMinutes();
+            const slotStartTotalMinutes = slotStartHours * 60 + slotStartMinutes;
+            const slotEndTotalMinutes = slotEndHours * 60 + slotEndMinutes;
+            const appointmentTotalMinutes = appointmentHours * 60 + appointmentMinutes;
+            return appointmentTotalMinutes >= slotStartTotalMinutes && appointmentTotalMinutes < slotEndTotalMinutes;
+        });
+        if (!isWithinAvailability) {
             return res.status(400).json({ error: 'The doctor is not available at this time.' });
         }
-        // 2. Check if the time slot is already booked
         const existingAppointment = yield prismaConnection_1.prisma.appointment.findFirst({
             where: {
                 doctorId,
@@ -214,13 +231,12 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
         if (existingAppointment) {
             return res.status(400).json({ error: 'The selected time slot is already booked.' });
         }
-        // 3. Create the new appointment
         const newAppointment = yield prismaConnection_1.prisma.appointment.create({
             data: {
                 patientId,
                 doctorId,
                 appointmentTime: appointmentDate,
-                status: 'PENDING', // Appointment is booked but not yet confirmed
+                status: 'PENDING',
             },
             include: {
                 patient: {
@@ -245,7 +261,6 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
                 },
             },
         });
-        // 4. Prepare appointment details directly
         const appointmentDetails = {
             patientName: `${newAppointment.patient.firstName} ${newAppointment.patient.lastName}`,
             patientEmail: newAppointment.patient.email,
@@ -256,15 +271,13 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
             doctorSpecialization: newAppointment.doctor.specialization,
             doctorEmail: newAppointment.doctor.user.email,
         };
-        // 5. Send appointment confirmation email to the patient
         try {
-            yield (0, emailConnection_1.sendAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails); // Send email
+            yield (0, emailConnection_1.sendAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails);
             console.log('Appointment confirmation email sent to:', newAppointment.patient.email);
         }
         catch (error) {
             console.error('Error sending appointment confirmation email:', error);
         }
-        // 6. Respond with the appointment details
         return res.status(201).json({
             message: 'Appointment booked successfully.',
             appointment: newAppointment,

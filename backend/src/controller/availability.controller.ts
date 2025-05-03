@@ -20,13 +20,28 @@ export const getDoctorAvailability = async (req: Request, res: Response): Promis
       return res.status(400).json(formatError('Doctor ID is required.'));
     }
 
+    const { date } = req.body; // Pass the date to query specific availability
+
+    if (!date) {
+      return res.status(400).json(formatError('Date is required.'));
+    }
+
+    const selectedDate = new Date(date);
+    const selectedDayOfWeek = selectedDate.getDay().toString(); // Convert to string
+
+    // Check if the selected date is a valid date
+    if (isNaN(selectedDate.getTime())) {
+      return res.status(400).json(formatError('Invalid date format.'));
+    }
+
+    // Fetch availability for the doctor for the specific day of the week
     const availability = await prisma.doctorAvailability.findMany({
-      where: { doctorId },
+      where: { doctorId, dayOfWeek: selectedDayOfWeek }, // dayOfWeek is now a string
       orderBy: { startTime: 'asc' }
     });
 
     if (availability.length === 0) {
-      return res.status(404).json(formatError('No availability found for the doctor.'));
+      return res.status(404).json(formatError('No availability found for the doctor on the selected date.'));
     }
 
     return res.status(200).json(formatSuccess('Availability fetched successfully.', availability));
@@ -35,6 +50,7 @@ export const getDoctorAvailability = async (req: Request, res: Response): Promis
     return res.status(500).json(formatError('Something went wrong while fetching availability.', error));
   }
 };
+
 
 export const setDoctorAvailability = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -63,6 +79,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       return targetDate;
     };
 
+    // Check for overlapping slots
     const isOverlapping = (startA: Date, endA: Date, startB: Date, endB: Date): boolean => {
       return startA < endB && startB < endA;
     };
@@ -74,6 +91,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       endTime: buildDateTimeFromTimeString(dayOfWeek, slot.endTime),
     }));
 
+    // Check for conflicts between provided time slots
     for (let i = 0; i < availabilityData.length; i++) {
       for (let j = i + 1; j < availabilityData.length; j++) {
         if (isOverlapping(
@@ -85,6 +103,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       }
     }
 
+    // Check for existing availability on the same day
     const existingAvailability = await prisma.doctorAvailability.findMany({
       where: { doctorId, dayOfWeek },
     });
@@ -93,6 +112,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       return res.status(400).json(formatError('Availability for this day already exists.'));
     }
 
+    // Create new availability
     await prisma.doctorAvailability.createMany({ data: availabilityData });
 
     return res.status(201).json(formatSuccess('Availability set successfully.'));
@@ -101,6 +121,7 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
     return res.status(500).json(formatError('Something went wrong while setting availability.', error));
   }
 };
+
 
 export const updateDoctorAvailability = async (req: Request, res: Response): Promise<any> => {
   try {
