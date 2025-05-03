@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { motion, AnimatePresence } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Plus, X, Calendar, Clock } from "lucide-react"
+import { Loader2, Plus, X, Calendar } from "lucide-react"
 import { EmptyAvailabilityState } from "./empty-availability-state"
 import { AvailabilityCard } from "./availability-card"
 import {

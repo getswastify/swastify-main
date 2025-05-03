@@ -210,7 +210,7 @@ export function EmptyAvailabilityState({ onAddAvailability, isSubmitting }: Empt
             </div>
             <h2 className="text-2xl font-semibold mb-2">No Availability Set</h2>
             <p className="text-muted-foreground max-w-md mb-6">
-              You haven't set any availability yet. Set your weekly schedule to allow patients to book appointments with
+              You have not set any availability yet. Set your weekly schedule to allow patients to book appointments with
               you.
             </p>
             <Button onClick={() => setIsFormVisible(true)} className="gap-2">
