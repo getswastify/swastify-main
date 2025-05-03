@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoleGuard } from "@/components/role-guard";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, Plus, User, X, AlertCircle } from "lucide-react";
+import { Calendar, Plus, User, X, AlertCircle } from "lucide-react";
 import {
   formatAppointmentTime,
   getPatientAppointments,

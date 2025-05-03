@@ -57,13 +57,21 @@ export const setDoctorAvailability = async (req: Request, res: Response): Promis
       const targetDayIndex = daysOfWeek.indexOf(dayOfWeek);
       if (targetDayIndex === -1) throw new Error('Invalid dayOfWeek');
       let diff = (targetDayIndex - currentDayIndex + 7) % 7;
+    
+      // Construct a date string in IST (India is always UTC+5:30, no DST)
+      const [hours, minutes] = timeStr.split(':');
       const targetDate = new Date(now);
       targetDate.setDate(now.getDate() + diff);
-      const [hours, minutes] = timeStr.split(':');
-      targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return targetDate;
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const istDateStr = `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`; // ISO 8601 with IST offset
+    
+      const utcDate = new Date(istDateStr); // JS will automatically convert to UTC under the hood
+    
+      return utcDate;
     };
-
+    
     // Check for overlapping slots
     const isOverlapping = (startA: Date, endA: Date, startB: Date, endB: Date): boolean => {
       return startA < endB && startB < endA;

@@ -84,10 +84,15 @@ export function formatTimeFrom24h(time: string): string {
   }
 }
 
-// Convert UTC ISO string to local time in HH:MM format
+// Update the utcToLocalTimeHHMM function to properly handle IST conversion
 export function utcToLocalTimeHHMM(utcTimeStr: string): string {
   try {
+    // Create a date object from the UTC ISO string
     const date = new Date(utcTimeStr)
+
+    // For debugging
+    console.log("Original UTC string:", utcTimeStr)
+    console.log("Parsed date object:", date.toString())
 
     // Get hours and minutes in the local timezone
     const hours = date.getHours()
@@ -97,6 +102,38 @@ export function utcToLocalTimeHHMM(utcTimeStr: string): string {
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
   } catch (e) {
     console.error("Error converting UTC to local HH:MM:", e)
+    return utcTimeStr
+  }
+}
+
+// Add a new function to convert UTC to IST (India Standard Time)
+export function utcToISTTimeHHMM(utcTimeStr: string): string {
+  try {
+    // Create a date object from the UTC ISO string
+    const date = new Date(utcTimeStr)
+
+    // Convert to IST (UTC+5:30)
+    // First get UTC hours and minutes
+    const utcHours = date.getUTCHours()
+    const utcMinutes = date.getUTCMinutes()
+
+    // Add 5 hours and 30 minutes for IST
+    let istHours = utcHours + 5
+    let istMinutes = utcMinutes + 30
+
+    // Handle minute overflow
+    if (istMinutes >= 60) {
+      istHours += 1
+      istMinutes -= 60
+    }
+
+    // Handle hour overflow
+    istHours = istHours % 24
+
+    // Format as HH:MM
+    return `${String(istHours).padStart(2, "0")}:${String(istMinutes).padStart(2, "0")}`
+  } catch (e) {
+    console.error("Error converting UTC to IST HH:MM:", e)
     return utcTimeStr
   }
 }
@@ -118,7 +155,7 @@ export function normalizeTimeFormat(time: string): string {
   // If it's in 12-hour format (e.g., "2:30 PM")
   const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i)
   if (match) {
-    const [_, hours, minutes, ampm] = match
+    const [, hours, minutes, ampm] = match
     let hour = Number.parseInt(hours, 10)
 
     // Convert to 24-hour format

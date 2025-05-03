@@ -15,9 +15,9 @@ import type { Availability } from "@/types/availability"
 import {
   DAY_NAMES,
   formatTimeFrom24h,
-  utcToLocalTimeHHMM,
   getTimezoneName,
   normalizeTimeFormat,
+  utcToISTTimeHHMM,
 } from "@/types/availability"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { TimePicker } from "@/components/ui/time-picker"
@@ -279,21 +279,21 @@ export function AvailabilityCard({
                     <span className="text-xs text-muted-foreground">Times shown in {timezoneName}</span>
                   </div>
                   {availabilities.map((avail, index) => {
-                    // Properly convert UTC times to local time
-                    let localStartTime, localEndTime
+                    // Convert UTC times to IST time
+                    let istStartTime, istEndTime
 
                     if (avail.startTime?.includes("T")) {
-                      // Convert ISO string to local time HH:MM
-                      localStartTime = utcToLocalTimeHHMM(avail.startTime)
+                      // Convert ISO string to IST time HH:MM
+                      istStartTime = utcToISTTimeHHMM(avail.startTime)
                     } else {
-                      localStartTime = avail.startTime
+                      istStartTime = avail.startTime
                     }
 
                     if (avail.endTime?.includes("T")) {
-                      // Convert ISO string to local time HH:MM
-                      localEndTime = utcToLocalTimeHHMM(avail.endTime)
+                      // Convert ISO string to IST time HH:MM
+                      istEndTime = utcToISTTimeHHMM(avail.endTime)
                     } else {
-                      localEndTime = avail.endTime
+                      istEndTime = avail.endTime
                     }
 
                     return (
@@ -304,8 +304,8 @@ export function AvailabilityCard({
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-primary" />
                           <span>
-                            {localStartTime && localEndTime
-                              ? `${formatTimeFrom24h(localStartTime)} - ${formatTimeFrom24h(localEndTime)}`
+                            {istStartTime && istEndTime
+                              ? `${formatTimeFrom24h(istStartTime)} - ${formatTimeFrom24h(istEndTime)}`
                               : "Time not available"}
                           </span>
                         </div>
