@@ -15,13 +15,7 @@ import {
   deleteAvailabilitySlot,
 } from "@/actions/availability"
 import type { Availability } from "@/types/availability"
-import {
-  DAY_NAMES,
-  groupAvailabilityByDay,
-  getTimezoneName,
-  logTimezoneInfo,
-  normalizeTimeFormat,
-} from "@/types/availability"
+import { DAY_NAMES, groupAvailabilityByDay, logTimezoneInfo, normalizeTimeFormat } from "@/types/availability"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
@@ -73,8 +67,8 @@ function AddAvailabilityPopover({
   const [timezoneName, setTimezoneName] = useState("")
 
   useEffect(() => {
-    // Get the timezone name on component mount
-    setTimezoneName(getTimezoneName())
+    // Set timezone name to IST for clarity
+    setTimezoneName("IST (India Standard Time)")
   }, [])
 
   const availableDays = DAY_NAMES.filter((day) => !existingDays.includes(day))
