@@ -61,13 +61,23 @@ export function AvailabilityCard({
 }: AvailabilityCardProps) {
   const [isEditing, setIsEditing] = useState(false)
 
-  // Extract time slots from availabilities
+  // Update the extractTimeSlots function to properly handle timezone conversion
   const extractTimeSlots = () => {
     return availabilities.map((avail) => {
       // Extract HH:MM from ISO string or use as is if already in that format
-      const startTime = avail.startTime?.includes("T") ? avail.startTime.split("T")[1].substring(0, 5) : avail.startTime
+      let startTime = avail.startTime
+      let endTime = avail.endTime
 
-      const endTime = avail.endTime?.includes("T") ? avail.endTime.split("T")[1].substring(0, 5) : avail.endTime
+      // If it's an ISO string, convert to local time
+      if (avail.startTime?.includes("T")) {
+        const startDate = new Date(avail.startTime)
+        startTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`
+      }
+
+      if (avail.endTime?.includes("T")) {
+        const endDate = new Date(avail.endTime)
+        endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
+      }
 
       return {
         id: avail.id,
@@ -110,9 +120,10 @@ export function AvailabilityCard({
     append({ startTime: "09:00", endTime: "17:00" })
   }
 
+  // Update the card UI to be more visually appealing
   return (
-    <Card className="overflow-hidden border-l-4 border-l-primary h-full">
-      <CardHeader className="pb-2">
+    <Card className="overflow-hidden border-l-4 border-l-primary h-full shadow-sm hover:shadow-md transition-shadow duration-200">
+      <CardHeader className="pb-2 bg-primary/5">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
@@ -127,7 +138,7 @@ export function AvailabilityCard({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {isEditing ? (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -158,13 +169,13 @@ export function AvailabilityCard({
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-medium">Time Slots</h4>
-                  <Button type="button" variant="outline" size="sm" onClick={addTimeSlot}>
-                    <Plus className="h-3 w-3 mr-1" /> Add Slot
+                  <Button type="button" variant="outline" size="sm" onClick={addTimeSlot} className="gap-1">
+                    <Plus className="h-3 w-3" /> Add Slot
                   </Button>
                 </div>
 
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex items-center gap-2">
+                  <div key={field.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
                     <div className="grid grid-cols-2 gap-2 flex-1">
                       <FormField
                         control={form.control}
@@ -197,7 +208,7 @@ export function AvailabilityCard({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => remove(index)}
                       >
                         <X className="h-4 w-4" />
@@ -235,45 +246,62 @@ export function AvailabilityCard({
         ) : (
           <>
             <div className="space-y-3 mb-4">
-              {availabilities.map((avail, index) => {
-                // Extract time from ISO string or use directly if already in HH:MM format
-                const startTime = avail.startTime?.includes("T")
-                  ? avail.startTime.split("T")[1].substring(0, 5)
-                  : avail.startTime
+              {availabilities.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm">No time slots available</div>
+              ) : (
+                availabilities.map((avail, index) => {
+                  // Properly convert UTC times to local time
+                  let localStartTime, localEndTime
 
-                const endTime = avail.endTime?.includes("T")
-                  ? avail.endTime.split("T")[1].substring(0, 5)
-                  : avail.endTime
+                  if (avail.startTime?.includes("T")) {
+                    // Convert ISO string to local time
+                    const startDate = new Date(avail.startTime)
+                    localStartTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`
+                  } else {
+                    localStartTime = avail.startTime
+                  }
 
-                return (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        {startTime && endTime
-                          ? `${formatTimeFrom24h(startTime)} - ${formatTimeFrom24h(endTime)}`
-                          : "Time not available"}
-                      </span>
+                  if (avail.endTime?.includes("T")) {
+                    // Convert ISO string to local time
+                    const endDate = new Date(avail.endTime)
+                    localEndTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
+                  } else {
+                    localEndTime = avail.endTime
+                  }
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <span>
+                          {localStartTime && localEndTime
+                            ? `${formatTimeFrom24h(localStartTime)} - ${formatTimeFrom24h(localEndTime)}`
+                            : "Time not available"}
+                        </span>
+                      </div>
+                      {avail.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => onDeleteAvailability(avail.id!)}
+                          disabled={isSubmitting}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      )}
                     </div>
-                    {avail.id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                        onClick={() => onDeleteAvailability(avail.id!)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsEditing(true)}>
-                <Edit2 className="h-4 w-4 mr-1" /> Edit
+              <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => setIsEditing(true)}>
+                <Edit2 className="h-4 w-4" /> Edit
               </Button>
             </div>
           </>

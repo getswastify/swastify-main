@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { motion, AnimatePresence } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Plus, X } from "lucide-react"
+import { Loader2, Plus, X, Calendar, Clock } from "lucide-react"
 import { EmptyAvailabilityState } from "./empty-availability-state"
 import { AvailabilityCard } from "./availability-card"
 import {
@@ -395,18 +395,21 @@ export function DoctorAvailabilityManager() {
     )
   }
 
+  // Update the UI for the doctor availability manager
   return (
     <div className="space-y-8">
       {availabilities.length === 0 ? (
         <EmptyAvailabilityState onAddAvailability={handleCreateAvailability} isSubmitting={isSubmitting} />
       ) : (
         <>
-          <Card>
-            <CardHeader>
+          <Card className="border border-muted/60 shadow-sm">
+            <CardHeader className="bg-muted/20">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <CardTitle>Weekly Schedule</CardTitle>
-                  <CardDescription>Your current availability for appointments</CardDescription>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" /> Weekly Schedule
+                  </CardTitle>
+                  <CardDescription>Set your weekly availability for patient appointments</CardDescription>
                 </div>
                 <AddAvailabilityPopover
                   onSubmit={handleCreateAvailability}
@@ -415,8 +418,8 @@ export function DoctorAvailabilityManager() {
                 />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <CardContent className="pt-6">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <AnimatePresence>
                   {Object.entries(groupedAvailabilities).map(([day, dayAvailabilities]) => (
                     <motion.div

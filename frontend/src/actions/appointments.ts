@@ -75,7 +75,7 @@ export interface BookAppointmentResponse {
 type AxiosErrorResponse = {
   response?: {
     data?: {
-      error?: string;
+      error?: string
     }
   }
 }
@@ -88,8 +88,8 @@ export const getDoctors = async (): Promise<DoctorsResponse> => {
     const response = await api.get<DoctorsResponse>("/patient/get-doctors")
     return response.data
   } catch (error: unknown) {
-    const axiosError = error as AxiosErrorResponse;
-    throw new Error(axiosError.response?.data?.error || "Failed to fetch doctors");
+    const axiosError = error as AxiosErrorResponse
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch doctors")
   }
 }
 
@@ -109,7 +109,7 @@ export const getAvailableDates = async (
     })
     return response.data
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse;
+    const axiosError = error as AxiosErrorResponse
     throw new Error(axiosError.response?.data?.error || "Failed to fetch available dates")
   }
 }
@@ -123,7 +123,7 @@ export const getAvailableSlots = async (doctorId: string, date: string): Promise
     })
     return response.data
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse;
+    const axiosError = error as AxiosErrorResponse
     throw new Error(axiosError.response?.data?.error || "Failed to fetch available slots")
   }
 }
@@ -132,7 +132,9 @@ export const getAvailableSlots = async (doctorId: string, date: string): Promise
  * Book an appointment with a doctor
  */
 export const bookAppointment = async (
-patientId: string, doctorId: string, appointmentTime: string
+  patientId: string,
+  doctorId: string,
+  appointmentTime: string,
 ): Promise<BookAppointmentResponse> => {
   try {
     const response = await api.post<BookAppointmentResponse>("/patient/book-appointment", {
@@ -142,8 +144,8 @@ patientId: string, doctorId: string, appointmentTime: string
     })
     return response.data
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse;
-    throw new Error(axiosError.response?.data?.error || "Failed to book appointment");
+    const axiosError = error as AxiosErrorResponse
+    throw new Error(axiosError.response?.data?.error || "Failed to book appointment")
   }
 }
 
@@ -155,37 +157,40 @@ export const getPatientAppointments = async (): Promise<AppointmentsResponse> =>
     const response = await api.get<AppointmentsResponse>("/patient/booked-appointment")
     return response.data
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse;
-    throw new Error(axiosError.response?.data?.error || "Failed to fetch appointments");
+    const axiosError = error as AxiosErrorResponse
+    throw new Error(axiosError.response?.data?.error || "Failed to fetch appointments")
   }
 }
 
-/**
- * Format a date string to display in local time
- */
-export const formatAppointmentTime = (isoString: string): string => {
-  const date = new Date(isoString)
-  return date.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-}
-
-/**
- * Format a time slot for display (handles UTC conversion)
- */
+// Update the formatTimeSlot function to properly handle timezone conversion
 export const formatTimeSlot = (slot: TimeSlot): { startTime: string; endTime: string } => {
+  // Create date objects from the time strings
   const startDate = new Date(slot.startTime)
   const endDate = new Date(slot.endTime)
 
+  // Format the times in the user's local timezone
   return {
     startTime: startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
     endTime: endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+  }
+}
+
+// Update the formatAppointmentTime function to be more comprehensive
+export const formatAppointmentTime = (isoString: string): string => {
+  try {
+    const date = new Date(isoString)
+    return date.toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  } catch (error) {
+    console.error("Error formatting appointment time:", error)
+    return isoString
   }
 }
 
