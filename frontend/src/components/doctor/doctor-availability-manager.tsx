@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { motion, AnimatePresence } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Plus, X, Calendar } from "lucide-react"
+import { Loader2, Plus, X, Calendar, Info } from "lucide-react"
 import { EmptyAvailabilityState } from "./empty-availability-state"
 import { AvailabilityCard } from "./availability-card"
 import {
@@ -15,7 +15,7 @@ import {
   deleteAvailabilitySlot,
 } from "@/actions/availability"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, groupAvailabilityByDay } from "@/types/availability"
+import { DAY_NAMES, groupAvailabilityByDay, getTimezoneName, logTimezoneInfo } from "@/types/availability"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
@@ -23,6 +23,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
@@ -63,6 +64,12 @@ function AddAvailabilityPopover({
   existingDays: string[]
 }) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+  const [timezoneName, setTimezoneName] = useState("")
+
+  useEffect(() => {
+    // Get the timezone name on component mount
+    setTimezoneName(getTimezoneName())
+  }, [])
 
   const availableDays = DAY_NAMES.filter((day) => !existingDays.includes(day))
 
@@ -145,7 +152,19 @@ function AddAvailabilityPopover({
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <FormLabel>Time Slots</FormLabel>
+                    <div className="flex items-center gap-1.5">
+                      <FormLabel>Time Slots</FormLabel>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">Times are in your local timezone ({timezoneName})</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <Button type="button" variant="outline" size="sm" onClick={addTimeSlot}>
                       <Plus className="h-3 w-3 mr-1" /> Add Slot
                     </Button>
@@ -229,6 +248,12 @@ export function DoctorAvailabilityManager() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+
+  // Log timezone info for debugging
+  useEffect(() => {
+    logTimezoneInfo()
+  }, [])
 
   // Fetch doctor availability on component mount
   useEffect(() => {
@@ -441,6 +466,8 @@ export function DoctorAvailabilityManager() {
                   ))}
                 </AnimatePresence>
               </div>
+
+
             </CardContent>
           </Card>
         </>

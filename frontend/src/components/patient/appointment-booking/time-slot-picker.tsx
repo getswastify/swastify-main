@@ -9,6 +9,7 @@ import { getAvailableSlots, formatTimeSlot, type TimeSlot } from "@/actions/appo
 import { toast } from "sonner"
 import { Loader2, Clock, Calendar, Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getTimezoneName } from "@/types/availability"
 
 interface TimeSlotPickerProps {
   doctorId: string
@@ -25,6 +26,12 @@ export function TimeSlotPicker({ doctorId, selectedDate, onTimeSlotSelect, selec
     afternoon: [],
     evening: [],
   })
+  const [timezoneName, setTimezoneName] = useState("")
+
+  useEffect(() => {
+    // Get the timezone name on component mount
+    setTimezoneName(getTimezoneName())
+  }, [])
 
   useEffect(() => {
     const fetchAvailableSlots = async () => {
@@ -57,7 +64,9 @@ export function TimeSlotPicker({ doctorId, selectedDate, onTimeSlotSelect, selec
     const evening: TimeSlot[] = []
 
     slots.forEach((slot) => {
-      const startHour = new Date(slot.startTime).getHours()
+      // Create a date object from the ISO string
+      const startDate = new Date(slot.startTime)
+      const startHour = startDate.getHours()
 
       if (startHour < 12) {
         morning.push(slot)
@@ -149,7 +158,7 @@ export function TimeSlotPicker({ doctorId, selectedDate, onTimeSlotSelect, selec
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                <p>All times are shown in your local timezone</p>
+                <p>All times are shown in your local timezone ({timezoneName})</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -180,7 +189,7 @@ export function TimeSlotPicker({ doctorId, selectedDate, onTimeSlotSelect, selec
           <div className="mt-6 pt-4 border-t border-muted">
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Info className="h-3 w-3" />
-              All appointment times are displayed in your local timezone
+              All appointment times are displayed in your local timezone ({timezoneName})
             </p>
           </div>
         )}

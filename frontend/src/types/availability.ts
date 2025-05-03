@@ -45,25 +45,31 @@ export function groupAvailabilityByDay(availabilities: Availability[]): Record<s
   )
 }
 
-// Update the formatTime function to properly handle timezone conversion
+// Improved function to convert UTC ISO string to local time display
 export function formatTime(isoTime: string): string {
   try {
-    // Create a date object that properly handles the timezone
+    // Create a date object from the ISO string (which is in UTC)
     const date = new Date(isoTime)
-    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+
+    // Format the time in the user's local timezone
+    return date.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
   } catch (e) {
-    console.error(e)
+    console.error("Error formatting time:", e)
     return isoTime // Return original if parsing fails
   }
 }
 
-// Update the formatTimeFrom24h function to better handle UTC conversion
+// Format time from HH:MM to 12h format
 export function formatTimeFrom24h(time: string): string {
   try {
-    // If it's an ISO string, convert to local time
+    // If it's an ISO string, use formatTime instead
     if (time.includes("T")) {
-      const date = new Date(time)
-      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+      return formatTime(time)
     }
 
     // Otherwise handle HH:MM format
@@ -73,50 +79,46 @@ export function formatTimeFrom24h(time: string): string {
     const formattedHour = hour % 12 || 12
     return `${formattedHour}:${minutes} ${ampm}`
   } catch (e) {
-    console.error(e)
+    console.error("Error formatting 24h time:", e)
     return time // Return original if parsing fails
   }
 }
 
-// Add a new function to convert local time to UTC for API requests
-export function localToUTC(dateStr: string, timeStr: string): string {
-  try {
-    // Combine date and time
-    const localDateTime = new Date(`${dateStr}T${timeStr}`)
-    // Convert to ISO string (which will be in UTC)
-    return localDateTime.toISOString()
-  } catch (e) {
-    console.error(e)
-    return `${dateStr}T${timeStr}` // Return original if parsing fails
-  }
-}
-
-// Add a function to convert UTC to local time
-export function utcToLocal(utcTimeStr: string): string {
+// Convert UTC ISO string to local time in HH:MM format
+export function utcToLocalTimeHHMM(utcTimeStr: string): string {
   try {
     const date = new Date(utcTimeStr)
-    return date.toLocaleString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      weekday: "long",
-    })
+
+    // Get hours and minutes in the local timezone
+    const hours = date.getHours()
+    const minutes = date.getMinutes()
+
+    // Format as HH:MM
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
   } catch (e) {
-    console.error(e)
+    console.error("Error converting UTC to local HH:MM:", e)
     return utcTimeStr
   }
 }
 
-// Add a new function to convert UTC ISO string to local time HH:MM format
-export function utcToLocalTimeString(utcTimeStr: string): string {
-  try {
-    const date = new Date(utcTimeStr)
-    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
-  } catch (e) {
-    console.error(e)
-    return utcTimeStr
-  }
+// Get the current timezone offset in minutes
+export function getTimezoneOffset(): number {
+  return new Date().getTimezoneOffset()
+}
+
+// Get the current timezone name
+export function getTimezoneName(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
+}
+
+// Debug function to log timezone information
+export function logTimezoneInfo(): void {
+  const now = new Date()
+  console.log({
+    currentTime: now.toString(),
+    timezoneOffset: now.getTimezoneOffset(),
+    timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    isoString: now.toISOString(),
+    localString: now.toLocaleString(),
+  })
 }
