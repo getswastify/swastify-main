@@ -513,7 +513,7 @@ export const searchDoctors = async (req: Request, res: Response): Promise<any> =
       });
   
       const formattedDoctors = doctors.map((doc) => ({
-        id: doc.id, // 💥 This is the doctorId you wanted
+        id: doc.id, 
         name: `${doc.firstName} ${doc.lastName}`,
         specialty: doc.doctorProfile?.specialization || '',
         experience:

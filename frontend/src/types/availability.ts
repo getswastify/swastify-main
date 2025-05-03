@@ -45,9 +45,10 @@ export function groupAvailabilityByDay(availabilities: Availability[]): Record<s
   )
 }
 
-// Format time for display (ISO to 12h format)
+// Update the formatTime function to properly handle timezone conversion
 export function formatTime(isoTime: string): string {
   try {
+    // Create a date object that properly handles the timezone
     const date = new Date(isoTime)
     return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
   } catch (e) {
@@ -56,9 +57,16 @@ export function formatTime(isoTime: string): string {
   }
 }
 
-// Format time from HH:MM to 12h format
+// Update the formatTimeFrom24h function to better handle UTC conversion
 export function formatTimeFrom24h(time: string): string {
   try {
+    // If it's an ISO string, convert to local time
+    if (time.includes("T")) {
+      const date = new Date(time)
+      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    }
+
+    // Otherwise handle HH:MM format
     const [hours, minutes] = time.split(":")
     const hour = Number.parseInt(hours, 10)
     const ampm = hour >= 12 ? "PM" : "AM"
@@ -67,5 +75,48 @@ export function formatTimeFrom24h(time: string): string {
   } catch (e) {
     console.error(e)
     return time // Return original if parsing fails
+  }
+}
+
+// Add a new function to convert local time to UTC for API requests
+export function localToUTC(dateStr: string, timeStr: string): string {
+  try {
+    // Combine date and time
+    const localDateTime = new Date(`${dateStr}T${timeStr}`)
+    // Convert to ISO string (which will be in UTC)
+    return localDateTime.toISOString()
+  } catch (e) {
+    console.error(e)
+    return `${dateStr}T${timeStr}` // Return original if parsing fails
+  }
+}
+
+// Add a function to convert UTC to local time
+export function utcToLocal(utcTimeStr: string): string {
+  try {
+    const date = new Date(utcTimeStr)
+    return date.toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long",
+    })
+  } catch (e) {
+    console.error(e)
+    return utcTimeStr
+  }
+}
+
+// Add a new function to convert UTC ISO string to local time HH:MM format
+export function utcToLocalTimeString(utcTimeStr: string): string {
+  try {
+    const date = new Date(utcTimeStr)
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+  } catch (e) {
+    console.error(e)
+    return utcTimeStr
   }
 }
