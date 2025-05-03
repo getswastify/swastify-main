@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAvailableDates } from "@/actions/appointments"
@@ -19,29 +19,31 @@ export function AppointmentCalendar({ doctorId, onDateSelect, selectedDate }: Ap
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
   // Function to fetch available dates when month changes
-  const fetchAvailableDates = async (year: number, month: number) => {
-    if (!doctorId) return
-
-    setIsLoading(true)
-    try {
-      const response = await getAvailableDates(doctorId, year, month)
-      // Convert string dates to Date objects
-      const dates = response.availableDates.map((dateStr) => new Date(dateStr))
-      setAvailableDates(dates)
-    } catch (error) {
-      console.error("Error fetching available dates:", error)
-      toast.error("Failed to load available dates")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const fetchAvailableDates = useCallback(
+    async (year: number, month: number) => {
+      if (!doctorId) return
+  
+      setIsLoading(true)
+      try {
+        const response = await getAvailableDates(doctorId, year, month)
+        const dates = response.availableDates.map((dateStr) => new Date(dateStr))
+        setAvailableDates(dates)
+      } catch (error) {
+        console.error("Error fetching available dates:", error)
+        toast.error("Failed to load available dates")
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [doctorId] // dependency for useCallback
+  )
 
   // Fetch available dates when month changes or doctor changes
   useEffect(() => {
     const year = currentMonth.getFullYear()
-    const month = currentMonth.getMonth() + 1 // JavaScript months are 0-indexed
+    const month = currentMonth.getMonth() + 1
     fetchAvailableDates(year, month)
-  }, [currentMonth, doctorId])
+  }, [currentMonth, fetchAvailableDates])
 
   // Custom function to disable dates that are not available
   const isDateDisabled = (date: Date) => {
