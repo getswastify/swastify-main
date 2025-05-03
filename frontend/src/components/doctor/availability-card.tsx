@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Edit2, Trash2, Save, X, Plus } from "lucide-react"
+import { Calendar, Clock, Edit2, Trash2, Save, X, Plus, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
@@ -13,7 +13,8 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import type { Availability } from "@/types/availability"
-import { DAY_NAMES, formatTimeFrom24h } from "@/types/availability"
+import { DAY_NAMES, formatTimeFrom24h, utcToLocalTimeHHMM, getTimezoneName } from "@/types/availability"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Form schema with validation for time slots
 const timeSlotSchema = z
@@ -60,32 +61,34 @@ export function AvailabilityCard({
   isSubmitting,
 }: AvailabilityCardProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [timezoneName, setTimezoneName] = useState("")
 
-  // Update the extractTimeSlots function to properly handle timezone conversion
-  const extractTimeSlots = () => {
+  useEffect(() => {
+    // Get the timezone name on component mount
+    setTimezoneName(getTimezoneName())
+  }, [])
+
+  // Extract time slots from availabilities with proper timezone handling
+  const extractTimeSlots = useCallback(() => {
     return availabilities.map((avail) => {
-      // Extract HH:MM from ISO string or use as is if already in that format
-      let startTime = avail.startTime
-      let endTime = avail.endTime
-
-      // If it's an ISO string, convert to local time
-      if (avail.startTime?.includes("T")) {
-        const startDate = new Date(avail.startTime)
-        startTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`
+      let startTime = avail.startTime || ""
+      let endTime = avail.endTime || ""
+  
+      if (startTime.includes("T")) {
+        startTime = utcToLocalTimeHHMM(startTime)
       }
-
-      if (avail.endTime?.includes("T")) {
-        const endDate = new Date(avail.endTime)
-        endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
+  
+      if (endTime.includes("T")) {
+        endTime = utcToLocalTimeHHMM(endTime)
       }
-
+  
       return {
         id: avail.id,
-        startTime: startTime || "",
-        endTime: endTime || "",
+        startTime,
+        endTime,
       }
     })
-  }
+  }, [availabilities])
 
   const form = useForm<z.infer<typeof availabilitySchema>>({
     resolver: zodResolver(availabilitySchema),
@@ -94,6 +97,15 @@ export function AvailabilityCard({
       timeSlots: extractTimeSlots(),
     },
   })
+
+  // Update form values when availabilities change
+  useEffect(() => {
+    form.reset({
+      dayOfWeek: dayOfWeek,
+      timeSlots: extractTimeSlots(),
+    })
+  }, [availabilities, dayOfWeek, form, extractTimeSlots])
+  
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -120,7 +132,6 @@ export function AvailabilityCard({
     append({ startTime: "09:00", endTime: "17:00" })
   }
 
-  // Update the card UI to be more visually appealing
   return (
     <Card className="overflow-hidden border-l-4 border-l-primary h-full shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="pb-2 bg-primary/5">
@@ -168,7 +179,19 @@ export function AvailabilityCard({
 
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-medium">Time Slots</h4>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-sm font-medium">Time Slots</h4>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">Times are in your local timezone ({timezoneName})</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Button type="button" variant="outline" size="sm" onClick={addTimeSlot} className="gap-1">
                     <Plus className="h-3 w-3" /> Add Slot
                   </Button>
@@ -249,54 +272,58 @@ export function AvailabilityCard({
               {availabilities.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground text-sm">No time slots available</div>
               ) : (
-                availabilities.map((avail, index) => {
-                  // Properly convert UTC times to local time
-                  let localStartTime, localEndTime
+                <>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Times shown in {timezoneName}</span>
+                  </div>
+                  {availabilities.map((avail, index) => {
+                    // Properly convert UTC times to local time
+                    let localStartTime, localEndTime
 
-                  if (avail.startTime?.includes("T")) {
-                    // Convert ISO string to local time
-                    const startDate = new Date(avail.startTime)
-                    localStartTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`
-                  } else {
-                    localStartTime = avail.startTime
-                  }
+                    if (avail.startTime?.includes("T")) {
+                      // Convert ISO string to local time HH:MM
+                      localStartTime = utcToLocalTimeHHMM(avail.startTime)
+                    } else {
+                      localStartTime = avail.startTime
+                    }
 
-                  if (avail.endTime?.includes("T")) {
-                    // Convert ISO string to local time
-                    const endDate = new Date(avail.endTime)
-                    localEndTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`
-                  } else {
-                    localEndTime = avail.endTime
-                  }
+                    if (avail.endTime?.includes("T")) {
+                      // Convert ISO string to local time HH:MM
+                      localEndTime = utcToLocalTimeHHMM(avail.endTime)
+                    } else {
+                      localEndTime = avail.endTime
+                    }
 
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-primary" />
-                        <span>
-                          {localStartTime && localEndTime
-                            ? `${formatTimeFrom24h(localStartTime)} - ${formatTimeFrom24h(localEndTime)}`
-                            : "Time not available"}
-                        </span>
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span>
+                            {localStartTime && localEndTime
+                              ? `${formatTimeFrom24h(localStartTime)} - ${formatTimeFrom24h(localEndTime)}`
+                              : "Time not available"}
+                          </span>
+                        </div>
+                        {avail.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => onDeleteAvailability(avail.id!)}
+                            disabled={isSubmitting}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        )}
                       </div>
-                      {avail.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => onDeleteAvailability(avail.id!)}
-                          disabled={isSubmitting}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      )}
-                    </div>
-                  )
-                })
+                    )
+                  })}
+                </>
               )}
             </div>
             <div className="flex gap-2">
