@@ -20,28 +20,13 @@ export const getDoctorAvailability = async (req: Request, res: Response): Promis
       return res.status(400).json(formatError('Doctor ID is required.'));
     }
 
-    const { date } = req.body; // Pass the date to query specific availability
-
-    if (!date) {
-      return res.status(400).json(formatError('Date is required.'));
-    }
-
-    const selectedDate = new Date(date);
-    const selectedDayOfWeek = selectedDate.getDay().toString(); // Convert to string
-
-    // Check if the selected date is a valid date
-    if (isNaN(selectedDate.getTime())) {
-      return res.status(400).json(formatError('Invalid date format.'));
-    }
-
-    // Fetch availability for the doctor for the specific day of the week
     const availability = await prisma.doctorAvailability.findMany({
-      where: { doctorId, dayOfWeek: selectedDayOfWeek }, // dayOfWeek is now a string
+      where: { doctorId },
       orderBy: { startTime: 'asc' }
     });
 
     if (availability.length === 0) {
-      return res.status(404).json(formatError('No availability found for the doctor on the selected date.'));
+      return res.status(404).json(formatError('No availability found for the doctor.'));
     }
 
     return res.status(200).json(formatSuccess('Availability fetched successfully.', availability));
