@@ -139,8 +139,13 @@ export default function DoctorDashboardPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-center">
-                  <Button className="w-full" variant="outline" disabled={verificationStatus !== "APPROVED"}>
-                    View Schedule
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    disabled={verificationStatus !== "APPROVED"}
+                    onClick={() => router.push("/doctor/appointments")}
+                  >
+                    View Appointments
                   </Button>
                 </CardFooter>
               </Card>

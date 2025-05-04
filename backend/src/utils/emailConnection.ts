@@ -18,7 +18,7 @@ export interface Appointment {
   doctorName: string;
   doctorSpecialization: string;
   doctorEmail: string;
-  consultationFee?:number
+  consultationFee:number
 }
 
 

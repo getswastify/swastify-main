@@ -72,6 +72,52 @@ export interface BookAppointmentResponse {
   }
 }
 
+// Doctor appointment interfaces
+export interface DoctorAppointment {
+  appointmentId: string
+  patientName: string
+  patientEmail: string
+  patientPhone: string
+  appointmentTime: string
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED"
+  doctorName: string
+  doctorSpecialization: string
+  doctorEmail: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DoctorAppointmentsResponse {
+  status: boolean
+  message: string
+  data?: {
+    appointments: DoctorAppointment[]
+  }
+  error?: string
+}
+
+export interface UpdateAppointmentStatusRequest {
+  appointmentId: string
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED"
+}
+
+export interface UpdateAppointmentStatusResponse {
+  status: boolean
+  message: string
+  data?: {
+    appointment: {
+      id: string
+      patientId: string
+      doctorId: string
+      appointmentTime: string
+      status: string
+      createdAt: string
+      updatedAt: string
+    }
+  }
+  error?: string
+}
+
 type AxiosErrorResponse = {
   response?: {
     data?: {
@@ -159,6 +205,44 @@ export const getPatientAppointments = async (): Promise<AppointmentsResponse> =>
   } catch (error) {
     const axiosError = error as AxiosErrorResponse
     throw new Error(axiosError.response?.data?.error || "Failed to fetch appointments")
+  }
+}
+
+/**
+ * Get all appointments for the current doctor
+ */
+export const getDoctorAppointments = async (): Promise<DoctorAppointmentsResponse> => {
+  try {
+    const response = await api.get<DoctorAppointmentsResponse>("/doctor/show-appointment")
+    return response.data
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse
+    return {
+      status: false,
+      message: axiosError.response?.data?.error || "Failed to fetch doctor appointments",
+    }
+  }
+}
+
+/**
+ * Update the status of an appointment
+ */
+export const updateAppointmentStatus = async (
+  appointmentId: string,
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED",
+): Promise<UpdateAppointmentStatusResponse> => {
+  try {
+    const response = await api.put<UpdateAppointmentStatusResponse>("/doctor/update-appointment-status", {
+      appointmentId,
+      status,
+    })
+    return response.data
+  } catch (error) {
+    const axiosError = error as AxiosErrorResponse
+    return {
+      status: false,
+      message: axiosError.response?.data?.error || "Failed to update appointment status",
+    }
   }
 }
 
