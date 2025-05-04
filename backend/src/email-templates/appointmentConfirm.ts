@@ -111,4 +111,3 @@ export const appointmentConfirmationTemplate = (appointmentDetails: Appointment)
       </body>
     </html>`;
   };
-  

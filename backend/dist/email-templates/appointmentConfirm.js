@@ -76,12 +76,12 @@ const appointmentConfirmationTemplate = (appointmentDetails) => {
             <strong>Appointment Details:</strong><br />
             <strong>Doctor:</strong> Dr. ${appointmentDetails.doctorName} <br />
             <strong>Specialization:</strong> ${appointmentDetails.doctorSpecialization}<br />
-            <strong>Consultation Fee:</strong> $${appointmentDetails.consultationFee}<br />
+            <strong>Consultation Fee:</strong> Rs.${appointmentDetails.consultationFee}<br />
           <strong>Appointment Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
 
           </p>
           <div style="text-align:center;">
-            <a href="https://www.swastify.life/appointments" class="button" style="color: #ffffff; background: #047857; text-decoration: none; border-radius: 6px; padding: 12px 24px; display: inline-block;">View Appointment</a>
+            <a href="https://www.app.swastify.life/patient/appointments" class="button" style="color: #ffffff; background: #047857; text-decoration: none; border-radius: 6px; padding: 12px 24px; display: inline-block;">View Appointment</a>
           </div>
           <p class="text">
             If you need to reschedule or cancel your appointment, please visit the above link.

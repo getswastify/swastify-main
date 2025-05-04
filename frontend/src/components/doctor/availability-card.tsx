@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Edit2, Trash2, Save, X, Plus, Info } from "lucide-react"
@@ -134,23 +134,26 @@ export function AvailabilityCard({
   }
 
   return (
-    <Card className="overflow-hidden border-l-4 border-l-primary h-full shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="pb-2 bg-primary/5">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            {isEditing ? (
-              <span className="font-medium">Edit Schedule</span>
-            ) : (
-              <CardTitle className="text-base">{dayOfWeek}</CardTitle>
-            )}
-          </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            Available
-          </Badge>
+    <Card className="overflow-hidden h-full shadow-md hover:shadow-lg transition-all duration-200">
+      {/* Left border accent that extends full height */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+
+      {/* Header that covers the entire top of the card */}
+      <div className="flex justify-between items-center p-4 bg-background border-b">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          {isEditing ? (
+            <span className="font-medium">Edit Schedule</span>
+          ) : (
+            <CardTitle className="text-base">{dayOfWeek}</CardTitle>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="pt-4">
+        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+          Available
+        </Badge>
+      </div>
+
+      <CardContent className="pt-4 relative">
         {isEditing ? (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
