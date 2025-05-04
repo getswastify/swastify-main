@@ -329,6 +329,7 @@ export const bookAppointment = async (req: Request, res: Response): Promise<any>
                 },
               },
               specialization: true,
+              consultationFee:true
             },
           },
         },
@@ -343,6 +344,7 @@ export const bookAppointment = async (req: Request, res: Response): Promise<any>
         doctorName: `${newAppointment.doctor.user.firstName} ${newAppointment.doctor.user.lastName}`,
         doctorSpecialization: newAppointment.doctor.specialization,
         doctorEmail: newAppointment.doctor.user.email,
+        consultationFee:newAppointment.doctor.consultationFee
       };
   
       try {

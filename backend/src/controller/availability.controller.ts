@@ -222,7 +222,7 @@ export const deleteDoctorAvailability = async (req: Request, res: Response): Pro
       return res.status(403).json(formatError("You are not authorized to delete this availability."))
     }
 
-    await prisma.doctorAvailability.delete({
+    await prisma.doctorAvailability.delete({  
       where: { id: availabilityId },
     })
 

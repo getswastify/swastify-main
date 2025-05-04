@@ -257,6 +257,7 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
                             },
                         },
                         specialization: true,
+                        consultationFee: true
                     },
                 },
             },
@@ -270,6 +271,7 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
             doctorName: `${newAppointment.doctor.user.firstName} ${newAppointment.doctor.user.lastName}`,
             doctorSpecialization: newAppointment.doctor.specialization,
             doctorEmail: newAppointment.doctor.user.email,
+            consultationFee: newAppointment.doctor.consultationFee
         };
         try {
             yield (0, emailConnection_1.sendAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails);

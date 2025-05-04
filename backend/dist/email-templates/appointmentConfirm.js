@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.appointmentConfirmationTemplate = void 0;
 const appointmentConfirmationTemplate = (appointmentDetails) => {
+    console.log(appointmentDetails.appointmentTime);
+    console.log(appointmentDetails.consultationFee);
     return `<!DOCTYPE html>
     <html>
       <head>
@@ -74,8 +76,9 @@ const appointmentConfirmationTemplate = (appointmentDetails) => {
             <strong>Appointment Details:</strong><br />
             <strong>Doctor:</strong> Dr. ${appointmentDetails.doctorName} <br />
             <strong>Specialization:</strong> ${appointmentDetails.doctorSpecialization}<br />
-            <strong>Consultation Fee:</strong> $${appointmentDetails.consultationFee && appointmentDetails.consultationFee}<br />
-            <strong>Appointment Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString()}<br />
+            <strong>Consultation Fee:</strong> $${appointmentDetails.consultationFee}<br />
+          <strong>Appointment Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
+
           </p>
           <div style="text-align:center;">
             <a href="https://www.swastify.life/appointments" class="button" style="color: #ffffff; background: #047857; text-decoration: none; border-radius: 6px; padding: 12px 24px; display: inline-block;">View Appointment</a>
