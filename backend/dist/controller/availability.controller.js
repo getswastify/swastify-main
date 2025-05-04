@@ -30,31 +30,29 @@ const buildDateTimeFromTimeString = (dayOfWeek, timeStr) => {
     if (targetDayIndex === -1)
         throw new Error("Invalid dayOfWeek");
     const diff = (targetDayIndex - currentDayIndex + 7) % 7;
-    // Construct a date string in IST (India is always UTC+5:30, no DST)
-    const [hours, minutes] = timeStr.split(":");
+    // Handle special case: "00:00" (midnight) should be treated as "23:59"
+    let [hours, minutes] = timeStr.split(":");
+    if (hours === "00" && minutes === "00") {
+        hours = "23";
+        minutes = "59";
+    }
     const targetDate = new Date(now);
     targetDate.setDate(now.getDate() + diff);
     const year = targetDate.getFullYear();
     const month = String(targetDate.getMonth() + 1).padStart(2, "0");
     const day = String(targetDate.getDate()).padStart(2, "0");
-    // Store as UTC time but with the correct offset from IST
-    // This means we subtract 5:30 from the IST time to get the equivalent UTC time
-    const utcHours = Number.parseInt(hours) - 5;
-    const utcMinutes = Number.parseInt(minutes) - 30;
-    // Handle minute underflow
-    let adjustedHours = utcHours;
-    let adjustedMinutes = utcMinutes;
-    if (adjustedMinutes < 0) {
-        adjustedMinutes += 60;
-        adjustedHours -= 1;
+    // Convert IST to UTC by subtracting 5 hours 30 mins
+    let utcHours = Number.parseInt(hours) - 5;
+    let utcMinutes = Number.parseInt(minutes) - 30;
+    if (utcMinutes < 0) {
+        utcMinutes += 60;
+        utcHours -= 1;
     }
-    // Handle hour underflow (might go to previous day)
-    if (adjustedHours < 0) {
-        adjustedHours += 24;
-        // Adjust the day if needed (subtract 1 day)
+    if (utcHours < 0) {
+        utcHours += 24;
         targetDate.setDate(targetDate.getDate() - 1);
     }
-    const utcDateStr = `${year}-${month}-${day}T${String(adjustedHours).padStart(2, "0")}:${String(adjustedMinutes).padStart(2, "0")}:00Z`;
+    const utcDateStr = `${year}-${month}-${day}T${String(utcHours).padStart(2, "0")}:${String(utcMinutes).padStart(2, "0")}:00Z`;
     return new Date(utcDateStr);
 };
 const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
