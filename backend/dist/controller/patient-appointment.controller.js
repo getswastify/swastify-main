@@ -18,7 +18,9 @@ const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 
     try {
         const { doctorId, dayOfWeek } = req.body;
         if (!doctorId || !dayOfWeek) {
-            return res.status(400).json({ error: 'Doctor ID and dayOfWeek are required.' });
+            return res
+                .status(400)
+                .json({ error: "Doctor ID and dayOfWeek are required." });
         }
         // Step 1: Get doctor's availability for the given day
         const availability = yield (0, AppointmentUtils_1.getDoctorAvailabilityForDay)(doctorId, dayOfWeek);
@@ -35,8 +37,10 @@ const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 
         return res.status(200).json({ availableSlots });
     }
     catch (error) {
-        console.error('Error generating appointment slots:', error);
-        return res.status(500).json({ error: 'Something went wrong while generating slots.' });
+        console.error("Error generating appointment slots:", error);
+        return res
+            .status(500)
+            .json({ error: "Something went wrong while generating slots." });
     }
 });
 exports.getDynamicAppointmentSlots = getDynamicAppointmentSlots;
@@ -44,7 +48,9 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
     try {
         const { doctorId, year, month } = req.query;
         if (!doctorId || !year || !month) {
-            return res.status(400).json({ error: "doctorId, year, and month are required" });
+            return res
+                .status(400)
+                .json({ error: "doctorId, year, and month are required" });
         }
         // Convert year and month to numbers
         const parsedYear = parseInt(year);
@@ -53,19 +59,24 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
         const weeklyAvailability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: { doctorId: doctorId },
             select: { dayOfWeek: true },
-            distinct: ['dayOfWeek'], // Just in case duplicates exist
+            distinct: ["dayOfWeek"], // Just in case duplicates exist
         });
         if (!weeklyAvailability || weeklyAvailability.length === 0) {
-            return res.status(404).json({ error: "No availability found for the doctor." });
+            return res
+                .status(404)
+                .json({ error: "No availability found for the doctor." });
         }
         // Make a set of available weekdays (e.g., "Monday", "Wednesday")
-        const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
+        const availableWeekdays = new Set(weeklyAvailability.map((slot) => slot.dayOfWeek));
         // Get number of days in that month
         const daysInMonth = new Date(parsedYear, parsedMonth, 0).getDate();
         const availableDates = [];
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(Date.UTC(parsedYear, parsedMonth - 1, day)); // UTC date
-            const weekday = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }); // Force weekday in UTC
+            const weekday = date.toLocaleDateString("en-US", {
+                weekday: "long",
+                timeZone: "UTC",
+            }); // Force weekday in UTC
             if (availableWeekdays.has(weekday)) {
                 availableDates.push(date.toISOString().split("T")[0]); // Format: YYYY-MM-DD
             }
@@ -80,7 +91,11 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
 exports.getAvailableDatesForMonth = getAvailableDatesForMonth;
 // 👇 This helper merges the selected date with a time (in IST) and returns a UTC Date
 const combineISTTimeWithDate = (date, hours, minutes) => {
-    const [year, month, day] = date.toISOString().split("T")[0].split("-").map(Number);
+    const [year, month, day] = date
+        .toISOString()
+        .split("T")[0]
+        .split("-")
+        .map(Number);
     const istDate = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30)); // IST is UTC+5:30
     return istDate;
 };
@@ -88,14 +103,13 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
     try {
         const { doctorId, date } = req.body;
         if (!doctorId || !date) {
-            return res.status(400).json({ error: 'doctorId and date are required.' });
+            return res.status(400).json({ error: "doctorId and date are required." });
         }
-        const selectedDate = new Date(date); // Format: YYYY-MM-DD
+        const selectedDate = new Date(date);
         const dayOfWeek = selectedDate.toLocaleDateString("en-US", {
             weekday: "long",
             timeZone: "Asia/Kolkata",
         });
-        // Step 2: Get doctor's availability for the weekday
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
@@ -107,9 +121,12 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             },
         });
         if (!availability || availability.length === 0) {
-            return res.status(404).json({ error: 'No availability found for this doctor on the selected date.' });
+            return res
+                .status(404)
+                .json({
+                error: "No availability found for this doctor on the selected date.",
+            });
         }
-        // Step 3: Get already booked appointments on selected date (UTC range)
         const istStartOfDay = combineISTTimeWithDate(selectedDate, 0, 0);
         const istEndOfDay = combineISTTimeWithDate(selectedDate, 23, 59);
         const bookedAppointments = yield prismaConnection_1.prisma.appointment.findMany({
@@ -125,7 +142,9 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             },
         });
         const bookedTimestamps = new Set(bookedAppointments.map((appt) => new Date(appt.appointmentTime).getTime()));
-        // Step 4: Build 30-min slots
+        // Current time in UTC with 1.5 hours added
+        const now = new Date();
+        const nowWithBuffer = new Date(now.getTime() + 90 * 60000); // 90 minutes = 1.5 hours
         const availableSlots = [];
         for (const slot of availability) {
             const startTimeIST = new Date(slot.startTime);
@@ -135,10 +154,12 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             const endHour = endTimeIST.getHours();
             const endMinute = endTimeIST.getMinutes();
             let slotStart = combineISTTimeWithDate(selectedDate, startHour, startMinute);
-            let slotEnd = new Date(slotStart.getTime() + 30 * 60000); // Add 30 mins
+            let slotEnd = new Date(slotStart.getTime() + 30 * 60000);
             const finalSlotEnd = combineISTTimeWithDate(selectedDate, endHour, endMinute);
             while (slotEnd <= finalSlotEnd) {
-                if (!bookedTimestamps.has(slotStart.getTime())) {
+                const isSlotBooked = bookedTimestamps.has(slotStart.getTime());
+                const isInPast = slotStart.getTime() < nowWithBuffer.getTime();
+                if (!isSlotBooked && !isInPast) {
                     availableSlots.push({
                         startTime: slotStart.toISOString(),
                         endTime: slotEnd.toISOString(),
@@ -157,8 +178,12 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
         return res.status(200).json({ availableSlots });
     }
     catch (error) {
-        console.error('Error fetching appointment slots:', error);
-        return res.status(500).json({ error: 'Something went wrong while fetching appointment slots.' });
+        console.error("Error fetching appointment slots:", error);
+        return res
+            .status(500)
+            .json({
+            error: "Something went wrong while fetching appointment slots.",
+        });
     }
 });
 exports.getAvailableAppointmentSlots = getAvailableAppointmentSlots;
@@ -166,10 +191,16 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
     try {
         const { patientId, doctorId, appointmentTime } = req.body;
         if (!patientId || !doctorId || !appointmentTime) {
-            return res.status(400).json({ error: 'patientId, doctorId, and appointmentTime are required.' });
+            return res
+                .status(400)
+                .json({
+                error: "patientId, doctorId, and appointmentTime are required.",
+            });
         }
         const appointmentDate = new Date(appointmentTime);
-        const weekday = appointmentDate.toLocaleString('en-US', { weekday: 'long' });
+        const weekday = appointmentDate.toLocaleString("en-US", {
+            weekday: "long",
+        });
         // Fetch all availabilities for that weekday
         const doctorAvailabilities = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
@@ -188,10 +219,13 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
             const slotStartTotalMinutes = slotStartHours * 60 + slotStartMinutes;
             const slotEndTotalMinutes = slotEndHours * 60 + slotEndMinutes;
             const appointmentTotalMinutes = appointmentHours * 60 + appointmentMinutes;
-            return appointmentTotalMinutes >= slotStartTotalMinutes && appointmentTotalMinutes < slotEndTotalMinutes;
+            return (appointmentTotalMinutes >= slotStartTotalMinutes &&
+                appointmentTotalMinutes < slotEndTotalMinutes);
         });
         if (!isWithinAvailability) {
-            return res.status(400).json({ error: 'The doctor is not available at this time.' });
+            return res
+                .status(400)
+                .json({ error: "The doctor is not available at this time." });
         }
         const existingAppointment = yield prismaConnection_1.prisma.appointment.findFirst({
             where: {
@@ -200,14 +234,16 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
             },
         });
         if (existingAppointment) {
-            return res.status(400).json({ error: 'The selected time slot is already booked.' });
+            return res
+                .status(400)
+                .json({ error: "The selected time slot is already booked." });
         }
         const newAppointment = yield prismaConnection_1.prisma.appointment.create({
             data: {
                 patientId,
                 doctorId,
                 appointmentTime: appointmentDate,
-                status: 'PENDING',
+                status: "PENDING",
             },
             include: {
                 patient: {
@@ -228,7 +264,7 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
                             },
                         },
                         specialization: true,
-                        consultationFee: true
+                        consultationFee: true,
                     },
                 },
             },
@@ -242,23 +278,29 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
             doctorName: `${newAppointment.doctor.user.firstName} ${newAppointment.doctor.user.lastName}`,
             doctorSpecialization: newAppointment.doctor.specialization,
             doctorEmail: newAppointment.doctor.user.email,
-            consultationFee: newAppointment.doctor.consultationFee
+            consultationFee: newAppointment.doctor.consultationFee,
         };
         try {
-            yield (0, emailConnection_1.sendAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails);
-            console.log('Appointment confirmation email sent to:', newAppointment.patient.email);
+            // Send to patient
+            yield (0, emailConnection_1.sendPatientAppointmentConfirmationEmail)(newAppointment.patient.email, appointmentDetails);
+            console.log("Appointment confirmation email sent to patient:", newAppointment.patient.email);
+            // Send to doctor
+            yield (0, emailConnection_1.sendDoctorAppointmentPendingEmail)(newAppointment.doctor.user.email, appointmentDetails);
+            console.log("Appointment confirmation email sent to doctor:", newAppointment.doctor.user.email);
         }
         catch (error) {
-            console.error('Error sending appointment confirmation email:', error);
+            console.error("Error sending appointment confirmation email:", error);
         }
         return res.status(201).json({
-            message: 'Appointment booked successfully.',
+            message: "Appointment booked successfully.",
             appointment: newAppointment,
         });
     }
     catch (error) {
-        console.error('Error booking appointment:', error);
-        return res.status(500).json({ error: 'Something went wrong while booking the appointment.' });
+        console.error("Error booking appointment:", error);
+        return res
+            .status(500)
+            .json({ error: "Something went wrong while booking the appointment." });
     }
 });
 exports.bookAppointment = bookAppointment;
@@ -269,7 +311,7 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         console.log(doctorId);
         // Validate the input
         if (!doctorId) {
-            return res.status(400).json({ error: 'doctorId is required.' });
+            return res.status(400).json({ error: "doctorId is required." });
         }
         // Fetch appointments for the doctor, include related patient and doctor data
         const appointments = yield prismaConnection_1.prisma.appointment.findMany({
@@ -278,6 +320,7 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
             },
             include: {
                 patient: {
+                    // Include patient details from the User model
                     select: {
                         firstName: true,
                         lastName: true,
@@ -286,8 +329,10 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
                     },
                 },
                 doctor: {
+                    // Include doctor details from the DoctorProfile model
                     select: {
                         user: {
+                            // Access User data for the doctor
                             select: {
                                 firstName: true,
                                 lastName: true,
@@ -301,11 +346,13 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         });
         // Check if no appointments are found
         if (!appointments || appointments.length === 0) {
-            return res.status(404).json({ message: 'No appointments found for this doctor.' });
+            return res
+                .status(404)
+                .json({ message: "No appointments found for this doctor." });
         }
         // Return the list of appointments with patient and doctor details
         return res.status(200).json({
-            appointments: appointments.map(appointment => ({
+            appointments: appointments.map((appointment) => ({
                 appointmentId: appointment.id,
                 patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
                 patientEmail: appointment.patient.email,
@@ -321,8 +368,10 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         });
     }
     catch (error) {
-        console.error('Error fetching doctor appointments:', error);
-        return res.status(500).json({ error: 'Something went wrong while fetching the appointments.' });
+        console.error("Error fetching doctor appointments:", error);
+        return res
+            .status(500)
+            .json({ error: "Something went wrong while fetching the appointments." });
     }
 });
 exports.getDoctorAppointments = getDoctorAppointments;
@@ -331,14 +380,14 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
     try {
         const patientId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId; // assumes user is logged in as a patient
         if (!patientId) {
-            return res.status(400).json({ error: 'Patient ID is required.' });
+            return res.status(400).json({ error: "Patient ID is required." });
         }
         const appointments = yield prismaConnection_1.prisma.appointment.findMany({
             where: {
                 patientId,
             },
             orderBy: {
-                appointmentTime: 'asc',
+                appointmentTime: "asc",
             },
             include: {
                 doctor: {
@@ -349,7 +398,9 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
             },
         });
         if (appointments.length === 0) {
-            return res.status(404).json({ error: 'No appointments found for this patient.' });
+            return res
+                .status(404)
+                .json({ error: "No appointments found for this patient." });
         }
         // Format the response
         const formattedAppointments = appointments.map((appt) => ({
@@ -363,8 +414,10 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
         return res.status(200).json({ appointments: formattedAppointments });
     }
     catch (error) {
-        console.error('Error fetching patient appointments:', error);
-        return res.status(500).json({ error: 'Something went wrong while fetching appointments.' });
+        console.error("Error fetching patient appointments:", error);
+        return res
+            .status(500)
+            .json({ error: "Something went wrong while fetching appointments." });
     }
 });
 exports.getPatientAppointments = getPatientAppointments;
@@ -372,23 +425,23 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     try {
         const { search, specialty } = req.query;
         const doctors = yield prismaConnection_1.prisma.user.findMany({
-            where: Object.assign({ role: 'DOCTOR', doctorProfile: Object.assign({ status: 'APPROVED' }, (specialty && {
+            where: Object.assign({ role: "DOCTOR", doctorProfile: Object.assign({ status: "APPROVED" }, (specialty && {
                     specialization: {
                         contains: specialty,
-                        mode: 'insensitive',
+                        mode: "insensitive",
                     },
                 })) }, (search && {
                 OR: [
                     {
                         firstName: {
                             contains: search,
-                            mode: 'insensitive',
+                            mode: "insensitive",
                         },
                     },
                     {
                         lastName: {
                             contains: search,
-                            mode: 'insensitive',
+                            mode: "insensitive",
                         },
                     },
                 ],
@@ -402,7 +455,7 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             return ({
                 id: doc.id,
                 name: `${doc.firstName} ${doc.lastName}`,
-                specialty: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.specialization) || '',
+                specialty: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.specialization) || "",
                 experience: new Date().getFullYear() -
                     new Date((_c = (_b = doc.doctorProfile) === null || _b === void 0 ? void 0 : _b.startedPracticeOn) !== null && _c !== void 0 ? _c : new Date()).getFullYear(),
             });
@@ -410,8 +463,10 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         return res.status(200).json({ doctors: formattedDoctors });
     }
     catch (error) {
-        console.error('Error searching doctors:', error);
-        return res.status(500).json({ error: 'Something went wrong while searching for doctors.' });
+        console.error("Error searching doctors:", error);
+        return res
+            .status(500)
+            .json({ error: "Something went wrong while searching for doctors." });
     }
 });
 exports.searchDoctors = searchDoctors;
@@ -421,30 +476,38 @@ const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const patientId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
         const { appointmentId } = req.params;
         if (!appointmentId) {
-            return res.status(400).json({ error: 'Appointment ID is required.' });
+            return res.status(400).json({ error: "Appointment ID is required." });
         }
         // Check if the appointment exists and belongs to this patient
         const appointment = yield prismaConnection_1.prisma.appointment.findUnique({
             where: { id: appointmentId },
         });
         if (!appointment) {
-            return res.status(404).json({ error: 'Appointment not found.' });
+            return res.status(404).json({ error: "Appointment not found." });
         }
         if (appointment.patientId !== patientId) {
-            return res.status(403).json({ error: 'You are not authorized to cancel this appointment.' });
+            return res
+                .status(403)
+                .json({ error: "You are not authorized to cancel this appointment." });
         }
         // Update the appointment status to CANCELLED
         yield prismaConnection_1.prisma.appointment.update({
             where: { id: appointmentId },
             data: {
-                status: 'CANCELLED',
+                status: "CANCELLED",
             },
         });
-        return res.status(200).json({ message: 'Appointment cancelled successfully 🚫' });
+        return res
+            .status(200)
+            .json({ message: "Appointment cancelled successfully 🚫" });
     }
     catch (error) {
-        console.error('Error cancelling appointment:', error);
-        return res.status(500).json({ error: 'Something went wrong while cancelling the appointment.' });
+        console.error("Error cancelling appointment:", error);
+        return res
+            .status(500)
+            .json({
+            error: "Something went wrong while cancelling the appointment.",
+        });
     }
 });
 exports.cancelAppointment = cancelAppointment;
