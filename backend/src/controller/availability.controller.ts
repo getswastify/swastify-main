@@ -20,28 +20,21 @@ const buildDateTimeFromTimeString = (dayOfWeek: string, timeStr: string): Date =
   const currentDayIndex = now.getDay()
   const targetDayIndex = daysOfWeek.indexOf(dayOfWeek)
   if (targetDayIndex === -1) throw new Error("Invalid dayOfWeek")
+
   const diff = (targetDayIndex - currentDayIndex + 7) % 7
 
   const targetDate = new Date(now)
   targetDate.setDate(now.getDate() + diff)
 
-  // Parse time string like "00:00" or "05:30"
   const [hours, minutes] = timeStr.split(":").map(Number)
 
-  // Build IST time in the target date
-  const istDate = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate(),
-    hours,
-    minutes
-  )
+  // ✅ Build a date in IST, and trust JS to handle UTC under the hood
+  // This way, if you run the server in IST timezone, it'll produce correct UTC
+  targetDate.setHours(hours, minutes, 0, 0)
 
-  // Now convert IST date to UTC manually
-  const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000)) // Subtract 5.5 hours in ms
-
-  return utcDate
+  return targetDate
 }
+
 
 
 
