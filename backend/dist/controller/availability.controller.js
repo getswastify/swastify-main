@@ -30,30 +30,15 @@ const buildDateTimeFromTimeString = (dayOfWeek, timeStr) => {
     if (targetDayIndex === -1)
         throw new Error("Invalid dayOfWeek");
     const diff = (targetDayIndex - currentDayIndex + 7) % 7;
-    // Handle special case: "00:00" (midnight) should be treated as "23:59"
-    let [hours, minutes] = timeStr.split(":");
-    if (hours === "00" && minutes === "00") {
-        hours = "23";
-        minutes = "59";
-    }
     const targetDate = new Date(now);
     targetDate.setDate(now.getDate() + diff);
-    const year = targetDate.getFullYear();
-    const month = String(targetDate.getMonth() + 1).padStart(2, "0");
-    const day = String(targetDate.getDate()).padStart(2, "0");
-    // Convert IST to UTC by subtracting 5 hours 30 mins
-    let utcHours = Number.parseInt(hours) - 5;
-    let utcMinutes = Number.parseInt(minutes) - 30;
-    if (utcMinutes < 0) {
-        utcMinutes += 60;
-        utcHours -= 1;
-    }
-    if (utcHours < 0) {
-        utcHours += 24;
-        targetDate.setDate(targetDate.getDate() - 1);
-    }
-    const utcDateStr = `${year}-${month}-${day}T${String(utcHours).padStart(2, "0")}:${String(utcMinutes).padStart(2, "0")}:00Z`;
-    return new Date(utcDateStr);
+    // Parse time string like "00:00" or "05:30"
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    // Build IST time in the target date
+    const istDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), hours, minutes);
+    // Now convert IST date to UTC manually
+    const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000)); // Subtract 5.5 hours in ms
+    return utcDate;
 };
 const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;

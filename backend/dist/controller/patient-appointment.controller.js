@@ -40,45 +40,6 @@ const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 
     }
 });
 exports.getDynamicAppointmentSlots = getDynamicAppointmentSlots;
-// export const getAvailableDatesForMonth = async (req: Request, res: Response): Promise<any> => {
-//     try {
-//       const { doctorId, year, month } = req.body;
-//       if (!doctorId || !year || !month) {
-//         return res.status(400).json({ error: "doctorId, year, and month are required" });
-//       }
-//       // Fetch doctor's weekly availability (days of week)
-//       const weeklyAvailability = await prisma.doctorAvailability.findMany({
-//         where: { doctorId },
-//         select: { dayOfWeek: true },
-//       });
-//       if (!weeklyAvailability || weeklyAvailability.length === 0) {
-//         return res.status(404).json({ error: "No availability found for the doctor." });
-//       }
-//       const availableWeekdays = new Set(weeklyAvailability.map(slot => slot.dayOfWeek));
-//       console.log("Available weekdays for doctor:", availableWeekdays); // Debugging log
-//       const daysInMonth = new Date(year, month, 0).getDate(); // Get last day of the month
-//       const availableDates: string[] = [];
-//       console.log(`Days in month: ${daysInMonth}`); // Debugging line to check the days in the month
-//       // Loop through each day of the month and check if it's an available day
-//       for (let day = 1; day <= daysInMonth; day++) {
-//         const date = new Date(year, month - 1, day); // JS months are 0-indexed
-//         const weekday = date.toLocaleDateString("en-US", { weekday: "long" }); // Get correct weekday in local timezone
-//         console.log(`Checking date: ${date.toString()} (Weekday: ${weekday})`); // Debugging line
-//         // Check if this weekday is available for the doctor
-//         if (availableWeekdays.has(weekday)) {
-//           console.log(`Date ${date.toLocaleDateString("en-CA")} is available.`); // Debug log when the date is available
-//           availableDates.push(date.toLocaleDateString("en-CA")); // Push date in "YYYY-MM-DD" format
-//         } else {
-//           console.log(`Date ${date.toLocaleDateString("en-CA")} is NOT available.`); // Debug log when the date is NOT available
-//         }
-//       }
-//       console.log(`Available dates: ${availableDates}`); // Final list of available dates
-//       return res.status(200).json({ availableDates });
-//     } catch (error) {
-//       console.error("Error fetching available dates:", error);
-//       return res.status(500).json({ error: "Something went wrong." });
-//     }
-//   };
 const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { doctorId, year, month } = req.query;
@@ -117,20 +78,28 @@ const getAvailableDatesForMonth = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getAvailableDatesForMonth = getAvailableDatesForMonth;
+// 👇 This helper merges the selected date with a time (in IST) and returns a UTC Date
+const combineISTTimeWithDate = (date, hours, minutes) => {
+    const [year, month, day] = date.toISOString().split("T")[0].split("-").map(Number);
+    const istDate = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30)); // IST is UTC+5:30
+    return istDate;
+};
 const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { doctorId, date } = req.body;
         if (!doctorId || !date) {
             return res.status(400).json({ error: 'doctorId and date are required.' });
         }
-        // Step 1: Parse date and find the weekday
-        const selectedDate = new Date(date); // Expecting YYYY-MM-DD
-        const dayOfWeek = selectedDate.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-        // Step 2: Fetch availability for that weekday
+        const selectedDate = new Date(date); // Format: YYYY-MM-DD
+        const dayOfWeek = selectedDate.toLocaleDateString("en-US", {
+            weekday: "long",
+            timeZone: "Asia/Kolkata",
+        });
+        // Step 2: Get doctor's availability for the weekday
         const availability = yield prismaConnection_1.prisma.doctorAvailability.findMany({
             where: {
                 doctorId,
-                dayOfWeek, // e.g., "Monday"
+                dayOfWeek,
             },
             select: {
                 startTime: true,
@@ -140,15 +109,15 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
         if (!availability || availability.length === 0) {
             return res.status(404).json({ error: 'No availability found for this doctor on the selected date.' });
         }
-        // Step 3: Fetch existing appointments for this doctor on that date
-        const startOfDayUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), 0, 0, 0));
-        const endOfDayUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), 23, 59, 59));
+        // Step 3: Get already booked appointments on selected date (UTC range)
+        const istStartOfDay = combineISTTimeWithDate(selectedDate, 0, 0);
+        const istEndOfDay = combineISTTimeWithDate(selectedDate, 23, 59);
         const bookedAppointments = yield prismaConnection_1.prisma.appointment.findMany({
             where: {
                 doctorId,
                 appointmentTime: {
-                    gte: startOfDayUTC,
-                    lte: endOfDayUTC,
+                    gte: istStartOfDay,
+                    lte: istEndOfDay,
                 },
             },
             select: {
@@ -156,31 +125,33 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             },
         });
         const bookedTimestamps = new Set(bookedAppointments.map((appt) => new Date(appt.appointmentTime).getTime()));
-        // Step 4: Generate slots for each availability period
+        // Step 4: Build 30-min slots
         const availableSlots = [];
         for (const slot of availability) {
-            // Combine selectedDate with startTime and endTime (which are time-only in UTC)
-            const startParts = new Date(slot.startTime);
-            const endParts = new Date(slot.endTime);
-            const startHour = startParts.getUTCHours();
-            const startMin = startParts.getUTCMinutes();
-            const endHour = endParts.getUTCHours();
-            const endMin = endParts.getUTCMinutes();
-            let slotStart = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), startHour, startMin));
-            let slotEnd = new Date(slotStart);
-            slotEnd.setMinutes(slotStart.getMinutes() + 30);
-            // Generate 30-minute slots within this availability
-            const availabilityEnd = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate(), endHour, endMin));
-            while (slotEnd <= availabilityEnd) {
+            const startTimeIST = new Date(slot.startTime);
+            const endTimeIST = new Date(slot.endTime);
+            const startHour = startTimeIST.getHours();
+            const startMinute = startTimeIST.getMinutes();
+            const endHour = endTimeIST.getHours();
+            const endMinute = endTimeIST.getMinutes();
+            let slotStart = combineISTTimeWithDate(selectedDate, startHour, startMinute);
+            let slotEnd = new Date(slotStart.getTime() + 30 * 60000); // Add 30 mins
+            const finalSlotEnd = combineISTTimeWithDate(selectedDate, endHour, endMinute);
+            while (slotEnd <= finalSlotEnd) {
                 if (!bookedTimestamps.has(slotStart.getTime())) {
                     availableSlots.push({
                         startTime: slotStart.toISOString(),
                         endTime: slotEnd.toISOString(),
+                        displayTime: slotStart.toLocaleTimeString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                            timeZone: "Asia/Kolkata",
+                        }),
                     });
                 }
-                slotStart = new Date(slotEnd);
-                slotEnd = new Date(slotStart);
-                slotEnd.setMinutes(slotStart.getMinutes() + 30);
+                slotStart = slotEnd;
+                slotEnd = new Date(slotStart.getTime() + 30 * 60000);
             }
         }
         return res.status(200).json({ availableSlots });
