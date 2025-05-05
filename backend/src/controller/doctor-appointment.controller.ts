@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prismaConnection';
+import { Appointment, sendAppointmentStatusUpdateEmail } from '../utils/emailConnection';
 
 export const getDoctorAppointments = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -77,57 +78,102 @@ export const getDoctorAppointments = async (req: Request, res: Response): Promis
 };
 
 export const updateAppointmentStatus = async (req: Request, res: Response): Promise<any> => {
-    try {
-      const doctorId = req.user?.userId;
-      const { appointmentId, status } = req.body;
-  
-      if (!appointmentId || !status) {
-        return res.status(400).json({
-          status: false,
-          message: 'appointmentId and status are required.',
-          error: 'Missing fields in request body.',
-        });
-      }
-  
-      const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          status: false,
-          message: 'Invalid status.',
-          error: 'Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED',
-        });
-      }
-  
-      const appointment = await prisma.appointment.findUnique({
-        where: { id: appointmentId },
-      });
-  
-      if (!appointment || appointment.doctorId !== doctorId) {
-        return res.status(403).json({
-          status: false,
-          message: 'Not authorized to update this appointment.',
-          error: 'Unauthorized access.',
-        });
-      }
-  
-      const updatedAppointment = await prisma.appointment.update({
-        where: { id: appointmentId },
-        data: { status },
-      });
-  
-      return res.status(200).json({
-        status: true,
-        message: 'Appointment status updated successfully.',
-        data: {
-          appointment: updatedAppointment,
-        },
-      });
-    } catch (error) {
-      console.error('Error updating appointment status:', error);
-      return res.status(500).json({
+  try {
+    const doctorId = req.user?.userId;
+    const { appointmentId, status } = req.body;
+
+    if (!appointmentId || !status) {
+      return res.status(400).json({
         status: false,
-        message: 'Something went wrong while updating the appointment status.',
-        error: error instanceof Error ? error.message : 'Internal server error',
+        message: 'appointmentId and status are required.',
+        error: 'Missing fields in request body.',
       });
     }
-  };
+
+    const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid status.',
+        error: 'Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED',
+      });
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+
+    if (!appointment || appointment.doctorId !== doctorId) {
+      return res.status(403).json({
+        status: false,
+        message: 'Not authorized to update this appointment.',
+        error: 'Unauthorized access.',
+      });
+    }
+
+    // Update appointment status
+    const updatedAppointment = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status },
+    });
+
+    // Fetch full appointment details for email
+    const fullDetails = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        doctor: {
+          select: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            specialization: true,
+            consultationFee: true,
+          },
+        },
+      },
+    });
+
+    if (fullDetails && fullDetails.patient && fullDetails.doctor) {
+      const appointmentDetails: Appointment = {
+        patientName: `${fullDetails.patient.firstName} ${fullDetails.patient.lastName}`,
+        patientEmail: fullDetails.patient.email,
+        doctorName: `${fullDetails.doctor.user.firstName} ${fullDetails.doctor.user.lastName}`,
+        doctorSpecialization: fullDetails.doctor.specialization,
+        doctorEmail: fullDetails.doctor.user.email,
+        consultationFee: fullDetails.doctor.consultationFee,
+        appointmentTime: fullDetails.appointmentTime,
+        status: fullDetails.status,
+      };
+
+      // 🔔 Send email to patient
+      await sendAppointmentStatusUpdateEmail(appointmentDetails.patientEmail, appointmentDetails);
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: 'Appointment status updated successfully.',
+      data: {
+        appointment: updatedAppointment,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating appointment status:', error);
+    return res.status(500).json({
+      status: false,
+      message: 'Something went wrong while updating the appointment status.',
+      error: error instanceof Error ? error.message : 'Internal server error',
+    });
+  }
+};
+

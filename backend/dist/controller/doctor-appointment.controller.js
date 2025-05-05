@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateAppointmentStatus = exports.getDoctorAppointments = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
+const emailConnection_1 = require("../utils/emailConnection");
 const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -114,10 +115,51 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
                 error: 'Unauthorized access.',
             });
         }
+        // Update appointment status
         const updatedAppointment = yield prismaConnection_1.prisma.appointment.update({
             where: { id: appointmentId },
             data: { status },
         });
+        // Fetch full appointment details for email
+        const fullDetails = yield prismaConnection_1.prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            include: {
+                patient: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                doctor: {
+                    select: {
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                            },
+                        },
+                        specialization: true,
+                        consultationFee: true,
+                    },
+                },
+            },
+        });
+        if (fullDetails && fullDetails.patient && fullDetails.doctor) {
+            const appointmentDetails = {
+                patientName: `${fullDetails.patient.firstName} ${fullDetails.patient.lastName}`,
+                patientEmail: fullDetails.patient.email,
+                doctorName: `${fullDetails.doctor.user.firstName} ${fullDetails.doctor.user.lastName}`,
+                doctorSpecialization: fullDetails.doctor.specialization,
+                doctorEmail: fullDetails.doctor.user.email,
+                consultationFee: fullDetails.doctor.consultationFee,
+                appointmentTime: fullDetails.appointmentTime,
+                status: fullDetails.status,
+            };
+            // 🔔 Send email to patient
+            yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, appointmentDetails);
+        }
         return res.status(200).json({
             status: true,
             message: 'Appointment status updated successfully.',

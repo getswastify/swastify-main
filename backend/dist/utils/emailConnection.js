@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAppointmentConfirmationEmail = exports.sendResetPassEmail = exports.sendOtpEmail = void 0;
+exports.sendAppointmentStatusUpdateEmail = exports.sendDoctorAppointmentPendingEmail = exports.sendPatientAppointmentConfirmationEmail = exports.sendResetPassEmail = exports.sendOtpEmail = void 0;
 const communication_email_1 = require("@azure/communication-email");
 const otpEmail_1 = require("../email-templates/otpEmail");
 const resetPasswordTemplate_1 = require("../email-templates/resetPasswordTemplate");
@@ -68,11 +68,11 @@ const sendResetPassEmail = (email, resetLink) => __awaiter(void 0, void 0, void 
     }
 });
 exports.sendResetPassEmail = sendResetPassEmail;
-const sendAppointmentConfirmationEmail = (email, appointmentDetails) => __awaiter(void 0, void 0, void 0, function* () {
+const sendPatientAppointmentConfirmationEmail = (email, appointmentDetails) => __awaiter(void 0, void 0, void 0, function* () {
     // Generate the email content based on the appointment details
     const emailContent = {
-        subject: `Appointment Confirmation: ${appointmentDetails.appointmentTime}`,
-        html: (0, appointmentConfirm_1.appointmentConfirmationTemplate)(appointmentDetails),
+        subject: `Appointment Confirmation Pending: ${appointmentDetails.appointmentTime}`,
+        html: (0, appointmentConfirm_1.patientAppointmentPendingTemplate)(appointmentDetails),
     };
     // Prepare the email message with the content and recipient details
     const emailMessage = {
@@ -87,11 +87,59 @@ const sendAppointmentConfirmationEmail = (email, appointmentDetails) => __awaite
         const poller = yield emailClient.beginSend(emailMessage);
         const operationState = poller.getOperationState();
         // Log operation ID for debugging purposes
-        console.log('Appointment confirmation email send initiated! Operation ID:', operationState.id);
+        console.log('Patient Appointment confirmation pending email send initiated! Operation ID:', operationState.id);
     }
     catch (error) {
-        console.error('Error sending appointment confirmation email:', error);
-        throw new Error('Error sending appointment confirmation email');
+        console.error('Error sending appointment confirmation pending email:', error);
+        throw new Error('Error sending appointment confirmation pending email');
     }
 });
-exports.sendAppointmentConfirmationEmail = sendAppointmentConfirmationEmail;
+exports.sendPatientAppointmentConfirmationEmail = sendPatientAppointmentConfirmationEmail;
+const sendDoctorAppointmentPendingEmail = (email, appointmentDetails) => __awaiter(void 0, void 0, void 0, function* () {
+    // Generate the email content using the doctor's pending template
+    const emailContent = {
+        subject: `New Appointment Request from ${appointmentDetails.patientName}`,
+        html: (0, appointmentConfirm_1.doctorAppointmentPendingTemplate)(appointmentDetails),
+    };
+    // Prepare the email message
+    const emailMessage = {
+        senderAddress: senderEmail,
+        content: emailContent,
+        recipients: {
+            to: [{ address: email, displayName: `Dr. ${appointmentDetails.doctorName}` }],
+        },
+    };
+    try {
+        const poller = yield emailClient.beginSend(emailMessage);
+        const operationState = poller.getOperationState();
+        console.log('Doctor appointment request email send initiated! Operation ID:', operationState.id);
+    }
+    catch (error) {
+        console.error('Error sending doctor appointment request email:', error);
+        throw new Error('Error sending doctor appointment request email');
+    }
+});
+exports.sendDoctorAppointmentPendingEmail = sendDoctorAppointmentPendingEmail;
+const sendAppointmentStatusUpdateEmail = (email, appointmentDetails) => __awaiter(void 0, void 0, void 0, function* () {
+    const emailContent = {
+        subject: `Your Appointment is now ${appointmentDetails.status}`,
+        html: (0, appointmentConfirm_1.patientAppointmentStatusUpdateTemplate)(appointmentDetails),
+    };
+    const emailMessage = {
+        senderAddress: senderEmail,
+        content: emailContent,
+        recipients: {
+            to: [{ address: email, displayName: appointmentDetails.patientName }],
+        },
+    };
+    try {
+        const poller = yield emailClient.beginSend(emailMessage);
+        const operationState = poller.getOperationState();
+        console.log('Status update email sent! Operation ID:', operationState.id);
+    }
+    catch (error) {
+        console.error('Error sending status update email:', error);
+        throw new Error('Failed to send status update email');
+    }
+});
+exports.sendAppointmentStatusUpdateEmail = sendAppointmentStatusUpdateEmail;
