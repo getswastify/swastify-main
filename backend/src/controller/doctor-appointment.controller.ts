@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prismaConnection';
-import { Appointment, sendAppointmentStatusUpdateEmail } from '../utils/emailConnection';
+
+import {  sendAppointmentStatusUpdateEmail } from '../utils/emailConnection';
+import { createGoogleMeetEvent } from '../utils/googleMeet';
+
 
 export const getDoctorAppointments = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -145,7 +148,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     });
 
     if (fullDetails && fullDetails.patient && fullDetails.doctor) {
-      const appointmentDetails: Appointment = {
+      const appointmentDetails = {
         patientName: `${fullDetails.patient.firstName} ${fullDetails.patient.lastName}`,
         patientEmail: fullDetails.patient.email,
         doctorName: `${fullDetails.doctor.user.firstName} ${fullDetails.doctor.user.lastName}`,
@@ -156,8 +159,23 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
         status: fullDetails.status,
       };
 
-      // 🔔 Send email to patient
-      await sendAppointmentStatusUpdateEmail(appointmentDetails.patientEmail, appointmentDetails);
+      // 🔔 Send email to patient if status is CONFIRMED
+      if (status === 'CONFIRMED') {
+        const startTime = new Date(fullDetails.appointmentTime);
+        const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 minutes slot
+      
+        const meetLink = await createGoogleMeetEvent(
+          startTime.toISOString(),
+          endTime.toISOString(),
+          fullDetails.doctor.user.email,
+          fullDetails.patient.email
+        );
+      
+        await sendAppointmentStatusUpdateEmail(appointmentDetails.patientEmail, {
+          ...appointmentDetails,
+          meetLink: meetLink || '',
+        });
+      }      
     }
 
     return res.status(200).json({
@@ -176,4 +194,5 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     });
   }
 };
+
 
