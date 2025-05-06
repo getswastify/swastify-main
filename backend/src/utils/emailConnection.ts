@@ -19,6 +19,7 @@ export interface Appointment {
   doctorSpecialization: string;
   doctorEmail: string;
   consultationFee: number;
+  meetLink?:string
 }
 
 

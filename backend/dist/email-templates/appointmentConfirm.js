@@ -258,7 +258,9 @@ const patientAppointmentStatusUpdateTemplate = (appointmentDetails) => {
             <strong>Specialization:</strong> ${appointmentDetails.doctorSpecialization}<br />
             <strong>Consultation Fee:</strong> Rs.${appointmentDetails.consultationFee}<br />
             <strong>Date & Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
-            <strong>Current Status:</strong> ${statusText.toUpperCase()}
+            <strong>Current Status:</strong> ${statusText.toUpperCase()}<br />
+            <strong>Meet Link:</strong> ${appointmentDetails.meetLink}<br />
+
           </p>
           <p class="text">
             You can track this appointment in your dashboard:

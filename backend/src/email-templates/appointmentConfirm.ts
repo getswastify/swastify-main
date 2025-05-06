@@ -8,7 +8,8 @@ export interface Appointment {
     doctorName: string;
     doctorSpecialization: string;
     doctorEmail: string;
-    consultationFee:number
+    consultationFee:number,
+    meetLink?:string
   }
 
 export const patientAppointmentPendingTemplate = (appointmentDetails: Appointment) => {
@@ -198,6 +199,7 @@ export const patientAppointmentStatusUpdateTemplate = (appointmentDetails: Appoi
       COMPLETED: 'completed',
       PENDING: 'pending',
     };
+
   
     const status = appointmentDetails.status || 'PENDING';
     const statusText = statusTextMap[status];
@@ -270,7 +272,9 @@ export const patientAppointmentStatusUpdateTemplate = (appointmentDetails: Appoi
             <strong>Specialization:</strong> ${appointmentDetails.doctorSpecialization}<br />
             <strong>Consultation Fee:</strong> Rs.${appointmentDetails.consultationFee}<br />
             <strong>Date & Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
-            <strong>Current Status:</strong> ${statusText.toUpperCase()}
+            <strong>Current Status:</strong> ${statusText.toUpperCase()}<br />
+            <strong>Meet Link:</strong> ${appointmentDetails.meetLink}<br />
+
           </p>
           <p class="text">
             You can track this appointment in your dashboard:

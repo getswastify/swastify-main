@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateAppointmentStatus = exports.getDoctorAppointments = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const emailConnection_1 = require("../utils/emailConnection");
+const googleMeet_1 = require("../utils/googleMeet");
 const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -157,8 +158,13 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
                 appointmentTime: fullDetails.appointmentTime,
                 status: fullDetails.status,
             };
-            // 🔔 Send email to patient
-            yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, appointmentDetails);
+            // 🔔 Send email to patient if status is CONFIRMED
+            if (status === 'CONFIRMED') {
+                const startTime = new Date(fullDetails.appointmentTime);
+                const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 minutes slot
+                const meetLink = yield (0, googleMeet_1.createGoogleMeetEvent)(startTime.toISOString(), endTime.toISOString(), fullDetails.doctor.user.email, fullDetails.patient.email);
+                yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, Object.assign(Object.assign({}, appointmentDetails), { meetLink: meetLink || '' }));
+            }
         }
         return res.status(200).json({
             status: true,
