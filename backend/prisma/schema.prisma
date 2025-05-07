@@ -84,6 +84,11 @@ model DoctorProfile {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  googleAccessToken  String? 
+  googleRefreshToken String?
+  googleEmail        String?
+  tokenExpiry        DateTime?
+
   DoctorAvailability DoctorAvailability[]
 
   Appointment Appointment[]

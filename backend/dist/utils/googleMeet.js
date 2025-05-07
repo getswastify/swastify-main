@@ -8,32 +8,46 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createGoogleMeetEvent = void 0;
 const googleapis_1 = require("googleapis");
 const google_auth_library_1 = require("google-auth-library");
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-const TOKEN_PATH = path_1.default.join(__dirname, 'token.json');
-const CREDENTIALS_PATH = path_1.default.join(__dirname, 'credentials.json');
-function loadOAuthClient() {
-    const credentials = JSON.parse(fs_1.default.readFileSync(CREDENTIALS_PATH, 'utf-8'));
-    const { client_id, client_secret, redirect_uris } = credentials.installed;
-    const oAuth2Client = new google_auth_library_1.OAuth2Client(client_id, client_secret, redirect_uris[0]);
-    const token = JSON.parse(fs_1.default.readFileSync(TOKEN_PATH, 'utf-8'));
-    oAuth2Client.setCredentials(token);
-    return oAuth2Client;
-}
-function createGoogleMeetEvent(startTime, endTime, doctorEmail, patientEmail) {
+const prismaConnection_1 = require("./prismaConnection"); // adjust the import path if needed
+function createGoogleMeetEvent(doctorId, startTime, endTime, doctorEmail, patientEmail) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const auth = loadOAuthClient();
-            const calendar = googleapis_1.google.calendar({ version: 'v3', auth });
+            // Fetch from doctorProfile using doctorId
+            const profile = yield prismaConnection_1.prisma.doctorProfile.findUnique({
+                where: { userId: doctorId }, // Ensure 'id' is the unique field in your schema
+            });
+            if (!(profile === null || profile === void 0 ? void 0 : profile.googleAccessToken) ||
+                !profile.googleRefreshToken ||
+                !profile.tokenExpiry // Use tokenExpiry here
+            ) {
+                throw new Error('Google Calendar not connected for this doctor.');
+            }
+            const oauth2Client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
+            oauth2Client.setCredentials({
+                access_token: profile.googleAccessToken,
+                refresh_token: profile.googleRefreshToken,
+                expiry_date: profile.tokenExpiry.getTime(), // Convert Date to timestamp
+            });
+            // Manually check if the token has expired
+            const currentTime = new Date().getTime();
+            const tokenExpiryTime = profile.tokenExpiry; // Use tokenExpiry here
+            if (currentTime > tokenExpiryTime.getTime()) {
+                // Token expired, refresh it
+                const { credentials } = yield oauth2Client.refreshAccessToken();
+                yield prismaConnection_1.prisma.doctorProfile.update({
+                    where: { id: doctorId },
+                    data: {
+                        googleAccessToken: credentials.access_token,
+                        tokenExpiry: new Date(credentials.expiry_date), // Update tokenExpiry here
+                    },
+                });
+            }
+            const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
             const event = {
                 summary: 'Doctor Appointment',
                 description: 'Google Meet appointment with your doctor',
@@ -46,36 +60,21 @@ function createGoogleMeetEvent(startTime, endTime, doctorEmail, patientEmail) {
                     timeZone: 'Asia/Kolkata',
                 },
                 attendees: [
-                    {
-                        email: doctorEmail,
-                        optional: false,
-                    },
-                    {
-                        email: patientEmail,
-                        optional: false,
-                    },
+                    { email: doctorEmail },
+                    { email: patientEmail },
                 ],
                 conferenceData: {
                     createRequest: {
                         requestId: Math.random().toString(36).substring(2),
-                        conferenceSolutionKey: {
-                            type: 'hangoutsMeet',
-                        },
+                        conferenceSolutionKey: { type: 'hangoutsMeet' },
                     },
                 },
-                // 👇 Modify these to make it easier for everyone to join
-                guestsCanModify: false,
-                guestsCanInviteOthers: false,
-                guestsCanSeeOtherGuests: true,
-                anyoneCanAddSelf: false,
-                // Automatically allow participants to join
-                sendUpdates: 'all', // Send invites to all attendees
             };
             const response = yield calendar.events.insert({
                 calendarId: 'primary',
                 requestBody: event,
                 conferenceDataVersion: 1,
-                sendUpdates: 'all', // Send invites to both attendees
+                sendUpdates: 'all',
             });
             return (_a = response.data.hangoutLink) !== null && _a !== void 0 ? _a : null;
         }
