@@ -19,7 +19,8 @@ const googleMeet_1 = require("../utils/googleMeet");
 const googleapis_1 = require("googleapis");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const oauth2Client = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
+const oauth2Client = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI ||
+    "http://localhost:3000/doctor/calendar-callback");
 const connectGoogleCalendar = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const scopes = [
@@ -68,7 +69,7 @@ const googleCalendarCallback = (req, res) => __awaiter(void 0, void 0, void 0, f
         });
         oauth2Client.setCredentials(tokens); // ✅ set credentials FIRST before making requests
         // Get Google user info using oauth2 API
-        const oauth2 = googleapis_1.google.oauth2({ version: 'v2', auth: oauth2Client });
+        const oauth2 = googleapis_1.google.oauth2({ version: "v2", auth: oauth2Client });
         const userInfoResponse = yield oauth2.userinfo.get();
         const email = userInfoResponse.data.email;
         console.log("📧 Google Email:", email);
@@ -123,8 +124,8 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         if (!doctorId) {
             return res.status(400).json({
                 status: false,
-                message: 'Doctor ID is required.',
-                error: 'Missing doctorId from request context.',
+                message: "Doctor ID is required.",
+                error: "Missing doctorId from request context.",
             });
         }
         const appointments = yield prismaConnection_1.prisma.appointment.findMany({
@@ -155,13 +156,13 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         if (!appointments || appointments.length === 0) {
             return res.status(404).json({
                 status: false,
-                message: 'No appointments found for this doctor.',
-                error: 'No records available.',
+                message: "No appointments found for this doctor.",
+                error: "No records available.",
             });
         }
         return res.status(200).json({
             status: true,
-            message: 'Doctor appointments fetched successfully.',
+            message: "Doctor appointments fetched successfully.",
             data: {
                 appointments: appointments.map((appointment) => ({
                     appointmentId: appointment.id,
@@ -180,11 +181,11 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
         });
     }
     catch (error) {
-        console.error('Error fetching doctor appointments:', error);
+        console.error("Error fetching doctor appointments:", error);
         return res.status(500).json({
             status: false,
-            message: 'Something went wrong while fetching the appointments.',
-            error: error instanceof Error ? error.message : 'Internal server error',
+            message: "Something went wrong while fetching the appointments.",
+            error: error instanceof Error ? error.message : "Internal server error",
         });
     }
 });
@@ -192,22 +193,36 @@ exports.getDoctorAppointments = getDoctorAppointments;
 // Update Appointment Status
 const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _e;
+    const isGoogleCalendarConnected = (doctorUserId) => __awaiter(void 0, void 0, void 0, function* () {
+        const doctor = yield prismaConnection_1.prisma.doctorProfile.findUnique({
+            where: { userId: doctorUserId },
+            select: {
+                googleRefreshToken: true,
+            },
+        });
+        console.log("Google token check result:", doctor);
+        return !!(doctor === null || doctor === void 0 ? void 0 : doctor.googleRefreshToken);
+    });
     try {
         const doctorId = (_e = req.user) === null || _e === void 0 ? void 0 : _e.userId;
         const { appointmentId, status } = req.body;
         if (!appointmentId || !status) {
             return res.status(400).json({
                 status: false,
-                message: 'appointmentId and status are required.',
-                error: 'Missing fields in request body.',
+                message: "appointmentId and status are required.",
+                data: {
+                    error: "Missing fields in request body.",
+                },
             });
         }
-        const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+        const validStatuses = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({
                 status: false,
-                message: 'Invalid status.',
-                error: 'Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED',
+                message: "Invalid status.",
+                data: {
+                    error: "Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED",
+                },
             });
         }
         const appointment = yield prismaConnection_1.prisma.appointment.findUnique({
@@ -216,8 +231,10 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
         if (!appointment || appointment.doctorId !== doctorId) {
             return res.status(403).json({
                 status: false,
-                message: 'Not authorized to update this appointment.',
-                error: 'Unauthorized access.',
+                message: "Not authorized to update this appointment.",
+                data: {
+                    error: "Unauthorized access.",
+                },
             });
         }
         // Update appointment status
@@ -262,28 +279,42 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
                 appointmentTime: fullDetails.appointmentTime,
                 status: fullDetails.status,
             };
-            // 🔔 Send email to patient if status is CONFIRMED
-            if (status === 'CONFIRMED') {
+            if (status === "CONFIRMED") {
+                const isConnected = yield isGoogleCalendarConnected(doctorId);
+                if (!isConnected) {
+                    return res.status(400).json({
+                        status: false,
+                        message: "Please connect your Google Calendar to confirm appointments.",
+                        data: {
+                            error: "Google Calendar is not connected.",
+                        },
+                    });
+                }
                 const startTime = new Date(fullDetails.appointmentTime);
-                const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 minutes slot
+                const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
                 const meetLink = yield (0, googleMeet_1.createGoogleMeetEvent)(doctorId, startTime.toISOString(), endTime.toISOString(), fullDetails.doctor.user.email, fullDetails.patient.email);
-                yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, Object.assign(Object.assign({}, appointmentDetails), { meetLink: meetLink || '' }));
+                yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, Object.assign(Object.assign({}, appointmentDetails), { meetLink: meetLink || "" }));
+            }
+            if (status === "CANCELLED") {
+                yield (0, emailConnection_1.sendAppointmentStatusUpdateEmail)(appointmentDetails.patientEmail, Object.assign(Object.assign({}, appointmentDetails), { meetLink: "" }));
             }
         }
         return res.status(200).json({
             status: true,
-            message: 'Appointment status updated successfully.',
+            message: "Appointment status updated successfully.",
             data: {
                 appointment: updatedAppointment,
             },
         });
     }
     catch (error) {
-        console.error('Error updating appointment status:', error);
+        console.error("Error updating appointment status:", error);
         return res.status(500).json({
             status: false,
-            message: 'Something went wrong while updating the appointment status.',
-            error: error instanceof Error ? error.message : 'Internal server error',
+            message: "Something went wrong while updating the appointment status.",
+            data: {
+                error: error instanceof Error ? error.message : "Internal server error",
+            },
         });
     }
 });

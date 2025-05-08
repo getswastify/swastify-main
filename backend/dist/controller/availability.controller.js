@@ -33,10 +33,12 @@ const buildDateTimeFromTimeString = (dayOfWeek, timeStr) => {
     const targetDate = new Date(now);
     targetDate.setDate(now.getDate() + diff);
     const [hours, minutes] = timeStr.split(":").map(Number);
-    // ✅ Build a date in IST, and trust JS to handle UTC under the hood
-    // This way, if you run the server in IST timezone, it'll produce correct UTC
-    targetDate.setHours(hours, minutes, 0, 0);
-    return targetDate;
+    // Assume input is IST → convert to UTC by subtracting offset from "UTC+5:30"
+    const istOffsetInMs = 5.5 * 60 * 60 * 1000;
+    // Create a UTC timestamp for the IST time
+    const istTimestamp = Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), hours, minutes);
+    const utcDate = new Date(istTimestamp - istOffsetInMs);
+    return utcDate;
 };
 const getDoctorAvailability = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
