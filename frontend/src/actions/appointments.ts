@@ -238,10 +238,9 @@ export const updateAppointmentStatus = async (
     })
     return response.data
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse
     return {
       status: false,
-      message: axiosError.response?.data?.error || "Failed to update appointment status",
+      message: (error as Error).message || "Failed to update appointment status",
     }
   }
 }
