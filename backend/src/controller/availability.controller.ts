@@ -25,11 +25,13 @@ const buildDateTimeFromTimeString = (dayOfWeek: string, timeStr: string): Date =
   const targetDate = new Date(now)
   targetDate.setDate(now.getDate() + diff)
 
-  // Parse time string like "00:00" or "05:30"
   const [hours, minutes] = timeStr.split(":").map(Number)
 
-  // Build IST time in the target date
-  const istDate = new Date(
+  // Assume input is IST → convert to UTC by subtracting offset from "UTC+5:30"
+  const istOffsetInMs = 5.5 * 60 * 60 * 1000
+
+  // Create a UTC timestamp for the IST time
+  const istTimestamp = Date.UTC(
     targetDate.getFullYear(),
     targetDate.getMonth(),
     targetDate.getDate(),
@@ -37,12 +39,9 @@ const buildDateTimeFromTimeString = (dayOfWeek: string, timeStr: string): Date =
     minutes
   )
 
-  // Now convert IST date to UTC manually
-  const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000)) // Subtract 5.5 hours in ms
-
+  const utcDate = new Date(istTimestamp - istOffsetInMs)
   return utcDate
 }
-
 
 
 export const getDoctorAvailability = async (req: Request, res: Response): Promise<any> => {

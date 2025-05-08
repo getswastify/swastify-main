@@ -14,6 +14,7 @@ const dashboard_route_1 = require("./routes/dashboard.route");
 const availability_route_1 = require("./routes/availability.route");
 const patient_appointment_route_1 = require("./routes/patient-appointment.route");
 const doctor_appointment_route_1 = require("./routes/doctor-appointment.route");
+const settings_route_1 = require("./routes/settings.route");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -37,6 +38,7 @@ app.use("/dashboard", dashboard_route_1.dashboardRoutes);
 app.use("/patient", patient_appointment_route_1.patientAppointmentRoutes);
 app.use("/availability", availability_route_1.availabilityRoutes);
 app.use("/doctor", doctor_appointment_route_1.doctorAppointmentRoutes);
+app.use("/settings", settings_route_1.settingsRoute);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
