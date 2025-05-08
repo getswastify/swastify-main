@@ -89,7 +89,7 @@ export const patientAppointmentPendingTemplate = (appointmentDetails: Appointmen
             <strong>Requested Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
           </p>
           <div style="text-align:center;">
-            <a href="https://www.app.swastify.life/patient/appointments" class="button">Check Status</a>
+            <a href="https://app.swastify.life/doctor/appointments" class="button">Check Status</a>
           </div>
           <p class="text">
             You will receive a confirmation once the doctor accepts your request. Thank you for choosing Swastify.
@@ -179,7 +179,7 @@ export const doctorAppointmentPendingTemplate = (appointmentDetails: Appointment
             <strong>Consultation Fee:</strong> Rs.${appointmentDetails.consultationFee}<br />
           </p>
           <div style="text-align:center;">
-            <a href="https://www.app.swastify.life/doctor/appointments" class="button">Review Appointment</a>
+            <a href="https://app.swastify.life/doctor/appointments" class="button">Review Appointment</a>
           </div>
           <p class="text">
             Kindly take action on this request at your convenience to keep your schedule up to date.
@@ -266,21 +266,20 @@ export const patientAppointmentStatusUpdateTemplate = (appointmentDetails: Appoi
           <p class="text">
             Your appointment with <strong>Dr. ${appointmentDetails.doctorName}</strong> has been <span class="highlight">${statusText}</span>.
           </p>
-          <p class="text">
+          < class="text">
             <strong>Appointment Details:</strong><br />
             <strong>Doctor:</strong> Dr. ${appointmentDetails.doctorName}<br />
             <strong>Specialization:</strong> ${appointmentDetails.doctorSpecialization}<br />
             <strong>Consultation Fee:</strong> Rs.${appointmentDetails.consultationFee}<br />
             <strong>Date & Time:</strong> ${new Date(appointmentDetails.appointmentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}<br />
             <strong>Current Status:</strong> ${statusText.toUpperCase()}<br />
-            <strong>Meet Link:</strong> ${appointmentDetails.meetLink}<br />
-
+            ${appointmentDetails.meetLink ? `<strong>Meet Link:</strong> ${appointmentDetails.meetLink}<br />` : ""}
           </p>
           <p class="text">
             You can track this appointment in your dashboard:
           </p>
           <div style="text-align:center;">
-            <a href="https://www.app.swastify.life/patient/appointments" class="button">View Appointment</a>
+            <a href="https://app.swastify.life/patient/appointments" class="button">View Appointment</a>
           </div>
           <div class="footer">
             © ${new Date().getFullYear()} Swastify • Stay healthy, stay happy 💚

@@ -13,8 +13,6 @@ const oauth2Client = new google.auth.OAuth2(
     "http://localhost:3000/doctor/calendar-callback"
 );
 
-
-
 export const connectGoogleCalendar = async (
   _req: Request,
   res: Response
@@ -262,7 +260,21 @@ export const updateAppointmentStatus = async (
       });
     }
 
-    // Update appointment status
+    // ⛔️ Check Google Calendar connection BEFORE confirming
+    if (status === "CONFIRMED") {
+      const isConnected = await isGoogleCalendarConnected(doctorId);
+      if (!isConnected) {
+        return res.status(400).json({
+          status: false,
+          message: "Please connect your Google Calendar to confirm appointments.",
+          data: {
+            error: "Google Calendar is not connected.",
+          },
+        });
+      }
+    }
+
+    // ✅ Update appointment status AFTER validations
     const updatedAppointment = await prisma.appointment.update({
       where: { id: appointmentId },
       data: { status },
@@ -308,17 +320,6 @@ export const updateAppointmentStatus = async (
       };
 
       if (status === "CONFIRMED") {
-        const isConnected = await isGoogleCalendarConnected(doctorId);
-        if (!isConnected) {
-          return res.status(400).json({
-            status: false,
-            message: "Please connect your Google Calendar to confirm appointments.",
-            data: {
-              error: "Google Calendar is not connected.",
-            },
-          });
-        }
-
         const startTime = new Date(fullDetails.appointmentTime);
         const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
 
