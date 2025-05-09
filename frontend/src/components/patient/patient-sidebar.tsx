@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { UserNav } from "@/components/user-nav"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { UserNav } from "@/components/user-nav";
 import {
   Sidebar,
   SidebarContent,
@@ -11,11 +11,11 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Home, User } from "lucide-react"
+} from "@/components/ui/sidebar";
+import { Calendar, Clock, Home, User } from "lucide-react";
 
 export function PatientSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const routes = [
     {
@@ -30,7 +30,19 @@ export function PatientSidebar() {
       href: "/patient/profile",
       active: pathname === "/patient/profile",
     },
-  ]
+    {
+      label: "Book Appointment",
+      icon: Calendar,
+      href: "/patient/book-appointment",
+      active: pathname === "/patient/book-appointment",
+    },
+    {
+      label: "My Appointments",
+      icon: Clock,
+      href: "/patient/appointments",
+      active: pathname === "/patient/appointments",
+    },
+  ];
 
   return (
     <>
@@ -42,7 +54,9 @@ export function PatientSidebar() {
       <Sidebar>
         <SidebarHeader className="flex flex-col gap-4 py-4">
           <div className="flex items-center px-4">
-            <Link href="/patient/dashboard" className="flex items-center gap-2 font-semibold">
+            <Link
+              href="/patient/dashboard"
+              className="flex items-center gap-2 font-semibold">
               <span className="text-primary">Swastify</span>
               <span className="text-sm text-muted-foreground">Patient</span>
             </Link>
@@ -67,5 +81,5 @@ export function PatientSidebar() {
         </SidebarContent>
       </Sidebar>
     </>
-  )
+  );
 }
