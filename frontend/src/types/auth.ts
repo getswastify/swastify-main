@@ -30,6 +30,7 @@ export type ResetPasswordData = {
 
 // User Interface
 export interface User {
+  profilePicture?: string,
   phone: string
   role: string
   id: string

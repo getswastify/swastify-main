@@ -1,69 +1,56 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { columns } from "./columns";
-import { DataTable } from "./data-table";
-import api from "@/lib/axios";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { DoctorAppointment } from "@/actions/appointments";
+import { useEffect, useState, useCallback } from "react"
+import { columns } from "./columns"
+import { DataTable } from "./data-table"
+import api from "@/lib/axios"
+import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import type { DoctorAppointment } from "@/actions/appointments"
 
 const AppointmentsPage = () => {
-  const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
-  const [loading, setLoading] = useState(false);
+  const [appointments, setAppointments] = useState<DoctorAppointment[]>([])
+  const [search, setSearch] = useState("")
+  const [status, setStatus] = useState("")
+  const [startDate, setStartDate] = useState<Date>()
+  const [endDate, setEndDate] = useState<Date>()
 
-  const fetchAppointments = async () => {
-    setLoading(true);
+  const fetchAppointments = useCallback(async () => {
     try {
-      const params: any = {};
-      if (search) params.search = search;
-      if (status) params.status = status;
-      if (startDate) params.startDate = startDate.toISOString();
-      if (endDate) params.endDate = endDate.toISOString();
+      const params: Record<string, string> = {}
+      if (search) params.search = search
+      if (status) params.status = status
+      if (startDate) params.startDate = startDate.toISOString()
+      if (endDate) params.endDate = endDate.toISOString()
 
-      const response = await api.get("/doctor/show-appointment", { params });
+      const response = await api.get("/doctor/show-appointment", { params })
       if (response.data.status) {
-        setAppointments(response.data.data.appointments);
+        setAppointments(response.data.data.appointments)
       } else {
-        console.warn("API returned false status:", response.data.message);
-        setAppointments([]);
+        console.warn("API returned false status:", response.data.message)
+        setAppointments([])
       }
     } catch (err) {
-      console.error("Error fetching appointments:", err);
+      console.error("Error fetching appointments:", err)
     } finally {
-      setLoading(false);
     }
-  };
+  }, [search, status, startDate, endDate])
 
   useEffect(() => {
-    fetchAppointments();
-  }, [search, status, startDate, endDate]);
+    fetchAppointments()
+  }, [fetchAppointments])
 
   const resetFilters = () => {
-    setSearch("");
-    setStatus("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-  };
+    setSearch("")
+    setStatus("")
+    setStartDate(undefined)
+    setEndDate(undefined)
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-4">
@@ -91,10 +78,7 @@ const AppointmentsPage = () => {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-[200px] justify-start text-left"
-            >
+            <Button variant="outline" className="w-[200px] justify-start text-left">
               <CalendarIcon className="mr-2 h-4 w-4" />
               {startDate ? format(startDate, "PPP") : "Start Date"}
             </Button>
@@ -106,10 +90,7 @@ const AppointmentsPage = () => {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-[200px] justify-start text-left"
-            >
+            <Button variant="outline" className="w-[200px] justify-start text-left">
               <CalendarIcon className="mr-2 h-4 w-4" />
               {endDate ? format(endDate, "PPP") : "End Date"}
             </Button>
@@ -127,7 +108,7 @@ const AppointmentsPage = () => {
       {/* Pass data to DataTable */}
       <DataTable data={appointments} columns={columns} />
     </div>
-  );
-};
+  )
+}
 
-export default AppointmentsPage;
+export default AppointmentsPage

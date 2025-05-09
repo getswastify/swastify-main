@@ -131,13 +131,14 @@ model DoctorAvailability {
 }
 
 model Appointment {
-  id             String   @id @default(uuid()) // Unique ID for the appointment
-  patientId      String   // Reference to the patient who booked the appointment
-  doctorId       String   // Reference to the doctor
+  id              String   @id @default(uuid()) // Unique ID for the appointment
+  patientId       String   // Reference to the patient who booked the appointment
+  doctorId        String   // Reference to the doctor
   appointmentTime DateTime // Time when the appointment is scheduled
-  status         AppointmentStatus // Status of the appointment
-  createdAt      DateTime @default(now()) // Timestamp for when the appointment was created
-  updatedAt      DateTime @updatedAt // Timestamp for the last time the appointment was updated
+  status          AppointmentStatus // Status of the appointment
+  meetLink        String? 
+  createdAt       DateTime @default(now()) // Timestamp for when the appointment was created
+  updatedAt       DateTime @updatedAt // Timestamp for the last time the appointment was updated
 
   patient        User     @relation(fields: [patientId], references: [id]) // Relation to the patient
   doctor         DoctorProfile @relation(fields: [doctorId], references: [userId]) // Relation to the doctor
