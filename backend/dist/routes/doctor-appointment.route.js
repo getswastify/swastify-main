@@ -7,6 +7,7 @@ const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
 const express_1 = require("express");
 const router = (0, express_1.Router)();
 router.get("/show-appointment", (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), doctor_appointment_controller_2.getDoctorAppointments);
+router.get("/appointment-details/:appointmentId", (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), doctor_appointment_controller_1.getAppointmentDetails);
 router.put("/update-appointment-status", (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), doctor_appointment_controller_1.updateAppointmentStatus);
 router.get("/calendar-connect", (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), doctor_appointment_controller_1.connectGoogleCalendar);
 router.get("/calendar-callback", (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), doctor_appointment_controller_1.googleCalendarCallback);

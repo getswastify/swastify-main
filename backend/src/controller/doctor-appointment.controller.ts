@@ -277,7 +277,6 @@ export const updateAppointmentStatus = async (
       },
     });
 
-    console.log("Google token check result:", doctor);
     return !!doctor?.googleRefreshToken;
   };
 
@@ -289,9 +288,7 @@ export const updateAppointmentStatus = async (
       return res.status(400).json({
         status: false,
         message: "appointmentId and status are required.",
-        data: {
-          error: "Missing fields in request body.",
-        },
+        data: { error: "Missing fields in request body." },
       });
     }
 
@@ -300,116 +297,63 @@ export const updateAppointmentStatus = async (
       return res.status(400).json({
         status: false,
         message: "Invalid status.",
-        data: {
-          error: "Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED",
-        },
+        data: { error: "Status must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED" },
       });
     }
 
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
+      include: {
+        patient: true,
+        doctor: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!appointment || appointment.doctorId !== doctorId) {
       return res.status(403).json({
         status: false,
         message: "Not authorized to update this appointment.",
-        data: {
-          error: "Unauthorized access.",
-        },
+        data: { error: "Unauthorized access." },
       });
     }
 
-    // ⛔️ Check Google Calendar connection BEFORE confirming
+    let meetLink: string | null = null;
+
+    // 👇 Generate meet link if confirming and doctor has Google connected
     if (status === "CONFIRMED") {
       const isConnected = await isGoogleCalendarConnected(doctorId);
       if (!isConnected) {
         return res.status(400).json({
           status: false,
           message: "Please connect your Google Calendar to confirm appointments.",
-          data: {
-            error: "Google Calendar is not connected.",
-          },
+          data: { error: "Google Calendar is not connected." },
         });
       }
+
+      const startTime = new Date(appointment.appointmentTime);
+      const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+
+      meetLink = await createGoogleMeetEvent(
+        doctorId,
+        startTime.toISOString(),
+        endTime.toISOString(),
+        appointment.doctor.user.email,
+        appointment.patient.email
+      );
     }
 
-    // ✅ Update appointment status AFTER validations
+    // ✅ Update status and meetLink in one go
     const updatedAppointment = await prisma.appointment.update({
       where: { id: appointmentId },
-      data: { status },
-    });
-
-    // Fetch full appointment details for email
-    const fullDetails = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      include: {
-        patient: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        doctor: {
-          select: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-            specialization: true,
-            consultationFee: true,
-          },
-        },
+      data: {
+        status,
+        ...(meetLink && { meetLink }),
       },
     });
-
-    if (fullDetails && fullDetails.patient && fullDetails.doctor) {
-      const appointmentDetails = {
-        patientName: `${fullDetails.patient.firstName} ${fullDetails.patient.lastName}`,
-        patientEmail: fullDetails.patient.email,
-        doctorName: `${fullDetails.doctor.user.firstName} ${fullDetails.doctor.user.lastName}`,
-        doctorSpecialization: fullDetails.doctor.specialization,
-        doctorEmail: fullDetails.doctor.user.email,
-        consultationFee: fullDetails.doctor.consultationFee,
-        appointmentTime: fullDetails.appointmentTime,
-        status: fullDetails.status,
-      };
-
-      if (status === "CONFIRMED") {
-        const startTime = new Date(fullDetails.appointmentTime);
-        const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
-
-        const meetLink = await createGoogleMeetEvent(
-          doctorId,
-          startTime.toISOString(),
-          endTime.toISOString(),
-          fullDetails.doctor.user.email,
-          fullDetails.patient.email
-        );
-
-        await sendAppointmentStatusUpdateEmail(
-          appointmentDetails.patientEmail,
-          {
-            ...appointmentDetails,
-            meetLink: meetLink || "",
-          }
-        );
-      }
-
-      if (status === "CANCELLED") {
-        await sendAppointmentStatusUpdateEmail(
-          appointmentDetails.patientEmail,
-          {
-            ...appointmentDetails,
-            meetLink: "", // no meet link for cancellation
-          }
-        );
-      }
-    }
 
     return res.status(200).json({
       status: true,
@@ -426,6 +370,84 @@ export const updateAppointmentStatus = async (
       data: {
         error: error instanceof Error ? error.message : "Internal server error",
       },
+    });
+  }
+};
+
+
+export const getAppointmentDetails = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { appointmentId } = req.params;
+
+    if (!appointmentId) {
+      return res.status(400).json({
+        status: false,
+        message: "Appointment ID is required.",
+        data: "error",
+      });
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        doctor: {
+          select: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            specialization: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        status: false,
+        message: "Appointment not found.",
+        data: "error",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Appointment details fetched successfully.",
+      data: {
+        appointmentId: appointment.id,
+        patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+        patientEmail: appointment.patient.email,
+        patientPhone: appointment.patient.phone,
+        appointmentTime: appointment.appointmentTime,
+        status: appointment.status,
+        meetLink: appointment.meetLink ?? "Not Available", // 👈 Added this!
+        doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
+        doctorSpecialization: appointment.doctor.specialization,
+        doctorEmail: appointment.doctor.user.email,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching appointment details:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong while fetching the appointment details.",
+      data: "error",
     });
   }
 };
