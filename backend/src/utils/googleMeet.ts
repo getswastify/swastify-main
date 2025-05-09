@@ -43,7 +43,7 @@ export async function createGoogleMeetEvent(
       // Token expired, refresh it
       const { credentials } = await oauth2Client.refreshAccessToken();
       await prisma.doctorProfile.update({
-        where: { id:doctorId },
+        where: { userId:doctorId },
         data: {
           googleAccessToken: credentials.access_token!,
           tokenExpiry: new Date(credentials.expiry_date!), // Update tokenExpiry here
