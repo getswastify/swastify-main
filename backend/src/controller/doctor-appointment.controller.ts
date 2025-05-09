@@ -3,6 +3,7 @@ import { prisma } from "../utils/prismaConnection";
 import { sendAppointmentStatusUpdateEmail } from "../utils/emailConnection";
 import { createGoogleMeetEvent } from "../utils/googleMeet";
 import { google } from "googleapis";
+import { AppointmentStatus } from "@prisma/client";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -141,44 +142,103 @@ export const getDoctorAppointments = async (
       });
     }
 
-    const appointments = await prisma.appointment.findMany({
-      where: { doctorId },
-      include: {
-        patient: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-          },
-        },
-        doctor: {
-          select: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-            specialization: true,
-          },
-        },
-      },
-    });
+    const {
+      search,
+      status,
+      sortBy,
+      sortOrder,
+      page = "1",
+      limit = "10",
+      startDate,
+      endDate,
+    } = req.query;
 
-    if (!appointments || appointments.length === 0) {
-      return res.status(404).json({
-        status: false,
-        message: "No appointments found for this doctor.",
-        error: "No records available.",
-      });
+    let filters: any = {
+      doctorId,
+    };
+
+    // Search logic
+    if (search && typeof search === "string") {
+      filters.OR = [
+        { patient: { firstName: { contains: search, mode: "insensitive" } } },
+        { patient: { lastName: { contains: search, mode: "insensitive" } } },
+        { patient: { email: { contains: search, mode: "insensitive" } } },
+        { patient: { phone: { contains: search, mode: "insensitive" } } },
+      ];
     }
+
+    // Status filter
+    if (
+      status &&
+      typeof status === "string" &&
+      status.toUpperCase() in AppointmentStatus
+    ) {
+      filters.status = status.toUpperCase() as AppointmentStatus;
+    }
+
+    // Date range filter - Simplified
+    if (startDate || endDate) {
+      filters.appointmentTime = {};
+
+      if (startDate) {
+        filters.appointmentTime.gte = new Date(startDate as string); // Start date filter (greater than or equal)
+      }
+      if (endDate) {
+        filters.appointmentTime.lte = new Date(endDate as string); // End date filter (less than or equal)
+      }
+    }
+
+    // Pagination
+    const pageNumber = parseInt(page as string) || 1;
+    const pageSize = parseInt(limit as string) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
+    // Sorting
+    const sortField = typeof sortBy === "string" ? sortBy : "appointmentTime";
+    const sortDirection =
+      sortOrder === "desc" || sortOrder === "asc" ? sortOrder : "asc";
+
+    const [appointments, totalCount] = await Promise.all([
+      prisma.appointment.findMany({
+        where: filters,
+        include: {
+          patient: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          doctor: {
+            select: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              specialization: true,
+            },
+          },
+        },
+        orderBy: {
+          [sortField]: sortDirection,
+        },
+        skip,
+        take: pageSize,
+      }),
+      prisma.appointment.count({ where: filters }),
+    ]);
 
     return res.status(200).json({
       status: true,
       message: "Doctor appointments fetched successfully.",
       data: {
+        total: totalCount,
+        page: pageNumber,
+        limit: pageSize,
         appointments: appointments.map((appointment) => ({
           appointmentId: appointment.id,
           patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,

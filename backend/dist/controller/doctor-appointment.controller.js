@@ -17,6 +17,7 @@ const prismaConnection_1 = require("../utils/prismaConnection");
 const emailConnection_1 = require("../utils/emailConnection");
 const googleMeet_1 = require("../utils/googleMeet");
 const googleapis_1 = require("googleapis");
+const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const oauth2Client = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI ||
@@ -128,42 +129,82 @@ const getDoctorAppointments = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 error: "Missing doctorId from request context.",
             });
         }
-        const appointments = yield prismaConnection_1.prisma.appointment.findMany({
-            where: { doctorId },
-            include: {
-                patient: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        phone: true,
-                    },
-                },
-                doctor: {
-                    select: {
-                        user: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true,
-                            },
-                        },
-                        specialization: true,
-                    },
-                },
-            },
-        });
-        if (!appointments || appointments.length === 0) {
-            return res.status(404).json({
-                status: false,
-                message: "No appointments found for this doctor.",
-                error: "No records available.",
-            });
+        const { search, status, sortBy, sortOrder, page = "1", limit = "10", startDate, endDate, } = req.query;
+        let filters = {
+            doctorId,
+        };
+        // Search logic
+        if (search && typeof search === "string") {
+            filters.OR = [
+                { patient: { firstName: { contains: search, mode: "insensitive" } } },
+                { patient: { lastName: { contains: search, mode: "insensitive" } } },
+                { patient: { email: { contains: search, mode: "insensitive" } } },
+                { patient: { phone: { contains: search, mode: "insensitive" } } },
+            ];
         }
+        // Status filter
+        if (status &&
+            typeof status === "string" &&
+            status.toUpperCase() in client_1.AppointmentStatus) {
+            filters.status = status.toUpperCase();
+        }
+        // Date range filter - Simplified
+        if (startDate || endDate) {
+            filters.appointmentTime = {};
+            if (startDate) {
+                filters.appointmentTime.gte = new Date(startDate); // Start date filter (greater than or equal)
+            }
+            if (endDate) {
+                filters.appointmentTime.lte = new Date(endDate); // End date filter (less than or equal)
+            }
+        }
+        // Pagination
+        const pageNumber = parseInt(page) || 1;
+        const pageSize = parseInt(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+        // Sorting
+        const sortField = typeof sortBy === "string" ? sortBy : "appointmentTime";
+        const sortDirection = sortOrder === "desc" || sortOrder === "asc" ? sortOrder : "asc";
+        const [appointments, totalCount] = yield Promise.all([
+            prismaConnection_1.prisma.appointment.findMany({
+                where: filters,
+                include: {
+                    patient: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
+                    doctor: {
+                        select: {
+                            user: {
+                                select: {
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                },
+                            },
+                            specialization: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    [sortField]: sortDirection,
+                },
+                skip,
+                take: pageSize,
+            }),
+            prismaConnection_1.prisma.appointment.count({ where: filters }),
+        ]);
         return res.status(200).json({
             status: true,
             message: "Doctor appointments fetched successfully.",
             data: {
+                total: totalCount,
+                page: pageNumber,
+                limit: pageSize,
                 appointments: appointments.map((appointment) => ({
                     appointmentId: appointment.id,
                     patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
@@ -237,7 +278,20 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
                 },
             });
         }
-        // Update appointment status
+        // ⛔️ Check Google Calendar connection BEFORE confirming
+        if (status === "CONFIRMED") {
+            const isConnected = yield isGoogleCalendarConnected(doctorId);
+            if (!isConnected) {
+                return res.status(400).json({
+                    status: false,
+                    message: "Please connect your Google Calendar to confirm appointments.",
+                    data: {
+                        error: "Google Calendar is not connected.",
+                    },
+                });
+            }
+        }
+        // ✅ Update appointment status AFTER validations
         const updatedAppointment = yield prismaConnection_1.prisma.appointment.update({
             where: { id: appointmentId },
             data: { status },
@@ -280,16 +334,6 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
                 status: fullDetails.status,
             };
             if (status === "CONFIRMED") {
-                const isConnected = yield isGoogleCalendarConnected(doctorId);
-                if (!isConnected) {
-                    return res.status(400).json({
-                        status: false,
-                        message: "Please connect your Google Calendar to confirm appointments.",
-                        data: {
-                            error: "Google Calendar is not connected.",
-                        },
-                    });
-                }
                 const startTime = new Date(fullDetails.appointmentTime);
                 const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
                 const meetLink = yield (0, googleMeet_1.createGoogleMeetEvent)(doctorId, startTime.toISOString(), endTime.toISOString(), fullDetails.doctor.user.email, fullDetails.patient.email);
