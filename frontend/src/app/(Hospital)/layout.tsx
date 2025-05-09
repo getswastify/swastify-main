@@ -2,6 +2,7 @@ import type React from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { HospitalSidebar } from "@/components/hospital/hospital-sidebar"
+import { MobileNavbar } from "@/components/mobile-navbar"
 
 export default function HospitalLayout({
   children,
@@ -12,7 +13,8 @@ export default function HospitalLayout({
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         <HospitalSidebar />
-        <main className="flex-1 w-full p-4 md:p-6 max-w-full">{children}</main>
+        <MobileNavbar />
+        <main className="flex-1 w-full p-4 md:p-6 max-w-full pt-16 md:pt-6">{children}</main>
         <Toaster />
       </div>
     </SidebarProvider>
