@@ -198,15 +198,21 @@ export const bookAppointment = async (
 /**
  * Get all appointments for the current patient
  */
-export const getPatientAppointments = async (): Promise<AppointmentsResponse> => {
+// In "@/actions/appointments.ts"
+export const getPatientAppointments = async (status?: string) => {
   try {
-    const response = await api.get<AppointmentsResponse>("/patient/booked-appointment")
-    return response.data
+    const response = await api.get("/patient/booked-appointment", {
+      params: {
+        status, // Passing the status to the backend
+      },
+    });
+    return response.data; // assuming the response has a data field
   } catch (error) {
-    const axiosError = error as AxiosErrorResponse
-    throw new Error(axiosError.response?.data?.error || "Failed to fetch appointments")
+    console.error("Error fetching appointments:", error);
+    throw error;
   }
-}
+};
+
 
 /**
  * Get all appointments for the current doctor
