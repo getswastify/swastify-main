@@ -40,7 +40,7 @@ function createGoogleMeetEvent(doctorId, startTime, endTime, doctorEmail, patien
                 // Token expired, refresh it
                 const { credentials } = yield oauth2Client.refreshAccessToken();
                 yield prismaConnection_1.prisma.doctorProfile.update({
-                    where: { id: doctorId },
+                    where: { userId: doctorId },
                     data: {
                         googleAccessToken: credentials.access_token,
                         tokenExpiry: new Date(credentials.expiry_date), // Update tokenExpiry here
