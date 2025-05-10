@@ -417,8 +417,10 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
         });
         if (appointments.length === 0) {
             return res
-                .status(404)
-                .json({ error: "No appointments found for this patient." });
+                .status(200)
+                .json({ status: false,
+                message: "No appointments found for this patient."
+            });
         }
         // Format the response
         const formattedAppointments = appointments.map((appt) => ({
