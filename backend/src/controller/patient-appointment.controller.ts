@@ -478,10 +478,29 @@ export const getPatientAppointments = async (
       return res.status(400).json({ error: "Patient ID is required." });
     }
 
+    const { status } = req.query; // Extract status filter from query params
+
+    const filterConditions: any = {
+      patientId,
+    };
+
+    // Add status filter if it's provided
+    if (status) {
+      if (status === "upcoming") {
+        filterConditions.appointmentTime = {
+          gte: new Date(), // Greater than or equal to the current date/time
+        };
+      } else if (status === "past") {
+        filterConditions.appointmentTime = {
+          lt: new Date(), // Less than the current date/time
+        };
+      } else if (status === "cancelled") {
+        filterConditions.status = "CANCELLED";
+      }
+    }
+
     const appointments = await prisma.appointment.findMany({
-      where: {
-        patientId,
-      },
+      where: filterConditions,
       orderBy: {
         appointmentTime: "asc",
       },
