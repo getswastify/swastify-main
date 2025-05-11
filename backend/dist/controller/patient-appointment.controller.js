@@ -9,10 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelAppointment = exports.searchDoctors = exports.getPatientAppointments = exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
+exports.cancelAppointment = exports.searchDoctors = exports.getPatientAppointmentDetail = exports.getPatientAppointments = exports.getDoctorAppointments = exports.bookAppointment = exports.getAvailableAppointmentSlots = exports.getAvailableDatesForMonth = exports.getDynamicAppointmentSlots = void 0;
 const AppointmentUtils_1 = require("../helper/AppointmentUtils");
 const prismaConnection_1 = require("../utils/prismaConnection");
 const emailConnection_1 = require("../utils/emailConnection");
+const CalculateExperience_1 = require("../helper/CalculateExperience");
 // API endpoint to get dynamic appointment slots for a doctor
 const getDynamicAppointmentSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -121,9 +122,7 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
             },
         });
         if (!availability || availability.length === 0) {
-            return res
-                .status(404)
-                .json({
+            return res.status(404).json({
                 error: "No availability found for this doctor on the selected date.",
             });
         }
@@ -179,9 +178,7 @@ const getAvailableAppointmentSlots = (req, res) => __awaiter(void 0, void 0, voi
     }
     catch (error) {
         console.error("Error fetching appointment slots:", error);
-        return res
-            .status(500)
-            .json({
+        return res.status(500).json({
             error: "Something went wrong while fetching appointment slots.",
         });
     }
@@ -191,9 +188,7 @@ const bookAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function
     try {
         const { patientId, doctorId, appointmentTime } = req.body;
         if (!patientId || !doctorId || !appointmentTime) {
-            return res
-                .status(400)
-                .json({
+            return res.status(400).json({
                 error: "patientId, doctorId, and appointmentTime are required.",
             });
         }
@@ -418,8 +413,10 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
         if (appointments.length === 0) {
             return res
                 .status(200)
-                .json({ status: false,
-                message: "No appointments found for this patient."
+                .json({
+                status: false,
+                appointments: [],
+                message: "No appointments found for this patient.",
             });
         }
         // Format the response
@@ -441,6 +438,55 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.getPatientAppointments = getPatientAppointments;
+const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c;
+    try {
+        const patientId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
+        const { appointmentId } = req.params;
+        if (!patientId || !appointmentId) {
+            return res.status(400).json({ error: "Patient ID and Appointment ID are required." });
+        }
+        const appointment = yield prismaConnection_1.prisma.appointment.findFirst({
+            where: {
+                id: appointmentId,
+                patientId,
+            },
+            include: {
+                doctor: {
+                    include: {
+                        user: true, // doctorName
+                    },
+                },
+                patient: true, // Direct user relation
+            },
+        });
+        if (!appointment) {
+            return res.status(404).json({
+                status: false,
+                message: "Appointment not found or unauthorized.",
+            });
+        }
+        const formattedAppointment = {
+            appointmentId: appointment.id,
+            appointmentTime: appointment.appointmentTime,
+            status: appointment.status,
+            meetLink: appointment.meetLink,
+            doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
+            aboutDoctor: appointment.doctor.clinicAddress,
+            specialization: appointment.doctor.specialization,
+            experience: (0, CalculateExperience_1.calculateExperience)(appointment.doctor.startedPracticeOn.toISOString()),
+            patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+        };
+        return res.status(200).json({ appointment: formattedAppointment });
+    }
+    catch (error) {
+        console.error("Error fetching appointment detail:", error);
+        return res.status(500).json({
+            error: "Something went wrong while fetching appointment detail.",
+        });
+    }
+});
+exports.getPatientAppointmentDetail = getPatientAppointmentDetail;
 const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { search, specialty } = req.query;
@@ -491,9 +537,9 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.searchDoctors = searchDoctors;
 const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c;
+    var _d;
     try {
-        const patientId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
+        const patientId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.userId;
         const { appointmentId } = req.params;
         if (!appointmentId) {
             return res.status(400).json({ error: "Appointment ID is required." });
@@ -523,9 +569,7 @@ const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
     catch (error) {
         console.error("Error cancelling appointment:", error);
-        return res
-            .status(500)
-            .json({
+        return res.status(500).json({
             error: "Something went wrong while cancelling the appointment.",
         });
     }

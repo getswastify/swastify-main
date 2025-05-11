@@ -6,7 +6,11 @@ import {
   getDoctorAvailabilityForDay,
 } from "../helper/AppointmentUtils";
 import { prisma } from "../utils/prismaConnection";
-import { sendDoctorAppointmentPendingEmail, sendPatientAppointmentConfirmationEmail } from "../utils/emailConnection";
+import {
+  sendDoctorAppointmentPendingEmail,
+  sendPatientAppointmentConfirmationEmail,
+} from "../utils/emailConnection";
+import { calculateExperience } from "../helper/CalculateExperience";
 
 // API endpoint to get dynamic appointment slots for a doctor
 export const getDynamicAppointmentSlots = async (
@@ -154,11 +158,9 @@ export const getAvailableAppointmentSlots = async (
     });
 
     if (!availability || availability.length === 0) {
-      return res
-        .status(404)
-        .json({
-          error: "No availability found for this doctor on the selected date.",
-        });
+      return res.status(404).json({
+        error: "No availability found for this doctor on the selected date.",
+      });
     }
 
     const istStartOfDay = combineISTTimeWithDate(selectedDate, 0, 0);
@@ -234,11 +236,9 @@ export const getAvailableAppointmentSlots = async (
     return res.status(200).json({ availableSlots });
   } catch (error) {
     console.error("Error fetching appointment slots:", error);
-    return res
-      .status(500)
-      .json({
-        error: "Something went wrong while fetching appointment slots.",
-      });
+    return res.status(500).json({
+      error: "Something went wrong while fetching appointment slots.",
+    });
   }
 };
 
@@ -250,11 +250,9 @@ export const bookAppointment = async (
     const { patientId, doctorId, appointmentTime } = req.body;
 
     if (!patientId || !doctorId || !appointmentTime) {
-      return res
-        .status(400)
-        .json({
-          error: "patientId, doctorId, and appointmentTime are required.",
-        });
+      return res.status(400).json({
+        error: "patientId, doctorId, and appointmentTime are required.",
+      });
     }
 
     const appointmentDate = new Date(appointmentTime);
@@ -516,9 +514,11 @@ export const getPatientAppointments = async (
     if (appointments.length === 0) {
       return res
         .status(200)
-        .json({ status: false,
-          message:"No appointments found for this patient."
-         });
+        .json({
+          status: false,
+          appointments:[],
+          message: "No appointments found for this patient.",
+        });
     }
 
     // Format the response
@@ -539,6 +539,62 @@ export const getPatientAppointments = async (
       .json({ error: "Something went wrong while fetching appointments." });
   }
 };
+
+export const getPatientAppointmentDetail = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const patientId = req.user?.userId;
+    const { appointmentId } = req.params;
+
+    if (!patientId || !appointmentId) {
+      return res.status(400).json({ error: "Patient ID and Appointment ID are required." });
+    }
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id: appointmentId,
+        patientId,
+      },
+      include: {
+        doctor: {
+          include: {
+            user: true, // doctorName
+          },
+        },
+        patient: true, // Direct user relation
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        status: false,
+        message: "Appointment not found or unauthorized.",
+      });
+    }
+
+    const formattedAppointment = {
+      appointmentId: appointment.id,
+      appointmentTime: appointment.appointmentTime,
+      status: appointment.status,
+      meetLink: appointment.meetLink,
+      doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
+      aboutDoctor: appointment.doctor.clinicAddress, // Or another "about" field
+      specialization: appointment.doctor.specialization, // this is just a string
+      experience: calculateExperience(appointment.doctor.startedPracticeOn.toISOString()), // see helper below
+      patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+    };
+
+    return res.status(200).json({ appointment: formattedAppointment });
+  } catch (error) {
+    console.error("Error fetching appointment detail:", error);
+    return res.status(500).json({
+      error: "Something went wrong while fetching appointment detail.",
+    });
+  }
+};
+
 
 export const searchDoctors = async (
   req: Request,
@@ -641,10 +697,8 @@ export const cancelAppointment = async (
       .json({ message: "Appointment cancelled successfully 🚫" });
   } catch (error) {
     console.error("Error cancelling appointment:", error);
-    return res
-      .status(500)
-      .json({
-        error: "Something went wrong while cancelling the appointment.",
-      });
+    return res.status(500).json({
+      error: "Something went wrong while cancelling the appointment.",
+    });
   }
 };
