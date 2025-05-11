@@ -594,8 +594,9 @@ export const getPatientAppointmentDetail = async (
       status: appointment.status,
       meetLink: appointment.meetLink,
       doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
-      aboutDoctor: appointment.doctor.clinicAddress,
-      specialization: appointment.doctor.specialization,
+      doctorEmail:appointment.doctor.googleEmail,
+      clinicAddress: appointment.doctor.clinicAddress,
+      doctorSpecialization: appointment.doctor.specialization,
       experience: calculateExperience(appointment.doctor.startedPracticeOn.toISOString()),
       patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
       patientEmail: appointment.patient.email,
@@ -649,8 +650,6 @@ const getTimelineDescription = (status: string) => {
       return 'Your appointment status was updated.';
   }
 };
-
-
 
 export const searchDoctors = async (
   req: Request,
