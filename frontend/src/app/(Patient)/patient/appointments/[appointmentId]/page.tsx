@@ -222,7 +222,6 @@ const AppointmentDetails = () => {
         )
     }
   }
-
   return (
     <RoleGuard requiredRole="USER">
       <div className="w-full max-w-full bg-[#0c1120] min-h-screen text-white p-4 sm:p-6">

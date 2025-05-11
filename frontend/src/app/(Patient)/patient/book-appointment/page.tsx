@@ -7,6 +7,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, Info, Search, Stethoscope } from "lucide-react"
 import type { TimeSlot } from "@/actions/appointments"
@@ -15,7 +16,6 @@ import { AppointmentCalendar } from "@/components/patient/appointment-booking/ap
 import { TimeSlotPicker } from "@/components/patient/appointment-booking/time-slot-picker"
 import { BookingConfirmation } from "@/components/patient/appointment-booking/booking-confirmation"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface Doctor {
   id: string
@@ -163,12 +163,15 @@ export default function BookAppointmentPage() {
 
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
+                {[1, 2, 3, 4].map((i) => (
                   <DoctorCardSkeleton key={i} />
                 ))}
               </div>
             ) : filteredDoctors.length === 0 ? (
-              <EmptyState />
+              <div className="flex flex-col items-center justify-center p-10 text-center bg-[#1a2236] rounded-lg">
+                <h3 className="text-xl font-medium text-white mb-2">No doctors found</h3>
+                <p className="text-gray-400 mb-6">Try adjusting your search or browse all available doctors</p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDoctors.map((doctor) => (
@@ -398,16 +401,16 @@ const DoctorCard = ({
 }) => {
   return (
     <div
-      className={`rounded-xl overflow-hidden shadow-lg transition-all cursor-pointer bg-[#1a2236] hover:bg-[#1e2b45] ${
+      className={`bg-[#1a2236] rounded-xl overflow-hidden shadow-lg cursor-pointer ${
         isSelected ? "ring-2 ring-[#10b981]" : ""
       }`}
       onClick={onSelect}
     >
-      <div className="p-5">
+      <div className="p-6">
         <div className="flex items-start gap-4 mb-4">
-          <Avatar className="h-16 w-16 border border-gray-700">
-            <AvatarImage src={`/placeholder.svg?height=64&width=64`} alt={doctor.name} />
-            <AvatarFallback className="bg-[#2c3e67] text-white">
+          <Avatar className="h-14 w-14 rounded-lg border-2 border-gray-700">
+            <AvatarImage src={`/placeholder.svg?height=80&width=80`} alt={doctor.name} />
+            <AvatarFallback className="bg-[#2c3e67] text-white rounded-lg">
               {doctor.name
                 .split(" ")
                 .map((n) => n[0])
@@ -415,29 +418,31 @@ const DoctorCard = ({
             </AvatarFallback>
           </Avatar>
 
-          <div>
-            <h3 className="text-lg font-medium text-white">{doctor.name}</h3>
-            <div className="flex items-center text-gray-400 text-sm mt-1">
-              <Stethoscope className="h-3.5 w-3.5 mr-1.5" />
-              {doctor.specialty}
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-white">{doctor.name}</h3>
+
+            <div className="flex items-center gap-1.5 text-gray-400 mt-1">
+              <Stethoscope className="h-4 w-4" />
+              <span className="text-sm">{doctor.specialty}</span>
             </div>
-            <p className="text-gray-400 text-sm mt-1">{doctor.experience} years experience</p>
+
+            {doctor.experience && <p className="text-sm text-gray-400 mt-1">{doctor.experience} years experience</p>}
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <div
-            className={`px-3 py-1 text-sm font-medium rounded-full ${
-              isSelected ? "bg-[#10b981]/20 text-[#10b981]" : "bg-blue-900/20 text-blue-400"
-            }`}
-          >
-            {isSelected ? "Selected" : "Available"}
-          </div>
-
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full border border-gray-600 flex items-center justify-center bg-[#1e2b45]">
-              <ArrowUpRight className="h-5 w-5 text-gray-300" />
+        <div className="flex justify-between items-center mt-4">
+          {isSelected ? (
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#10b981]/20 text-[#10b981] text-sm font-medium">
+              Selected
             </div>
+          ) : (
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-900/20 text-blue-400 text-sm font-medium">
+              Available
+            </div>
+          )}
+
+          <div className="w-8 h-8 rounded-full bg-[#2c3e67] flex items-center justify-center">
+            <ArrowUpRight className="h-4 w-4 text-white" />
           </div>
         </div>
       </div>
@@ -447,29 +452,19 @@ const DoctorCard = ({
 
 // Doctor Card Skeleton
 const DoctorCardSkeleton = () => (
-  <div className="bg-[#1a2236] rounded-xl p-5 shadow-md">
+  <div className="bg-[#1a2236] rounded-xl p-6 shadow-md">
     <div className="flex items-start gap-4 mb-4">
-      <Skeleton className="h-16 w-16 rounded-full bg-gray-700" />
-      <div>
+      <Skeleton className="h-14 w-14 rounded-lg bg-gray-700" />
+      <div className="flex-1">
         <Skeleton className="h-6 w-36 bg-gray-700 mb-2" />
         <Skeleton className="h-4 w-28 bg-gray-700 mb-1" />
-        <Skeleton className="h-4 w-32 bg-gray-700" />
+        <Skeleton className="h-4 w-24 bg-gray-700" />
       </div>
     </div>
 
-    <div className="flex justify-between items-center">
+    <div className="flex justify-between items-center mt-4">
       <Skeleton className="h-6 w-20 rounded-full bg-gray-700" />
-      <Skeleton className="h-10 w-10 rounded-full bg-gray-700" />
+      <Skeleton className="w-8 h-8 rounded-full bg-gray-700" />
     </div>
-  </div>
-)
-
-// Empty State Component
-const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center p-10 text-center bg-[#1a2236] rounded-lg">
-    <Search className="h-16 w-16 text-gray-500 mb-4" />
-    <h3 className="text-xl font-medium text-white mb-2">No doctors found</h3>
-    <p className="text-gray-400 mb-6">Try adjusting your search or browse all available doctors</p>
-    <Button className="bg-[#10b981] hover:bg-[#0d9668] text-white">View All Doctors</Button>
   </div>
 )

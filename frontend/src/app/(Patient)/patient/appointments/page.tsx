@@ -198,23 +198,10 @@ const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
     }
   }
 
-  // Get gradient based on appointment type
-  const getGradient = () => {
-    const specialization = appointment.doctorSpecialization?.toLowerCase() || ""
-
-    if (specialization.includes("cardio")) return "bg-gradient-to-br from-[#1a2236] via-[#1e2b45] to-[#2c3e67]"
-    if (specialization.includes("neuro")) return "bg-gradient-to-br from-[#1a2236] via-[#2a2045] to-[#3c2b67]"
-    if (specialization.includes("ortho")) return "bg-gradient-to-br from-[#1a2236] via-[#2a2c35] to-[#3c3e50]"
-    if (specialization.includes("derm")) return "bg-gradient-to-br from-[#1a2236] via-[#1e2b35] to-[#1e3a4d]"
-    if (specialization.includes("psych")) return "bg-gradient-to-br from-[#1a2236] via-[#252a35] to-[#2d2d45]"
-
-    // Default gradient
-    return "bg-gradient-to-br from-[#1a2236] via-[#1e2b45] to-[#2c3e67]"
-  }
 
   return (
     <div
-      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all cursor-pointer relative ${getGradient()}`}
+      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all  relative bg-gradient-to-br from-[#1a2236] via-[#1e2b45] to-[#2c3e67]}`}
     >
       <div className="p-5 relative">
         {/* Day of week at top */}
@@ -250,7 +237,7 @@ const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
           </div>
 
           {/* Arrow button in bottom right corner - styled like the sketch */}
-          <div className="relative">
+          <div className="relative cursor-pointer">
             <div className="absolute -bottom-3 -right-3 w-12 h-12 rounded-full border-2 border-[#4d9fff] flex items-center justify-center bg-[#1a2236]">
               <ArrowUpRight
                 className="h-5 w-5 text-[#4d9fff]"
