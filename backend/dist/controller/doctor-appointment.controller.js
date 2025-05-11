@@ -293,10 +293,18 @@ const updateAppointmentStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
             const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
             meetLink = yield (0, googleMeet_1.createGoogleMeetEvent)(doctorId, startTime.toISOString(), endTime.toISOString(), appointment.doctor.user.email, appointment.patient.email);
         }
-        // ✅ Update status and meetLink in one go
+        // ✅ Update appointment with new status and meet link
         const updatedAppointment = yield prismaConnection_1.prisma.appointment.update({
             where: { id: appointmentId },
             data: Object.assign({ status }, (meetLink && { meetLink })),
+        });
+        // ✨ Log the status change
+        yield prismaConnection_1.prisma.appointmentStatusLog.create({
+            data: {
+                appointmentId,
+                status,
+                updatedBy: doctorId,
+            },
         });
         return res.status(200).json({
             status: true,

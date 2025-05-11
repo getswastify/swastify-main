@@ -346,12 +346,21 @@ export const updateAppointmentStatus = async (
       );
     }
 
-    // ✅ Update status and meetLink in one go
+    // ✅ Update appointment with new status and meet link
     const updatedAppointment = await prisma.appointment.update({
       where: { id: appointmentId },
       data: {
         status,
         ...(meetLink && { meetLink }),
+      },
+    });
+
+    // ✨ Log the status change
+    await prisma.appointmentStatusLog.create({
+      data: {
+        appointmentId,
+        status,
+        updatedBy: doctorId,
       },
     });
 
