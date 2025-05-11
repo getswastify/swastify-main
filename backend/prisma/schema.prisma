@@ -145,6 +145,8 @@ model Appointment {
 
   // Optional, if you want to track any extra info like payment
   paymentStatus  PaymentStatus?
+
+  AppointmentStatusLog AppointmentStatusLog[]
 }
 
 enum AppointmentStatus {
@@ -153,6 +155,17 @@ enum AppointmentStatus {
   CANCELLED // Appointment has been cancelled
   COMPLETED // Appointment has been completed
 }
+
+model AppointmentStatusLog {
+  id             String   @id @default(uuid())
+  appointmentId  String
+  status         AppointmentStatus
+  changedAt      DateTime @default(now())
+  updatedBy      String?
+
+  appointment    Appointment @relation(fields: [appointmentId], references: [id])
+}
+
 
 enum PaymentStatus {
   PENDING   // Payment is still due

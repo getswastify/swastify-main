@@ -454,10 +454,15 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
             include: {
                 doctor: {
                     include: {
-                        user: true, // doctorName
+                        user: true,
                     },
                 },
-                patient: true, // Direct user relation
+                patient: true,
+                AppointmentStatusLog: {
+                    orderBy: {
+                        changedAt: 'asc',
+                    },
+                },
             },
         });
         if (!appointment) {
@@ -466,18 +471,36 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
                 message: "Appointment not found or unauthorized.",
             });
         }
+        // Build timeline entries
+        const timeline = appointment.AppointmentStatusLog.map((log, index) => ({
+            id: index + 1,
+            title: getTimelineTitle(log.status),
+            description: getTimelineDescription(log.status),
+            timestamp: log.changedAt,
+            type: log.status,
+        }));
         const formattedAppointment = {
             appointmentId: appointment.id,
             appointmentTime: appointment.appointmentTime,
             status: appointment.status,
             meetLink: appointment.meetLink,
             doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
-            aboutDoctor: appointment.doctor.clinicAddress,
-            specialization: appointment.doctor.specialization,
+            doctorEmail: appointment.doctor.googleEmail,
+            clinicAddress: appointment.doctor.clinicAddress,
+            doctorSpecialization: appointment.doctor.specialization,
             experience: (0, CalculateExperience_1.calculateExperience)(appointment.doctor.startedPracticeOn.toISOString()),
             patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+            patientEmail: appointment.patient.email,
+            patientPhone: appointment.patient.phone,
+            createdAt: appointment.createdAt,
+            updatedAt: appointment.updatedAt,
+            timeline,
         };
-        return res.status(200).json({ appointment: formattedAppointment });
+        return res.status(200).json({
+            status: true,
+            message: "Appointment details fetched successfully.",
+            data: formattedAppointment,
+        });
     }
     catch (error) {
         console.error("Error fetching appointment detail:", error);
@@ -487,6 +510,36 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.getPatientAppointmentDetail = getPatientAppointmentDetail;
+// Helper: Timeline title
+const getTimelineTitle = (status) => {
+    switch (status) {
+        case 'PENDING':
+            return 'Appointment Booked';
+        case 'CONFIRMED':
+            return 'Appointment Confirmed';
+        case 'CANCELLED':
+            return 'Appointment Cancelled';
+        case 'COMPLETED':
+            return 'Appointment Completed';
+        default:
+            return 'Status Updated';
+    }
+};
+// Helper: Timeline description
+const getTimelineDescription = (status) => {
+    switch (status) {
+        case 'PENDING':
+            return 'Your appointment has been successfully booked.';
+        case 'CONFIRMED':
+            return 'Your appointment has been confirmed by the doctor.';
+        case 'CANCELLED':
+            return 'Your appointment was cancelled.';
+        case 'COMPLETED':
+            return 'Your appointment was completed.';
+        default:
+            return 'Your appointment status was updated.';
+    }
+};
 const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { search, specialty } = req.query;
