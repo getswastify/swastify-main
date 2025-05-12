@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 app.use(morgan('dev'));
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
 // CORS setup
 app.use(cors({

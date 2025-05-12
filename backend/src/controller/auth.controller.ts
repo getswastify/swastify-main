@@ -5,17 +5,22 @@ import crypto from "crypto";
 import { redis } from "../utils/redisConnection";
 import jwt from "jsonwebtoken";
 import {sendOtpEmail, sendResetPassEmail} from "../utils/emailConnection";
+import { uploadToAzureBlob } from "../utils/azureBlob";
 const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+
+
 
 export const registerUser = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, phone, password, firstName, lastName, dob, gender } = req.body;
+    const file = req.file; // Uploaded file 
 
-    // 1. Check if user already exists (for email/phone)
+    // 1. Check if user already exists (email or phone)
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { phone }]
-      }
+        OR: [{ email }, { phone }],
+      },
     });
 
     if (existingUser) {
@@ -24,15 +29,36 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
         message: "Email or phone already registered. Please use a different one.",
         error: {
           code: "ERR_ALREADY_REGISTERED",
-          issue: "Email or phone already exists"
-        }
+          issue: "Email or phone already exists",
+        },
       });
     }
 
     // 2. Generate OTP
-    const otp = crypto.randomInt(100000, 999999).toString(); // 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
 
-    // 3. Store the OTP and user data in Redis
+    // 3. Upload to Azure Blob (if file exists)
+    let profilePictureUrl: string | null = null;
+    if (file) {
+      try {
+        profilePictureUrl = await uploadToAzureBlob(
+          file.buffer,
+          file.originalname,
+          file.mimetype
+        );
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          message: "Error uploading profile picture to Azure Blob",
+          error: {
+            code: "ERR_BLOB_UPLOAD",
+            issue: error instanceof Error ? error.message : "Unknown error",
+          },
+        });
+      }
+    }
+
+    // 4. Store data in Redis
     const userData = {
       email,
       phone,
@@ -42,12 +68,13 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
       dob,
       gender,
       role: "USER",
-      otp
+      profilePicture: profilePictureUrl,
+      otp,
     };
 
-    await redis.setex(`otp:${email}`, 600, JSON.stringify(userData)); // OTP expires in 10 minutes
+    await redis.setex(`otp:${email}`, 600, JSON.stringify(userData)); // 10 min expiry
 
-    // 4. Send OTP email
+    // 5. Send OTP
     try {
       await sendOtpEmail(email, otp);
     } catch (error) {
@@ -56,18 +83,18 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
         message: "There was an issue sending the OTP. Please try again later.",
         error: {
           code: "ERR_EMAIL_FAILURE",
-          issue: "Failed to send OTP email"
-        }
+          issue: "Failed to send OTP email",
+        },
       });
     }
 
-    // 5. Respond with OTP sent status
+    // 6. Success Response
     return res.status(200).json({
       status: true,
       message: "OTP sent to your email. Please verify to complete the registration.",
       data: {
-        otpVerificationRequired: true
-      }
+        otpVerificationRequired: true,
+      },
     });
 
   } catch (err) {
@@ -77,8 +104,8 @@ export const registerUser = async (req: Request, res: Response): Promise<any> =>
       message: "Server error. Please try again later.",
       error: {
         code: "ERR_INTERNAL",
-        issue: "Unexpected error occurred"
-      }
+        issue: "Unexpected error occurred",
+      },
     });
   }
 };
@@ -235,6 +262,76 @@ export const registerHospital = async (req: Request, res: Response): Promise<any
   }
 };
 
+export const updateProfilePicture = async (req: Request, res: Response):Promise<any> => {
+  try {
+    const userId = req.user?.userId; // assuming auth middleware adds user info
+    const file = req.file;
+
+    if (!userId) {
+      return res.status(401).json({
+        status: false,
+        message: "Unauthorized. Please log in first.",
+      });
+    }
+
+    if (!file) {
+      return res.status(400).json({
+        status: false,
+        message: "No file uploaded. Please select a profile picture.",
+      });
+    }
+
+    // Upload to Azure Blob
+    let profilePictureUrl: string;
+    try {
+      profilePictureUrl = await uploadToAzureBlob(
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      );
+    } catch (err) {
+      return res.status(500).json({
+        status: false,
+        message: "Failed to upload profile picture to Azure Blob.",
+        error: {
+          code: "ERR_BLOB_UPLOAD",
+          issue: err instanceof Error ? err.message : "Unknown error",
+        },
+      });
+    }
+
+    // Update user record
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePicture: profilePictureUrl },
+      select: {
+        id: true,
+        email: true,
+        profilePicture: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Profile picture updated successfully!",
+      data: updatedUser,
+    });
+
+  } catch (err) {
+    console.error("[UPDATE_PROFILE_PIC_ERROR]", err);
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong while updating your profile picture.",
+      error: {
+        code: "ERR_INTERNAL",
+        issue: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+  }
+};
+
 export const resendOtp = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email } = req.body;
@@ -370,7 +467,8 @@ export const verifyOtpAndRegister = async (req: Request, res: Response): Promise
         lastName: cachedUser.lastName,
         dob: new Date(cachedUser.dob),
         gender: cachedUser.gender,
-        role: cachedUser.role
+        role: cachedUser.role,
+        profilePicture: cachedUser.profilePicture || null,
       }
     });
 
@@ -386,7 +484,8 @@ export const verifyOtpAndRegister = async (req: Request, res: Response): Promise
           id: user.id,
           email: user.email,
           phone: user.phone,
-          role: user.role
+          role: user.role,
+          profilePicture: user.profilePicture
         }
       }
     });

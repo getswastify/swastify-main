@@ -12,22 +12,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserDetails = exports.resetPassword = exports.verifyResetToken = exports.verifyTokenFromHeader = exports.requestPasswordReset = exports.logoutUser = exports.loginUser = exports.verifyOtpAndRegister = exports.resendOtp = exports.registerHospital = exports.registerDoctor = exports.registerUser = void 0;
+exports.getUserDetails = exports.resetPassword = exports.verifyResetToken = exports.verifyTokenFromHeader = exports.requestPasswordReset = exports.logoutUser = exports.loginUser = exports.verifyOtpAndRegister = exports.resendOtp = exports.updateProfilePicture = exports.registerHospital = exports.registerDoctor = exports.registerUser = void 0;
 const prismaConnection_1 = require("../utils/prismaConnection");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const crypto_1 = __importDefault(require("crypto"));
 const redisConnection_1 = require("../utils/redisConnection");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const emailConnection_1 = require("../utils/emailConnection");
+const azureBlob_1 = require("../utils/azureBlob");
 const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, phone, password, firstName, lastName, dob, gender } = req.body;
-        // 1. Check if user already exists (for email/phone)
+        const file = req.file; // Uploaded file 
+        // 1. Check if user already exists (email or phone)
         const existingUser = yield prismaConnection_1.prisma.user.findFirst({
             where: {
-                OR: [{ email }, { phone }]
-            }
+                OR: [{ email }, { phone }],
+            },
         });
         if (existingUser) {
             return res.status(400).json({
@@ -35,13 +37,30 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 message: "Email or phone already registered. Please use a different one.",
                 error: {
                     code: "ERR_ALREADY_REGISTERED",
-                    issue: "Email or phone already exists"
-                }
+                    issue: "Email or phone already exists",
+                },
             });
         }
         // 2. Generate OTP
-        const otp = crypto_1.default.randomInt(100000, 999999).toString(); // 6-digit OTP
-        // 3. Store the OTP and user data in Redis
+        const otp = crypto_1.default.randomInt(100000, 999999).toString();
+        // 3. Upload to Azure Blob (if file exists)
+        let profilePictureUrl = null;
+        if (file) {
+            try {
+                profilePictureUrl = yield (0, azureBlob_1.uploadToAzureBlob)(file.buffer, file.originalname, file.mimetype);
+            }
+            catch (error) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Error uploading profile picture to Azure Blob",
+                    error: {
+                        code: "ERR_BLOB_UPLOAD",
+                        issue: error instanceof Error ? error.message : "Unknown error",
+                    },
+                });
+            }
+        }
+        // 4. Store data in Redis
         const userData = {
             email,
             phone,
@@ -51,10 +70,11 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             dob,
             gender,
             role: "USER",
-            otp
+            profilePicture: profilePictureUrl,
+            otp,
         };
-        yield redisConnection_1.redis.setex(`otp:${email}`, 600, JSON.stringify(userData)); // OTP expires in 10 minutes
-        // 4. Send OTP email
+        yield redisConnection_1.redis.setex(`otp:${email}`, 600, JSON.stringify(userData)); // 10 min expiry
+        // 5. Send OTP
         try {
             yield (0, emailConnection_1.sendOtpEmail)(email, otp);
         }
@@ -64,17 +84,17 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 message: "There was an issue sending the OTP. Please try again later.",
                 error: {
                     code: "ERR_EMAIL_FAILURE",
-                    issue: "Failed to send OTP email"
-                }
+                    issue: "Failed to send OTP email",
+                },
             });
         }
-        // 5. Respond with OTP sent status
+        // 6. Success Response
         return res.status(200).json({
             status: true,
             message: "OTP sent to your email. Please verify to complete the registration.",
             data: {
-                otpVerificationRequired: true
-            }
+                otpVerificationRequired: true,
+            },
         });
     }
     catch (err) {
@@ -84,8 +104,8 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             message: "Server error. Please try again later.",
             error: {
                 code: "ERR_INTERNAL",
-                issue: "Unexpected error occurred"
-            }
+                issue: "Unexpected error occurred",
+            },
         });
     }
 });
@@ -230,6 +250,69 @@ const registerHospital = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.registerHospital = registerHospital;
+const updateProfilePicture = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId; // assuming auth middleware adds user info
+        const file = req.file;
+        if (!userId) {
+            return res.status(401).json({
+                status: false,
+                message: "Unauthorized. Please log in first.",
+            });
+        }
+        if (!file) {
+            return res.status(400).json({
+                status: false,
+                message: "No file uploaded. Please select a profile picture.",
+            });
+        }
+        // Upload to Azure Blob
+        let profilePictureUrl;
+        try {
+            profilePictureUrl = yield (0, azureBlob_1.uploadToAzureBlob)(file.buffer, file.originalname, file.mimetype);
+        }
+        catch (err) {
+            return res.status(500).json({
+                status: false,
+                message: "Failed to upload profile picture to Azure Blob.",
+                error: {
+                    code: "ERR_BLOB_UPLOAD",
+                    issue: err instanceof Error ? err.message : "Unknown error",
+                },
+            });
+        }
+        // Update user record
+        const updatedUser = yield prismaConnection_1.prisma.user.update({
+            where: { id: userId },
+            data: { profilePicture: profilePictureUrl },
+            select: {
+                id: true,
+                email: true,
+                profilePicture: true,
+                firstName: true,
+                lastName: true,
+            },
+        });
+        return res.status(200).json({
+            status: true,
+            message: "Profile picture updated successfully!",
+            data: updatedUser,
+        });
+    }
+    catch (err) {
+        console.error("[UPDATE_PROFILE_PIC_ERROR]", err);
+        return res.status(500).json({
+            status: false,
+            message: "Something went wrong while updating your profile picture.",
+            error: {
+                code: "ERR_INTERNAL",
+                issue: err instanceof Error ? err.message : "Unknown error",
+            },
+        });
+    }
+});
+exports.updateProfilePicture = updateProfilePicture;
 const resendOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email } = req.body;
@@ -350,7 +433,8 @@ const verifyOtpAndRegister = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 lastName: cachedUser.lastName,
                 dob: new Date(cachedUser.dob),
                 gender: cachedUser.gender,
-                role: cachedUser.role
+                role: cachedUser.role,
+                profilePicture: cachedUser.profilePicture || null,
             }
         });
         // 5. Clear the Redis cache after successful registration
@@ -364,7 +448,8 @@ const verifyOtpAndRegister = (req, res) => __awaiter(void 0, void 0, void 0, fun
                     id: user.id,
                     email: user.email,
                     phone: user.phone,
-                    role: user.role
+                    role: user.role,
+                    profilePicture: user.profilePicture
                 }
             }
         });
@@ -697,9 +782,9 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.resetPassword = resetPassword;
 const getUserDetails = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _b;
     try {
-        const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token;
+        const token = (_b = req.cookies) === null || _b === void 0 ? void 0 : _b.auth_token;
         if (!token) {
             return res.status(401).json({
                 status: false,

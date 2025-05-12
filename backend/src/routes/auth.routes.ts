@@ -1,11 +1,22 @@
 import { Router } from 'express';
-import {  getUserDetails, loginUser, logoutUser, registerDoctor, registerHospital, registerUser, requestPasswordReset, resendOtp, resetPassword, verifyOtpAndRegister, verifyResetToken, verifyTokenFromHeader } from '../controller/auth.controller';
+import {  getUserDetails, loginUser, logoutUser, registerDoctor, registerHospital, registerUser, requestPasswordReset, resendOtp, resetPassword, updateProfilePicture, verifyOtpAndRegister, verifyResetToken, verifyTokenFromHeader } from '../controller/auth.controller';
+import multer from 'multer';
+import { requireAuthAndRole } from '../middleware/requireAuthAndRole';
 
 const router = Router();
+// Setting up multer for file upload (using memoryStorage)
+const storage = multer.memoryStorage();
 
-router.post('/register', registerUser);
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+
+router.post('/register', upload.single('profilePicture'), registerUser);
 router.post('/register/doctor', registerDoctor);
 router.post('/register/hospital', registerHospital);
+router.patch('/update/profile-picture',requireAuthAndRole('USER'), upload.single("file"), updateProfilePicture);
 
 
 router.post('/resend-otp', resendOtp);
