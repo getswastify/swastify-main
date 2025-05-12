@@ -16,7 +16,7 @@ export const registerSchema = z.object({
   dob: z.string().refine((val) => {
     const date = new Date(val)
     const now = new Date()
-    const minAge = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate()) // 13 years ago
+    const minAge = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate()) // At least 13
     return date <= minAge
   }, "You must be at least 13 years old"),
   gender: z.enum(["Male", "Female", "Other"], {
@@ -28,7 +28,13 @@ export const registerSchema = z.object({
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
+  profilePicture: z
+    .custom<File>((file) => file instanceof File, {
+      message: "Please upload a valid profile photo",
+    })
+    .optional(),
 })
+
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

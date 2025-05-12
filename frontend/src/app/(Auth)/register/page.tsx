@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { registerUser } from "@/actions/auth"
 import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { registerUser } from "@/actions/auth"
+import { AxiosError } from "axios"
+import Image from "next/image"
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -29,33 +31,49 @@ export default function RegisterPage() {
       dob: "",
       gender: "Male",
       password: "",
+      profilePicture: undefined,
     },
   })
 
-  const onSubmit = async (values: RegisterFormValues) => {
-    setIsLoading(true)
+const onSubmit = async (values: RegisterFormValues) => {
+  setIsLoading(true)
 
-    try {
-      const response = await registerUser(values)
-
-      if (!response.status) {
-        throw new Error(response.message || "Registration failed")
+  try {
+    const formData = new FormData()
+    Object.entries(values).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value instanceof File ? value : String(value))
       }
+    })
 
-      toast.success("Registration Successful", {
-        description: "Please verify your email with the OTP sent to your inbox",
-      })
+    const result = await registerUser({
+      firstName: values.firstName,
+      lastName: values.lastName,
+      email: values.email,
+      phone: values.phone,
+      dob: values.dob,
+      gender: values.gender,
+      password: values.password,
+      profilePicture: values.profilePicture,
+    })
 
-      // Redirect to OTP verification page
-      router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`)
-    } catch (error) {
-      toast.error("Registration Failed", {
-        description: error instanceof Error ? error.message : "Something went wrong",
-      })
-    } finally {
-      setIsLoading(false)
+    if (!result?.status) {
+      throw new Error(result.message || "Registration failed")
     }
+
+    toast.success("Registration Successful", {
+      description: "Please verify your email with the OTP sent to your inbox",
+    })
+
+    router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`)
+  } catch (error) {
+    toast.error("Registration Failed", {
+      description: (error as AxiosError)?.message || "Something went wrong",
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
 
   return (
     <div className="flex flex-col min-h-[600px]">
@@ -208,6 +226,37 @@ export default function RegisterPage() {
                           </div>
                         </RadioGroup>
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 🖼️ Profile Photo */}
+                <FormField
+                  control={form.control}
+                  name="profilePicture"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profile Photo</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          disabled={isLoading}
+                          onChange={(e) => {
+                            field.onChange(e.target.files?.[0])
+                          }}
+                        />
+                      </FormControl>
+                      {form.watch("profilePicture") && typeof form.watch("profilePicture") !== "string" && (
+                        <Image
+                          src={form.watch("profilePicture") instanceof File ? URL.createObjectURL(form.watch("profilePicture") as Blob) : ""}
+                          alt="Preview"
+                          width={96}
+                          height={96}
+                          className="mt-2 h-24 w-24 rounded-full object-cover border"
+                        />
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

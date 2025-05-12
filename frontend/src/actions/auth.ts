@@ -27,12 +27,26 @@ export const loginUser = async (data: LoginData): Promise<LoginApiResponse> => {
  */
 export const registerUser = async (data: RegisterData): Promise<RegisterResponse> => {
   try {
-    const response = await api.post<RegisterResponse>("/auth/register", data)
+    const formData = new FormData()
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value instanceof File ? value : String(value))
+      }
+    })
+
+    const response = await api.post<RegisterResponse>("/auth/register", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+
     return response.data
   } catch (error) {
     return error as ApiResponse<never>
   }
 }
+
 
 /**
  * Register Doctor
