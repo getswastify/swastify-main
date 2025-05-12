@@ -21,6 +21,7 @@ export interface RegisterData {
   lastName: string
   dob: string
   gender: string
+  profilePicture?: File
 }
 
 export type ResetPasswordData = {

@@ -4,9 +4,6 @@ import { getCookie } from "./cookies"
 // Create a base axios instance with common configuration
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-  headers: {
-    "Content-Type": "application/json",
-  },
   withCredentials: true, // This ensures cookies are sent with requests
   timeout: 15000, // 15 seconds
 })

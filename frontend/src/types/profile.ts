@@ -10,6 +10,12 @@ export interface ProfileResponse<T> {
 
 // Patient Profile Types
 export interface PatientProfileData {
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    profilePicture?: string;
+  },
   id?: string
   userId?: string
   bloodGroup: string

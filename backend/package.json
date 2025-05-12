@@ -24,12 +24,14 @@
   "homepage": "https://github.com/BeastxD7/swastify-main#readme",
   "dependencies": {
     "@azure/communication-email": "^1.0.0",
+    "@azure/storage-blob": "^12.27.0",
     "@google-cloud/local-auth": "2.1.0",
     "@prisma/client": "6.6.0",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.9",
+    "@types/multer": "^1.4.12",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -42,6 +44,7 @@
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "1.4.5-lts.2",
     "prisma": "^6.6.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"
