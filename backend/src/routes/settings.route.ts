@@ -4,6 +4,6 @@ import { requireAuthAndRole } from '../middleware/requireAuthAndRole';
 
 const router = Router();
 
-router.get('/doctor-settings',requireAuthAndRole('DOCTOR'), getDoctorSettings);
+router.get('/doctor-settings',requireAuthAndRole(['DOCTOR']), getDoctorSettings);
 
 export const settingsRoute =  router;

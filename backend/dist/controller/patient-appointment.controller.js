@@ -424,6 +424,7 @@ const getPatientAppointments = (req, res) => __awaiter(void 0, void 0, void 0, f
             appointmentId: appt.id,
             appointmentTime: appt.appointmentTime,
             status: appt.status,
+            doctorImage: appt.doctor.user.profilePicture,
             doctorName: `${appt.doctor.user.firstName} ${appt.doctor.user.lastName}`,
             doctorEmail: appt.doctor.user.email,
             doctorSpecialization: appt.doctor.specialization,
@@ -597,7 +598,7 @@ const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, functi
         if (!appointmentId) {
             return res.status(400).json({ error: "Appointment ID is required." });
         }
-        // Check if the appointment exists and belongs to this patient
+        // Fetch appointment
         const appointment = yield prismaConnection_1.prisma.appointment.findUnique({
             where: { id: appointmentId },
         });
@@ -605,15 +606,21 @@ const cancelAppointment = (req, res) => __awaiter(void 0, void 0, void 0, functi
             return res.status(404).json({ error: "Appointment not found." });
         }
         if (appointment.patientId !== patientId) {
-            return res
-                .status(403)
-                .json({ error: "You are not authorized to cancel this appointment." });
+            return res.status(403).json({
+                error: "You are not authorized to cancel this appointment.",
+            });
         }
-        // Update the appointment status to CANCELLED
+        // Update appointment status
         yield prismaConnection_1.prisma.appointment.update({
             where: { id: appointmentId },
+            data: { status: "CANCELLED" },
+        });
+        // Log to AppointmentStatusLog
+        yield prismaConnection_1.prisma.appointmentStatusLog.create({
             data: {
+                appointmentId: appointmentId,
                 status: "CANCELLED",
+                changedAt: new Date(), // optional if your schema auto-generates
             },
         });
         return res

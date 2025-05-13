@@ -367,10 +367,10 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     var _g;
     try {
         const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g.userId;
-        if (!userId || typeof userId !== 'string') {
+        if (!userId || typeof userId !== "string") {
             return res.status(401).json({
                 status: false,
-                message: 'User not authenticated',
+                message: "User not authenticated",
             });
         }
         const profile = yield prismaConnection_1.prisma.patientProfile.findUnique({
@@ -383,15 +383,20 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 weight: true,
                 allergies: true,
                 diseases: true,
+                user: {
+                    select: {
+                        profilePicture: true,
+                    },
+                },
             },
         });
         if (!profile) {
             return res.status(404).json({
                 status: false,
-                message: 'Patient profile not found',
+                message: "Patient profile not found",
                 data: {
-                    code: 'PROFILE_NOT_FOUND',
-                    issue: 'No patient profile exists for this user',
+                    code: "PROFILE_NOT_FOUND",
+                    issue: "No patient profile exists for this user",
                     isProfileComplete: false,
                 },
             });
@@ -402,18 +407,18 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
             profile.weight > 0;
         return res.status(200).json({
             status: true,
-            message: 'Patient profile retrieved successfully',
+            message: "Patient profile retrieved successfully",
             data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
         });
     }
     catch (error) {
-        console.error('[GET_PATIENT_PROFILE_ERROR]', error);
+        console.error("[GET_PATIENT_PROFILE_ERROR]", error);
         return res.status(500).json({
             status: false,
-            message: 'Failed to retrieve patient profile',
+            message: "Failed to retrieve patient profile",
             error: {
-                code: 'SERVER_ERROR',
-                issue: 'Something went wrong on the server',
+                code: "SERVER_ERROR",
+                issue: "Something went wrong on the server",
             },
         });
     }
@@ -441,6 +446,11 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 licenseIssuedBy: true,
                 licenseDocumentUrl: true,
                 status: true,
+                user: {
+                    select: {
+                        profilePicture: true,
+                    },
+                },
             },
         });
         if (!profile) {
@@ -453,14 +463,14 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 },
             });
         }
-        const { status } = profile, rest = __rest(profile, ["status"]); // Destructure to get status separately
+        const { status, user } = profile, rest = __rest(profile, ["status", "user"]);
         const isProfileComplete = !!profile.specialization &&
             !!profile.clinicAddress &&
             !!profile.consultationFee;
         return res.status(200).json({
             status: true,
             message: 'Doctor profile retrieved successfully',
-            data: Object.assign(Object.assign({}, rest), { isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0], isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { user, isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0], isProfileComplete }),
         });
     }
     catch (error) {

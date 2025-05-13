@@ -526,6 +526,7 @@ export const getPatientAppointments = async (
       appointmentId: appt.id,
       appointmentTime: appt.appointmentTime,
       status: appt.status,
+      doctorImage: appt.doctor.user.profilePicture,
       doctorName: `${appt.doctor.user.firstName} ${appt.doctor.user.lastName}`,
       doctorEmail: appt.doctor.user.email,
       doctorSpecialization: appt.doctor.specialization,
@@ -724,7 +725,7 @@ export const cancelAppointment = async (
       return res.status(400).json({ error: "Appointment ID is required." });
     }
 
-    // Check if the appointment exists and belongs to this patient
+    // Fetch appointment
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
     });
@@ -734,16 +735,23 @@ export const cancelAppointment = async (
     }
 
     if (appointment.patientId !== patientId) {
-      return res
-        .status(403)
-        .json({ error: "You are not authorized to cancel this appointment." });
+      return res.status(403).json({
+        error: "You are not authorized to cancel this appointment.",
+      });
     }
 
-    // Update the appointment status to CANCELLED
+    // Update appointment status
     await prisma.appointment.update({
       where: { id: appointmentId },
+      data: { status: "CANCELLED" },
+    });
+
+    // Log to AppointmentStatusLog
+    await prisma.appointmentStatusLog.create({
       data: {
+        appointmentId: appointmentId,
         status: "CANCELLED",
+        changedAt: new Date(), // optional if your schema auto-generates
       },
     });
 

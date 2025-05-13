@@ -18,7 +18,7 @@ const upload = (0, multer_1.default)({
 router.post('/register', upload.single('profilePicture'), auth_controller_1.registerUser);
 router.post('/register/doctor', auth_controller_1.registerDoctor);
 router.post('/register/hospital', auth_controller_1.registerHospital);
-router.patch('/update/profile-picture', (0, requireAuthAndRole_1.requireAuthAndRole)('USER'), upload.single("file"), auth_controller_1.updateProfilePicture);
+router.patch('/update/profile-picture', (0, requireAuthAndRole_1.requireAuthAndRole)(['USER', 'DOCTOR']), upload.single("file"), auth_controller_1.updateProfilePicture);
 router.post('/resend-otp', auth_controller_1.resendOtp);
 router.post('/verify-otp', auth_controller_1.verifyOtpAndRegister);
 router.get('/verify-auth', auth_controller_1.verifyTokenFromHeader);

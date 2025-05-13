@@ -8,9 +8,9 @@ const router = Router();
 
 
 
-router.get('/patient', requireAuthAndRole('USER'), getPatientDashboard);
-router.get('/doctor', requireAuthAndRole('DOCTOR'), getDoctorDashboard);
-router.get('/hospital', requireAuthAndRole('HOSPITAL'), getHospitalDashboard);
+router.get('/patient', requireAuthAndRole(['USER']), getPatientDashboard);
+router.get('/doctor', requireAuthAndRole(['DOCTOR']), getDoctorDashboard);
+router.get('/hospital', requireAuthAndRole(['HOSPITAL']), getHospitalDashboard);
 
 
 export const dashboardRoutes =  router;
