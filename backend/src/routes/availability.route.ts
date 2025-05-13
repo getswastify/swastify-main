@@ -4,9 +4,9 @@ import {  deleteDoctorAvailability, getDoctorAvailability, setDoctorAvailability
 
 const router = Router();
 
-router.post('/doctor-availability',requireAuthAndRole('DOCTOR'), setDoctorAvailability);
-router.put('/doctor-availability',requireAuthAndRole('DOCTOR'), updateDoctorAvailability);
-router.get('/doctor-availability',requireAuthAndRole('DOCTOR'), getDoctorAvailability);
-router.delete('/doctor-availability',requireAuthAndRole('DOCTOR'), deleteDoctorAvailability);
+router.post('/doctor-availability',requireAuthAndRole(['DOCTOR']), setDoctorAvailability);
+router.put('/doctor-availability',requireAuthAndRole(['DOCTOR']), updateDoctorAvailability);
+router.get('/doctor-availability',requireAuthAndRole(['DOCTOR']), getDoctorAvailability);
+router.delete('/doctor-availability',requireAuthAndRole(['DOCTOR']), deleteDoctorAvailability);
 
 export const availabilityRoutes =  router;

@@ -5,5 +5,5 @@ const express_1 = require("express");
 const settings_controller_1 = require("../controller/settings.controller");
 const requireAuthAndRole_1 = require("../middleware/requireAuthAndRole");
 const router = (0, express_1.Router)();
-router.get('/doctor-settings', (0, requireAuthAndRole_1.requireAuthAndRole)('DOCTOR'), settings_controller_1.getDoctorSettings);
+router.get('/doctor-settings', (0, requireAuthAndRole_1.requireAuthAndRole)(['DOCTOR']), settings_controller_1.getDoctorSettings);
 exports.settingsRoute = router;

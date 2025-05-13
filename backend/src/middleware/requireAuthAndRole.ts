@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { UserRole } from '@prisma/client';
 
-export const requireAuthAndRole = (role: 'USER' | 'DOCTOR' | 'HOSPITAL' | 'ADMIN') => {
+export const requireAuthAndRole = (allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const token = req.cookies?.auth_token;
 
@@ -21,10 +21,10 @@ export const requireAuthAndRole = (role: 'USER' | 'DOCTOR' | 'HOSPITAL' | 'ADMIN
         return;
       }
 
-      if (!req.user || req.user.role !== role) {
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
         res.status(403).json({
           status: false,
-          message: `Access denied. Requires role: ${role}`,
+          message: `Access denied. Requires one of the roles: ${allowedRoles.join(', ')}`,
         });
         return;
       }

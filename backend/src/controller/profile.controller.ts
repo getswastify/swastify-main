@@ -414,134 +414,147 @@ export const updateHospitalProfile = async (req: Request, res: Response):Promise
   };
 
 export const getPatientProfile = async (req: Request, res: Response): Promise<any> => {
-    try {
-      const userId = req.user?.userId;
-  
-      if (!userId || typeof userId !== 'string') {
-        return res.status(401).json({
-          status: false,
-          message: 'User not authenticated',
-        });
-      }
-  
-      const profile = await prisma.patientProfile.findUnique({
-        where: { userId },
-        select: {
-          userId: true,
-          bloodGroup: true,
-          address: true,
-          height: true,
-          weight: true,
-          allergies: true,
-          diseases: true,
-        },
-      });
-  
-      if (!profile) {
-        return res.status(404).json({
-          status: false,
-          message: 'Patient profile not found',
-          data: {
-            code: 'PROFILE_NOT_FOUND',
-            issue: 'No patient profile exists for this user',
-            isProfileComplete: false,
-          },
-        });
-      }
-  
-      const isProfileComplete =
-        !!profile.bloodGroup &&
-        !!profile.address &&
-        profile.height > 0 &&
-        profile.weight > 0;
-  
-      return res.status(200).json({
-        status: true,
-        message: 'Patient profile retrieved successfully',
-        data: {
-          ...profile,
-          isProfileComplete,
-        },
-      });
-    } catch (error) {
-      console.error('[GET_PATIENT_PROFILE_ERROR]', error);
-      return res.status(500).json({
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId || typeof userId !== "string") {
+      return res.status(401).json({
         status: false,
-        message: 'Failed to retrieve patient profile',
-        error: {
-          code: 'SERVER_ERROR',
-          issue: 'Something went wrong on the server',
+        message: "User not authenticated",
+      });
+    }
+
+    const profile = await prisma.patientProfile.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+        bloodGroup: true,
+        address: true,
+        height: true,
+        weight: true,
+        allergies: true,
+        diseases: true,
+        user: {
+          select: {
+            profilePicture: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        status: false,
+        message: "Patient profile not found",
+        data: {
+          code: "PROFILE_NOT_FOUND",
+          issue: "No patient profile exists for this user",
+          isProfileComplete: false,
         },
       });
     }
-  };
+
+    const isProfileComplete =
+      !!profile.bloodGroup &&
+      !!profile.address &&
+      profile.height > 0 &&
+      profile.weight > 0;
+
+    return res.status(200).json({
+      status: true,
+      message: "Patient profile retrieved successfully",
+      data: {
+        ...profile,
+        isProfileComplete,
+      },
+    });
+  } catch (error) {
+    console.error("[GET_PATIENT_PROFILE_ERROR]", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to retrieve patient profile",
+      error: {
+        code: "SERVER_ERROR",
+        issue: "Something went wrong on the server",
+      },
+    });
+  }
+};
+
   
 export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
-    try {
-      const userId = req.user?.userId;
-  
-      if (!userId || typeof userId !== 'string') {
-        return res.status(401).json({
-          status: false,
-          message: 'User not authenticated',
-        });
-      }
-  
-      const profile = await prisma.doctorProfile.findUnique({
-        where: { userId },
-        select: {
-          userId: true,
-          specialization: true,
-          clinicAddress: true,
-          consultationFee: true,
-          startedPracticeOn: true,
-          licenseNumber: true,
-          licenseIssuedBy: true,
-          licenseDocumentUrl: true,
-          status: true, 
-        },
-      });
-  
-      if (!profile) {
-        return res.status(404).json({
-          status: false,
-          message: 'Doctor profile not found',
-          error: {
-            code: 'PROFILE_NOT_FOUND',
-            issue: 'No doctor profile exists for this user',
-          },
-        });
-      }
-  
-      const { status, ...rest } = profile;  // Destructure to get status separately
-  
-      const isProfileComplete =
-        !!profile.specialization &&
-        !!profile.clinicAddress &&
-        !!profile.consultationFee;
-  
-      return res.status(200).json({
-        status: true,
-        message: 'Doctor profile retrieved successfully',
-        data: {
-          ...rest,  // Spread the rest of the profile data
-          isVerified: status,  // Rename status to isVerified
-          startedPracticeOn: profile.startedPracticeOn.toISOString().split("T")[0],
-          isProfileComplete,
-        },
-      });
-    } catch (error) {
-      console.error('[GET_DOCTOR_PROFILE_ERROR]', error);
-      return res.status(500).json({
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(401).json({
         status: false,
-        message: 'Failed to retrieve doctor profile',
+        message: 'User not authenticated',
+      });
+    }
+
+    const profile = await prisma.doctorProfile.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+        specialization: true,
+        clinicAddress: true,
+        consultationFee: true,
+        startedPracticeOn: true,
+        licenseNumber: true,
+        licenseIssuedBy: true,
+        licenseDocumentUrl: true,
+        status: true,
+        user: {
+          select: {
+            profilePicture: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        status: false,
+        message: 'Doctor profile not found',
         error: {
-          code: 'SERVER_ERROR',
-          issue: 'Something went wrong on the server',
+          code: 'PROFILE_NOT_FOUND',
+          issue: 'No doctor profile exists for this user',
         },
       });
     }
-  };
+
+    const { status, user, ...rest } = profile;
+
+    const isProfileComplete =
+      !!profile.specialization &&
+      !!profile.clinicAddress &&
+      !!profile.consultationFee;
+
+    return res.status(200).json({
+      status: true,
+      message: 'Doctor profile retrieved successfully',
+      data: {
+        ...rest,
+        user, // ✅ includes { profilePicture: "..." }
+        isVerified: status,
+        startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0],
+        isProfileComplete,
+      },
+    });
+  } catch (error) {
+    console.error('[GET_DOCTOR_PROFILE_ERROR]', error);
+    return res.status(500).json({
+      status: false,
+      message: 'Failed to retrieve doctor profile',
+      error: {
+        code: 'SERVER_ERROR',
+        issue: 'Something went wrong on the server',
+      },
+    });
+  }
+};
+
   
 
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
