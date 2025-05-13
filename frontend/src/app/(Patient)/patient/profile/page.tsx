@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -14,9 +16,10 @@ import { createPatientProfile, updatePatientProfile, getPatientProfile } from "@
 import { BLOOD_GROUPS } from "@/types/profile"
 import { Edit, Loader2, Plus, Save, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
+import api from "@/lib/axios"
 
 export default function PatientProfilePage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -27,15 +30,51 @@ export default function PatientProfilePage() {
   const [newDisease, setNewDisease] = useState("")
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [profileData, setProfileData] = useState<{
-    user?: { firstName?: string; lastName?: string; email?: string; profilePicture?: string };
-    bloodGroup?: string;
-    address?: string;
-    height?: number;
-    weight?: number;
-    allergies?: string[];
-    diseases?: string[];
+    user?: { firstName?: string; lastName?: string; email?: string; profilePicture?: string }
+    bloodGroup?: string
+    address?: string
+    height?: number
+    weight?: number
+    allergies?: string[]
+    diseases?: string[]
   } | null>(null)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingPhoto(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await api.patch("/auth/update/profile-picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      if (response.data?.profilePicture) {
+        setProfilePhotoUrl(response.data.profilePicture)
+        toast.success("Profile picture updated successfully")
+      }
+    } catch (error) {
+      console.error("Error uploading profile picture:", error)
+      toast.error("Failed to update profile picture", {
+        description: "Please try again later",
+      })
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
 
   const form = useForm<PatientProfileFormValues>({
     resolver: zodResolver(patientProfileSchema),
@@ -192,7 +231,7 @@ export default function PatientProfilePage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <Card className="overflow-hidden border shadow-md">
+          <div className="border rounded-lg shadow-md overflow-hidden">
             <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 p-6 text-white">
               <h2 className="text-xl font-semibold">
                 {!profileExists ? "Complete Your Profile" : isEditMode ? "Edit Profile" : "Health Information"}
@@ -213,8 +252,8 @@ export default function PatientProfilePage() {
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Profile photo section */}
                     <div className="md:w-1/4 flex flex-col items-center">
-                      {profilePhotoUrl ? (
-                        <div className="relative">
+                      <div className="relative group">
+                        {profilePhotoUrl ? (
                           <Image
                             src={profilePhotoUrl || "/placeholder.svg"}
                             height={128}
@@ -222,14 +261,33 @@ export default function PatientProfilePage() {
                             alt="Profile"
                             className="h-32 w-32 rounded-full object-cover border-4 border-emerald-500 shadow-md"
                           />
-                        </div>
-                      ) : (
-                        <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
-                          <span className="text-4xl font-bold text-emerald-500">
-                            {profileData?.user?.firstName?.charAt(0) || "P"}
-                          </span>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
+                            <span className="text-4xl font-bold text-emerald-500">
+                              {profileData?.user?.firstName?.charAt(0) || "P"}
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={triggerFileInput}
+                          className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
+                          disabled={isUploadingPhoto}
+                        >
+                          {isUploadingPhoto ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Edit className="h-4 w-4" />
+                          )}
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleProfilePhotoUpload}
+                          className="hidden"
+                          accept="image/*"
+                        />
+                      </div>
                       <h3 className="mt-4 font-semibold text-lg">
                         {profileData?.user?.firstName} {profileData?.user?.lastName}
                       </h3>
@@ -478,6 +536,13 @@ export default function PatientProfilePage() {
                         </FormItem>
                       )}
                     />
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleProfilePhotoUpload}
+                      className="hidden"
+                      accept="image/*"
+                    />
 
                     <div className="flex justify-end gap-3 pt-4">
                       {profileExists && (
@@ -503,7 +568,7 @@ export default function PatientProfilePage() {
                 </Form>
               )}
             </CardContent>
-          </Card>
+          </div>
         )}
       </div>
     </RoleGuard>
