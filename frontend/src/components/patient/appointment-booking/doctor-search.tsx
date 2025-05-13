@@ -7,15 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, User, Stethoscope } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getDoctors } from "@/actions/appointments"
+import { Doctor, getDoctors } from "@/actions/appointments"
 import { toast } from "sonner"
 
-interface Doctor {
-  id: string
-  name: string
-  specialty: string
-  experience: number
-}
 
 interface DoctorSearchProps {
   onDoctorSelect: (doctor: Doctor) => void

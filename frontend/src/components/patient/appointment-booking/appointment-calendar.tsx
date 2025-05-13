@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAvailableDates } from "@/actions/appointments"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -97,28 +96,21 @@ export function AppointmentCalendar({ doctorId, onDateSelect, selectedDate }: Ap
   }
 
   return (
-    <Card className="bg-[#1a2236] border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white">Select Date</CardTitle>
-        <CardDescription className="text-gray-400">Choose an available date for your appointment</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-[300px]">
-            <Loader2 className="h-8 w-8 animate-spin text-[#10b981]" />
-          </div>
-        ) : (
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={onDateSelect}
-            disabled={isDateDisabled}
-            onMonthChange={handleMonthChange}
-            className="rounded-md border border-gray-700"
-          />
-        )}
-        <p className="text-sm text-gray-500 mt-4">* Only dates with available appointment slots are selectable</p>
-      </CardContent>
-    </Card>
+    <div className="flex justify-center">
+      {isLoading ? (
+        <div className="flex items-center justify-center w-full h-[300px]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#10b981]" />
+        </div>
+      ) : (
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={onDateSelect}
+          disabled={isDateDisabled}
+          onMonthChange={handleMonthChange}
+          className="rounded-md border border-gray-700"
+        />
+      )}
+    </div>
   )
 }

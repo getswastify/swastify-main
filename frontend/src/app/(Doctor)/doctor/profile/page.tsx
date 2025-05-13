@@ -15,10 +15,9 @@ import { RoleGuard } from "@/components/role-guard"
 import { doctorProfileSchema, type DoctorProfileFormValues } from "@/lib/validations/profile"
 import { createDoctorProfile, updateDoctorProfile, getDoctorProfile } from "@/actions/profile"
 import { SPECIALIZATIONS } from "@/types/profile"
-import { Loader2, Clock, CheckCircle, XCircle, Edit, Save } from "lucide-react"
+import { Loader2, Clock, CheckCircle, XCircle, Edit, Save, Mail, Phone, Calendar } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { VerificationStatusBadge } from "@/components/verification-status-badge"
-import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import api from "@/lib/axios"
 
@@ -33,7 +32,13 @@ export default function DoctorProfilePage() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [profileData, setProfileData] = useState<{
-    user?: { firstName?: string; lastName?: string; email?: string; profilePicture?: string }
+    user?: {
+      fullName?: string
+      email?: string
+      phone?: string
+      dob?: string
+      profilePicture?: string
+    }
     specialization?: string
     clinicAddress?: string
     consultationFee?: number
@@ -45,7 +50,6 @@ export default function DoctorProfilePage() {
   } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-
 
   const form = useForm<DoctorProfileFormValues>({
     resolver: zodResolver(doctorProfileSchema),
@@ -145,9 +149,10 @@ export default function DoctorProfilePage() {
         startedPracticeOn: data.startedPracticeOn,
         licenseDocumentUrl: data.licenseDocumentUrl || "https://example.com/placeholder-license",
         user: {
-          firstName: profileData?.user?.firstName || "",
-          lastName: profileData?.user?.lastName || "",
+          fullName: profileData?.user?.fullName || "",
           email: profileData?.user?.email || "",
+          phone: profileData?.user?.phone || "",
+          dob: profileData?.user?.dob || "",
         },
       }
 
@@ -273,8 +278,8 @@ export default function DoctorProfilePage() {
           <>
             {profileExists && renderVerificationAlert()}
 
-            <div className="border rounded-lg shadow-md overflow-hidden">
-              <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 p-6 text-white">
+            <div className="border rounded-lg shadow-md overflow-hidden bg-[#0c1120] text-white">
+              <div className="w-full bg-emerald-600 p-6">
                 <h2 className="text-xl font-semibold">
                   {!profileExists ? "Complete Your Profile" : isEditMode ? "Edit Profile" : "Professional Information"}
                 </h2>
@@ -291,103 +296,138 @@ export default function DoctorProfilePage() {
                 {!isEditMode && profileExists ? (
                   // View mode
                   <div className="space-y-6">
-                    <div className="flex flex-col md:flex-row gap-6">
-                      {/* Profile photo section */}
-                      <div className="md:w-1/4 flex flex-col items-center">
-                        <div className="relative group">
-                          {profilePhotoUrl ? (
-                            <Image
-                              src={profilePhotoUrl || "/placeholder.svg"}
-                              height={128}
-                              width={128}
-                              alt="Profile"
-                              className="h-32 w-32 rounded-full object-cover border-4 border-emerald-500 shadow-md"
-                            />
-                          ) : (
-                            <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
-                              <span className="text-4xl font-bold text-emerald-500">
-                                {profileData?.user?.firstName?.charAt(0) || "D"}
-                              </span>
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={triggerFileInput}
-                            className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
-                            disabled={isUploadingPhoto}
-                          >
-                            {isUploadingPhoto ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                    <div className="flex flex-col md:flex-row gap-10">
+                      {/* Profile photo and user details section */}
+                      <div className="md:w-1/3 space-y-6">
+                        {/* Profile photo */}
+                        <div className="flex flex-col items-center">
+                          <div className="relative group">
+                            {profilePhotoUrl ? (
+                              <Image
+                                src={profilePhotoUrl || "/placeholder.svg"}
+                                height={128}
+                                width={128}
+                                alt="Profile"
+                                className="h-32 w-32 rounded-full object-cover border-4 border-emerald-500 shadow-md"
+                              />
                             ) : (
-                              <Edit className="h-4 w-4" />
+                              <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
+                                <span className="text-4xl font-bold text-emerald-500">
+                                  {profileData?.user?.fullName?.charAt(0) || "D"}
+                                </span>
+                              </div>
                             )}
-                          </button>
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleProfilePhotoUpload}
-                            className="hidden"
-                            accept="image/*"
-                          />
+                            <button
+                              type="button"
+                              onClick={triggerFileInput}
+                              className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
+                              disabled={isUploadingPhoto}
+                            >
+                              {isUploadingPhoto ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Edit className="h-4 w-4" />
+                              )}
+                            </button>
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleProfilePhotoUpload}
+                              className="hidden"
+                              accept="image/*"
+                            />
+                          </div>
+                          <h3 className="mt-4 font-semibold text-lg">{profileData?.user?.fullName || "Doctor Name"}</h3>
                         </div>
-                        <h3 className="mt-4 font-semibold text-lg">
-                          {profileData?.user?.firstName} {profileData?.user?.lastName}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{profileData?.user?.email}</p>
+
+                        {/* Email */}
+                        <div className="bg-[#1a2235] p-4 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Mail className="h-5 w-5 text-emerald-500" />
+                            <div>
+                              <p className="text-xs uppercase text-gray-400 font-medium">Email</p>
+                              <p className="text-white">{profileData?.user?.email || "Not provided"}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phone */}
+                        <div className="bg-[#1a2235] p-4 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Phone className="h-5 w-5 text-emerald-500" />
+                            <div>
+                              <p className="text-xs uppercase text-gray-400 font-medium">Phone Number</p>
+                              <p className="text-white">{profileData?.user?.phone || "Not provided"}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Date of Birth */}
+                        <div className="bg-[#1a2235] p-4 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-emerald-500" />
+                            <div>
+                              <p className="text-xs uppercase text-gray-400 font-medium">Date of Birth</p>
+                              <p className="text-white">
+                                {profileData?.user?.dob ? formatDate(profileData.user.dob) : "Not provided"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Profile details section */}
-                      <div className="md:w-3/4">
+                      {/* Professional details section */}
+                      <div className="md:w-2/3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">Specialization</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">Specialization</h3>
                             <p className="text-lg font-semibold">{profileData?.specialization || "Not specified"}</p>
                           </div>
 
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">Clinic Address</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">Clinic Address</h3>
                             <p className="text-lg">{profileData?.clinicAddress || "Not provided"}</p>
                           </div>
                         </div>
 
-                        <Separator className="my-6" />
+                        <div className="my-6 h-px bg-gray-800"></div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">Consultation Fee</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">Consultation Fee</h3>
                             <p className="text-lg">₹{profileData?.consultationFee || 0}</p>
                           </div>
 
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">Started Practice On</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">Started Practice On</h3>
                             <p className="text-lg">{formatDate(profileData?.startedPracticeOn)}</p>
                           </div>
                         </div>
 
-                        <Separator className="my-6" />
+                        <div className="my-6 h-px bg-gray-800"></div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">License Number</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">License Number</h3>
                             <p className="text-lg">{profileData?.licenseNumber || "Not provided"}</p>
                           </div>
 
                           <div>
-                            <h3 className="font-medium text-muted-foreground mb-2">License Issued By</h3>
+                            <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">License Issued By</h3>
                             <p className="text-lg">{profileData?.licenseIssuedBy || "Not provided"}</p>
                           </div>
                         </div>
 
                         {profileData?.licenseDocumentUrl && (
                           <>
-                            <Separator className="my-6" />
+                            <div className="my-6 h-px bg-gray-800"></div>
                             <div>
-                              <h3 className="font-medium text-muted-foreground mb-2">License Document</h3>
+                              <h3 className="font-medium text-gray-400 mb-2 text-sm uppercase">License Document</h3>
                               <a
                                 href={profileData.licenseDocumentUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-emerald-600 hover:text-emerald-700 hover:underline"
+                                className="text-emerald-400 hover:text-emerald-300 hover:underline"
                               >
                                 View License Document
                               </a>
@@ -552,7 +592,7 @@ export default function DoctorProfilePage() {
                 )}
 
                 {!isEditMode && verificationStatus === "REJECTED" && (
-                  <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800">
+                  <div className="mt-6 rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-200">
                     <p className="font-medium">Important:</p>
                     <p>
                       Your profile was rejected. Please update your information and ensure all details are accurate
@@ -562,7 +602,7 @@ export default function DoctorProfilePage() {
                 )}
 
                 {!isEditMode && verificationStatus === "PENDING" && (
-                  <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-800">
+                  <div className="mt-6 rounded-lg border border-yellow-800 bg-yellow-900/30 p-4 text-sm text-yellow-200">
                     <p className="font-medium">Note:</p>
                     <p>
                       Your profile is currently under review. You can still update your information while waiting for

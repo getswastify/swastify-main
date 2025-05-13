@@ -2,10 +2,15 @@ import api from "@/lib/axios"
 
 // Types for appointment API responses
 export interface Doctor {
-  id: string
+  id?:string,
+  profilePicture: null | string
+  userId: string
   name: string
   specialty: string
-  experience: number
+  experience: number,
+  consultationFee:number,
+  clinicAddress:string
+  
 }
 
 export interface DoctorsResponse {
