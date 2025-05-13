@@ -49,7 +49,7 @@ export function MobileNavbar() {
     // Try to get role from user object first, then from state
     const role = (user?.role || userRole || "").toUpperCase() as UserRole
 
-    console.log("Current role:", role) // Debug log
+
 
     if (role === "DOCTOR") {
       return [

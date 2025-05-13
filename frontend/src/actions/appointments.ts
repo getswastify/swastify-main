@@ -26,6 +26,7 @@ export interface AvailableDatesResponse {
 }
 
 export interface Appointment {
+  doctorImage: string
   appointmentId: string
   appointmentTime: string
   status: string

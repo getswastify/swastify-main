@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
+
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
@@ -13,18 +15,37 @@ import { RoleGuard } from "@/components/role-guard"
 import { doctorProfileSchema, type DoctorProfileFormValues } from "@/lib/validations/profile"
 import { createDoctorProfile, updateDoctorProfile, getDoctorProfile } from "@/actions/profile"
 import { SPECIALIZATIONS } from "@/types/profile"
-import { Loader2, Clock, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, Clock, CheckCircle, XCircle, Edit, Save } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { VerificationStatusBadge } from "@/components/verification-status-badge"
+import { Separator } from "@/components/ui/separator"
+import Image from "next/image"
+import api from "@/lib/axios"
 
 export default function DoctorProfilePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [profileExists, setProfileExists] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [verificationStatus, setVerificationStatus] = useState<"PENDING" | "APPROVED" | "REJECTED" | undefined>(
     undefined,
   )
-  const router = useRouter()
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const [profileData, setProfileData] = useState<{
+    user?: { firstName?: string; lastName?: string; email?: string; profilePicture?: string }
+    specialization?: string
+    clinicAddress?: string
+    consultationFee?: number
+    startedPracticeOn?: string
+    licenseNumber?: string
+    licenseIssuedBy?: string
+    licenseDocumentUrl?: string
+    isVerified?: "PENDING" | "APPROVED" | "REJECTED"
+  } | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
 
   const form = useForm<DoctorProfileFormValues>({
     resolver: zodResolver(doctorProfileSchema),
@@ -39,6 +60,40 @@ export default function DoctorProfilePage() {
     },
   })
 
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingPhoto(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await api.patch("/auth/update/profile-picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      if (response.data?.profilePicture) {
+        setProfilePhotoUrl(response.data.profilePicture)
+        toast.success("Profile picture updated successfully")
+      }
+    } catch (error) {
+      console.error("Error uploading profile picture:", error)
+      toast.error("Failed to update profile picture", {
+        description: "Please try again later",
+      })
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
   useEffect(() => {
     const fetchProfile = async () => {
       setIsLoading(true)
@@ -46,6 +101,7 @@ export default function DoctorProfilePage() {
         const response = await getDoctorProfile()
         if (response.status && response.data) {
           setProfileExists(true)
+          setProfileData(response.data)
           setVerificationStatus(response.data.isVerified)
           form.reset({
             // Cast the specialization to the correct type
@@ -57,9 +113,19 @@ export default function DoctorProfilePage() {
             licenseIssuedBy: response.data.licenseIssuedBy || "",
             licenseDocumentUrl: response.data.licenseDocumentUrl || "",
           })
+
+          if (response.data.user?.profilePicture) {
+            setProfilePhotoUrl(response.data.user.profilePicture)
+          }
+        } else {
+          // If no profile exists, set to edit mode to create one
+          setIsEditMode(true)
         }
       } catch (error) {
         console.error("Error fetching profile:", error)
+        toast.error("Failed to load profile", {
+          description: "Please try again later",
+        })
       } finally {
         setIsLoading(false)
       }
@@ -78,6 +144,11 @@ export default function DoctorProfilePage() {
         // Convert YYYY-MM-DD to YYYY-MM-DDT00:00:00Z format
         startedPracticeOn: data.startedPracticeOn,
         licenseDocumentUrl: data.licenseDocumentUrl || "https://example.com/placeholder-license",
+        user: {
+          firstName: profileData?.user?.firstName || "",
+          lastName: profileData?.user?.lastName || "",
+          email: profileData?.user?.email || "",
+        },
       }
 
       const response = profileExists
@@ -93,16 +164,24 @@ export default function DoctorProfilePage() {
       })
 
       setProfileExists(true)
+      setIsEditMode(false)
 
       // Update verification status if it's in the response
       if (response.data?.isVerified) {
         setVerificationStatus(response.data.isVerified)
       }
 
-      // Redirect to dashboard after successful submission
-      setTimeout(() => {
-        router.push("/doctor/dashboard")
-      }, 1500)
+      // Update local data
+      setProfileData({
+        ...profileData,
+        specialization: data.specialization,
+        clinicAddress: data.clinicAddress,
+        consultationFee: data.consultationFee,
+        startedPracticeOn: data.startedPracticeOn,
+        licenseNumber: data.licenseNumber,
+        licenseIssuedBy: data.licenseIssuedBy,
+        licenseDocumentUrl: data.licenseDocumentUrl,
+      })
     } catch (error) {
       toast.error("Error", {
         description: error instanceof Error ? error.message : "Something went wrong",
@@ -149,180 +228,330 @@ export default function DoctorProfilePage() {
     }
   }
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Not provided"
+
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    } catch (error) {
+      console.error(error)
+      return dateString
+    }
+  }
+
   return (
     <RoleGuard requiredRole="DOCTOR">
       <div className="w-full max-w-full space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Doctor Profile</h1>
             <p className="text-muted-foreground">Manage your professional information</p>
           </div>
-          {!isLoading && verificationStatus && (
-            <VerificationStatusBadge status={verificationStatus} className="mt-2 md:mt-0" />
-          )}
+
+          <div className="flex items-center gap-3 mt-4 md:mt-0">
+            {!isLoading && verificationStatus && <VerificationStatusBadge status={verificationStatus} />}
+
+            {profileExists && !isEditMode && (
+              <Button onClick={() => setIsEditMode(true)} variant="outline">
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="relative w-full overflow-hidden rounded-lg shadow-md">
-          {/* Custom header that extends full width */}
-          <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 px-6 py-6 text-center">
-            <h2 className="text-xl font-semibold text-white">
-              {profileExists ? "Update Profile" : "Complete Your Profile"}
-            </h2>
-            <p className="text-emerald-50">
-              {profileExists
-                ? "Update your professional information below"
-                : "Please provide your professional information to complete your profile"}
-            </p>
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : (
+          <>
+            {profileExists && renderVerificationAlert()}
 
-          {/* Card content */}
-          <div className="bg-card p-6">
-            {isLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="border rounded-lg shadow-md overflow-hidden">
+              <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 p-6 text-white">
+                <h2 className="text-xl font-semibold">
+                  {!profileExists ? "Complete Your Profile" : isEditMode ? "Edit Profile" : "Professional Information"}
+                </h2>
+                <p className="text-emerald-50 text-sm mt-1">
+                  {!profileExists
+                    ? "Please provide your professional information to complete your profile"
+                    : isEditMode
+                      ? "Update your professional information below"
+                      : "Your professional details and credentials"}
+                </p>
               </div>
-            ) : (
-              <>
-                {profileExists && renderVerificationAlert()}
 
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <FormField
-                      control={form.control}
-                      name="specialization"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Specialization</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select your specialization" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {SPECIALIZATIONS.map((specialization) => (
-                                <SelectItem key={specialization} value={specialization}>
-                                  {specialization}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>Your medical specialization</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              <div className="p-6">
+                {!isEditMode && profileExists ? (
+                  // View mode
+                  <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Profile photo section */}
+                      <div className="md:w-1/4 flex flex-col items-center">
+                        <div className="relative group">
+                          {profilePhotoUrl ? (
+                            <Image
+                              src={profilePhotoUrl || "/placeholder.svg"}
+                              height={128}
+                              width={128}
+                              alt="Profile"
+                              className="h-32 w-32 rounded-full object-cover border-4 border-emerald-500 shadow-md"
+                            />
+                          ) : (
+                            <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
+                              <span className="text-4xl font-bold text-emerald-500">
+                                {profileData?.user?.firstName?.charAt(0) || "D"}
+                              </span>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={triggerFileInput}
+                            className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
+                            disabled={isUploadingPhoto}
+                          >
+                            {isUploadingPhoto ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )}
+                          </button>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleProfilePhotoUpload}
+                            className="hidden"
+                            accept="image/*"
+                          />
+                        </div>
+                        <h3 className="mt-4 font-semibold text-lg">
+                          {profileData?.user?.firstName} {profileData?.user?.lastName}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{profileData?.user?.email}</p>
+                      </div>
 
-                    <FormField
-                      control={form.control}
-                      name="clinicAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Clinic Address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter your clinic address" {...field} />
-                          </FormControl>
-                          <FormDescription>The address where you practice</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      {/* Profile details section */}
+                      <div className="md:w-3/4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">Specialization</h3>
+                            <p className="text-lg font-semibold">{profileData?.specialization || "Not specified"}</p>
+                          </div>
 
-                    <FormField
-                      control={form.control}
-                      name="consultationFee"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Consultation Fee</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} />
-                          </FormControl>
-                          <FormDescription>Your consultation fee in INR</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">Clinic Address</h3>
+                            <p className="text-lg">{profileData?.clinicAddress || "Not provided"}</p>
+                          </div>
+                        </div>
 
-                    <FormField
-                      control={form.control}
-                      name="startedPracticeOn"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Started Practice On</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormDescription>When you started your medical practice</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <Separator className="my-6" />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="licenseNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>License Number</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter your medical license number" {...field} />
-                            </FormControl>
-                            <FormDescription>Your medical license/registration number</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">Consultation Fee</h3>
+                            <p className="text-lg">₹{profileData?.consultationFee || 0}</p>
+                          </div>
 
-                      <FormField
-                        control={form.control}
-                        name="licenseIssuedBy"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>License Issued By</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter issuing authority" {...field} />
-                            </FormControl>
-                            <FormDescription>Authority that issued your license</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">Started Practice On</h3>
+                            <p className="text-lg">{formatDate(profileData?.startedPracticeOn)}</p>
+                          </div>
+                        </div>
 
-                    <FormField
-                      control={form.control}
-                      name="licenseDocumentUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>License Document URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://example.com/your-license-document" {...field} />
-                          </FormControl>
-                          <FormDescription>URL to your license document (optional)</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <Separator className="my-6" />
 
-                    <div className="flex justify-center pt-4">
-                      <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto md:min-w-[200px]">
-                        {isSubmitting ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">License Number</h3>
+                            <p className="text-lg">{profileData?.licenseNumber || "Not provided"}</p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-medium text-muted-foreground mb-2">License Issued By</h3>
+                            <p className="text-lg">{profileData?.licenseIssuedBy || "Not provided"}</p>
+                          </div>
+                        </div>
+
+                        {profileData?.licenseDocumentUrl && (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {profileExists ? "Updating..." : "Creating..."}
+                            <Separator className="my-6" />
+                            <div>
+                              <h3 className="font-medium text-muted-foreground mb-2">License Document</h3>
+                              <a
+                                href={profileData.licenseDocumentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-600 hover:text-emerald-700 hover:underline"
+                              >
+                                View License Document
+                              </a>
+                            </div>
                           </>
-                        ) : profileExists ? (
-                          "Update Profile"
-                        ) : (
-                          "Create Profile"
                         )}
-                      </Button>
+                      </div>
                     </div>
-                  </form>
-                </Form>
+                  </div>
+                ) : (
+                  // Edit mode
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="specialization"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Specialization</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select your specialization" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {SPECIALIZATIONS.map((specialization) => (
+                                  <SelectItem key={specialization} value={specialization}>
+                                    {specialization}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>Your medical specialization</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                {verificationStatus === "REJECTED" && (
+                      <FormField
+                        control={form.control}
+                        name="clinicAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Clinic Address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your clinic address" {...field} />
+                            </FormControl>
+                            <FormDescription>The address where you practice</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="consultationFee"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Consultation Fee</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormDescription>Your consultation fee in INR</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="startedPracticeOn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Started Practice On</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormDescription>When you started your medical practice</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="licenseNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>License Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your medical license number" {...field} />
+                              </FormControl>
+                              <FormDescription>Your medical license/registration number</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="licenseIssuedBy"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>License Issued By</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter issuing authority" {...field} />
+                              </FormControl>
+                              <FormDescription>Authority that issued your license</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="licenseDocumentUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>License Document URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://example.com/your-license-document" {...field} />
+                            </FormControl>
+                            <FormDescription>URL to your license document (optional)</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleProfilePhotoUpload}
+                        className="hidden"
+                        accept="image/*"
+                      />
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        {profileExists && (
+                          <Button type="button" variant="outline" onClick={() => setIsEditMode(false)}>
+                            Cancel
+                          </Button>
+                        )}
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              {profileExists ? "Updating..." : "Creating..."}
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              {profileExists ? "Save Changes" : "Create Profile"}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
+
+                {!isEditMode && verificationStatus === "REJECTED" && (
                   <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800">
                     <p className="font-medium">Important:</p>
                     <p>
@@ -332,7 +561,7 @@ export default function DoctorProfilePage() {
                   </div>
                 )}
 
-                {verificationStatus === "PENDING" && (
+                {!isEditMode && verificationStatus === "PENDING" && (
                   <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-800">
                     <p className="font-medium">Note:</p>
                     <p>
@@ -341,10 +570,10 @@ export default function DoctorProfilePage() {
                     </p>
                   </div>
                 )}
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </RoleGuard>
   )

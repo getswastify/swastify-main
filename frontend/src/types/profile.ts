@@ -1,11 +1,11 @@
 export interface ProfileResponse<T> {
-  status: boolean
-  message: string
-  data?: T
+  status: boolean;
+  message: string;
+  data?: T;
   error?: {
-    code: string
-    issue: string | Array<{ path: string; message: string }>
-  }
+    code: string;
+    issue: string | Array<{ path: string; message: string }>;
+  };
 }
 
 // Patient Profile Types
@@ -15,50 +15,56 @@ export interface PatientProfileData {
     lastName?: string;
     email?: string;
     profilePicture?: string;
-  },
-  id?: string
-  userId?: string
-  bloodGroup: string
-  address: string
-  height: number
-  weight: number
-  allergies: string[]
-  diseases: string[]
-  isProfileComplete?: boolean
+  };
+  id?: string;
+  userId?: string;
+  bloodGroup: string;
+  address: string;
+  height: number;
+  weight: number;
+  allergies: string[];
+  diseases: string[];
+  isProfileComplete?: boolean;
 }
 
-export type PatientProfileResponse = ProfileResponse<PatientProfileData>
+export type PatientProfileResponse = ProfileResponse<PatientProfileData>;
 
 // Doctor Profile Types
 // Update the DoctorProfileData interface to remove availableFrom and availableTo
 export interface DoctorProfileData {
-  id?: string
-  userId?: string
-  specialization: string
-  clinicAddress: string
-  consultationFee: number
-  startedPracticeOn: string
-  licenseNumber: string
-  licenseIssuedBy: string
-  licenseDocumentUrl: string
-  isProfileComplete?: boolean
-  isVerified?: "PENDING" | "APPROVED" | "REJECTED"
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    profilePicture?: string;
+  };
+  id?: string;
+  userId?: string;
+  specialization: string;
+  clinicAddress: string;
+  consultationFee: number;
+  startedPracticeOn: string;
+  licenseNumber: string;
+  licenseIssuedBy: string;
+  licenseDocumentUrl: string;
+  isProfileComplete?: boolean;
+  isVerified?: "PENDING" | "APPROVED" | "REJECTED";
 }
 
-export type DoctorProfileResponse = ProfileResponse<DoctorProfileData>
+export type DoctorProfileResponse = ProfileResponse<DoctorProfileData>;
 
 // Hospital Profile Types
 export interface HospitalProfileData {
-  id?: string
-  userId?: string
-  hospitalName: string
-  location: string
-  services: string
-  isProfileComplete?: boolean
-  isVerified?: "PENDING" | "APPROVED" | "REJECTED"
+  id?: string;
+  userId?: string;
+  hospitalName: string;
+  location: string;
+  services: string;
+  isProfileComplete?: boolean;
+  isVerified?: "PENDING" | "APPROVED" | "REJECTED";
 }
 
-export type HospitalProfileResponse = ProfileResponse<HospitalProfileData>
+export type HospitalProfileResponse = ProfileResponse<HospitalProfileData>;
 
 // Blood Group Options
 export const BLOOD_GROUPS = [
@@ -70,9 +76,9 @@ export const BLOOD_GROUPS = [
   "AB_NEGATIVE",
   "O_POSITIVE",
   "O_NEGATIVE",
-] as const
+] as const;
 
-export type BloodGroup = (typeof BLOOD_GROUPS)[number]
+export type BloodGroup = (typeof BLOOD_GROUPS)[number];
 
 // Specialization Options (example)
 export const SPECIALIZATIONS = [
@@ -86,6 +92,6 @@ export const SPECIALIZATIONS = [
   "Pediatrics",
   "Psychiatry",
   "Urology",
-] as const
+] as const;
 
-export type Specialization = (typeof SPECIALIZATIONS)[number]
+export type Specialization = (typeof SPECIALIZATIONS)[number];
