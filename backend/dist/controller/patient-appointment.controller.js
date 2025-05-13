@@ -571,13 +571,16 @@ const searchDoctors = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             },
         });
         const formattedDoctors = doctors.map((doc) => {
-            var _a, _b, _c;
+            var _a, _b, _c, _d, _e;
             return ({
-                id: doc.id,
+                userId: doc.id,
                 name: `${doc.firstName} ${doc.lastName}`,
                 specialty: ((_a = doc.doctorProfile) === null || _a === void 0 ? void 0 : _a.specialization) || "",
                 experience: new Date().getFullYear() -
                     new Date((_c = (_b = doc.doctorProfile) === null || _b === void 0 ? void 0 : _b.startedPracticeOn) !== null && _c !== void 0 ? _c : new Date()).getFullYear(),
+                profilePicture: doc.profilePicture || null,
+                consultationFee: ((_d = doc.doctorProfile) === null || _d === void 0 ? void 0 : _d.consultationFee) || null,
+                clinicAddress: ((_e = doc.doctorProfile) === null || _e === void 0 ? void 0 : _e.clinicAddress) || "",
             });
         });
         return res.status(200).json({ doctors: formattedDoctors });
