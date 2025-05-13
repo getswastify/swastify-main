@@ -14,10 +14,9 @@ import { RoleGuard } from "@/components/role-guard"
 import { patientProfileSchema, type PatientProfileFormValues } from "@/lib/validations/profile"
 import { createPatientProfile, updatePatientProfile, getPatientProfile } from "@/actions/profile"
 import { BLOOD_GROUPS } from "@/types/profile"
-import { Edit, Loader2, Plus, Save, X } from "lucide-react"
+import { Calendar, Edit, Loader2, Mail, Phone, Plus, Save, X } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
 import { CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import api from "@/lib/axios"
 
@@ -30,7 +29,13 @@ export default function PatientProfilePage() {
   const [newDisease, setNewDisease] = useState("")
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [profileData, setProfileData] = useState<{
-    user?: { firstName?: string; lastName?: string; email?: string; profilePicture?: string }
+    user?: {
+      fullName?: string
+      email?: string
+      phone?: string
+      dob?: string
+      profilePicture?: string
+    }
     bloodGroup?: string
     address?: string
     height?: number
@@ -211,7 +216,7 @@ export default function PatientProfilePage() {
 
   return (
     <RoleGuard requiredRole="USER">
-      <div className="w-full max-w-full space-y-6">
+      <div className="w-full max-w-full">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Patient Profile</h1>
@@ -231,8 +236,8 @@ export default function PatientProfilePage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="border rounded-lg shadow-md overflow-hidden">
-            <div className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 p-6 text-white">
+          <div className="border rounded-lg shadow-md overflow-hidden bg-[#0c1120]">
+            <div className="w-full bg-emerald-600 p-6 text-white">
               <h2 className="text-xl font-semibold">
                 {!profileExists ? "Complete Your Profile" : isEditMode ? "Edit Profile" : "Health Information"}
               </h2>
@@ -245,41 +250,44 @@ export default function PatientProfilePage() {
               </p>
             </div>
 
-            <CardContent className="p-6">
-              {!isEditMode && profileExists ? (
-                // View mode
-                <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    {/* Profile photo section */}
-                    <div className="md:w-1/4 flex flex-col items-center">
-                      <div className="relative group">
-                        {profilePhotoUrl ? (
-                          <Image
-                            src={profilePhotoUrl || "/placeholder.svg"}
-                            height={128}
-                            width={128}
-                            alt="Profile"
-                            className="h-32 w-32 rounded-full object-cover border-4 border-emerald-500 shadow-md"
-                          />
-                        ) : (
-                          <div className="h-32 w-32 rounded-full bg-emerald-100 flex items-center justify-center border-4 border-emerald-500 shadow-md">
-                            <span className="text-4xl font-bold text-emerald-500">
-                              {profileData?.user?.firstName?.charAt(0) || "P"}
-                            </span>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={triggerFileInput}
-                          className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
-                          disabled={isUploadingPhoto}
-                        >
-                          {isUploadingPhoto ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+            {!isEditMode && profileExists ? (
+              // View mode - Dark theme
+              <div className="p-6">
+                <div className="flex flex-col md:flex-row gap-10">
+                  {/* Profile photo section */}
+                  <div className="md:w-1/3">
+                    <div className="flex flex-col space-y-6">
+                      {/* Profile Picture */}
+                      <div className="relative flex justify-center">
+                        <div className="rounded-full border-4 border-emerald-500 p-1 relative">
+                          {profilePhotoUrl ? (
+                            <Image
+                              src={profilePhotoUrl || "/placeholder.svg"}
+                              height={120}
+                              width={120}
+                              alt="Profile"
+                              className="h-28 w-28 rounded-full object-cover"
+                            />
                           ) : (
-                            <Edit className="h-4 w-4" />
+                            <div className="h-28 w-28 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <span className="text-4xl font-bold text-emerald-500">
+                                {profileData?.user?.fullName?.charAt(0) || "P"}
+                              </span>
+                            </div>
                           )}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={triggerFileInput}
+                            className="absolute bottom-1 right-1 bg-emerald-500 text-white p-1.5 rounded-full shadow-md hover:bg-emerald-600 transition-colors"
+                            disabled={isUploadingPhoto}
+                          >
+                            {isUploadingPhoto ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                         <input
                           type="file"
                           ref={fileInputRef}
@@ -288,78 +296,116 @@ export default function PatientProfilePage() {
                           accept="image/*"
                         />
                       </div>
-                      <h3 className="mt-4 font-semibold text-lg">
-                        {profileData?.user?.firstName} {profileData?.user?.lastName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{profileData?.user?.email}</p>
-                    </div>
 
-                    {/* Profile details section */}
-                    <div className="md:w-3/4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h3 className="font-medium text-muted-foreground mb-2">Blood Group</h3>
-                          <p className="text-lg font-semibold">{formatBloodGroup(profileData?.bloodGroup || "")}</p>
-                        </div>
+                      {/* Full Name */}
+                      <div className="text-center">
+                        <h3 className="text-xl font-semibold text-white">{profileData?.user?.fullName}</h3>
+                      </div>
 
+                      {/* Email */}
+                      <div className="bg-[#1a2235] rounded-lg p-4 flex items-center space-x-3">
+                        <Mail className="h-5 w-5 text-emerald-500" />
                         <div>
-                          <h3 className="font-medium text-muted-foreground mb-2">Address</h3>
-                          <p className="text-lg">{profileData?.address || "Not provided"}</p>
+                          <div className="text-xs uppercase text-gray-500 font-medium">Email</div>
+                          <div className="text-white">{profileData?.user?.email}</div>
                         </div>
                       </div>
 
-                      <Separator className="my-6" />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Phone */}
+                      <div className="bg-[#1a2235] rounded-lg p-4 flex items-center space-x-3">
+                        <Phone className="h-5 w-5 text-emerald-500" />
                         <div>
-                          <h3 className="font-medium text-muted-foreground mb-2">Height</h3>
-                          <p className="text-lg">{profileData?.height || 0} cm</p>
-                        </div>
-
-                        <div>
-                          <h3 className="font-medium text-muted-foreground mb-2">Weight</h3>
-                          <p className="text-lg">{profileData?.weight || 0} kg</p>
+                          <div className="text-xs uppercase text-gray-500 font-medium">Phone Number</div>
+                          <div className="text-white">{profileData?.user?.phone || "Not provided"}</div>
                         </div>
                       </div>
 
-                      <Separator className="my-6" />
-
-                      <div>
-                        <h3 className="font-medium text-muted-foreground mb-3">Allergies</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {profileData?.allergies?.length ? (
-                            profileData?.allergies?.map((allergy: string, index: number) => (
-                              <Badge key={index} variant="secondary">
-                                {allergy}
-                              </Badge>
-                            ))
-                          ) : (
-                            <p className="text-muted-foreground">No allergies recorded</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <Separator className="my-6" />
-
-                      <div>
-                        <h3 className="font-medium text-muted-foreground mb-3">Medical Conditions</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {profileData?.diseases?.length ? (
-                            profileData.diseases.map((disease: string, index: number) => (
-                              <Badge key={index} variant="secondary">
-                                {disease}
-                              </Badge>
-                            ))
-                          ) : (
-                            <p className="text-muted-foreground">No medical conditions recorded</p>
-                          )}
+                      {/* Date of Birth */}
+                      <div className="bg-[#1a2235] rounded-lg p-4 flex items-center space-x-3">
+                        <Calendar className="h-5 w-5 text-emerald-500" />
+                        <div>
+                          <div className="text-xs uppercase text-gray-500 font-medium">Date of Birth</div>
+                          <div className="text-white">
+                            {profileData?.user?.dob
+                              ? new Date(profileData.user.dob).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })
+                              : "Not provided"}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Profile details section */}
+                  <div className="md:w-2/3 text-white">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div>
+                        <h3 className="text-gray-400 mb-2">Blood Group</h3>
+                        <p className="text-xl font-semibold">{formatBloodGroup(profileData?.bloodGroup || "")}</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-gray-400 mb-2">Address</h3>
+                        <p className="text-xl">{profileData?.address || "Not provided"}</p>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-gray-800 my-8"></div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div>
+                        <h3 className="text-gray-400 mb-2">Height</h3>
+                        <p className="text-xl">{profileData?.height || 0} cm</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-gray-400 mb-2">Weight</h3>
+                        <p className="text-xl">{profileData?.weight || 0} kg</p>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-gray-800 my-8"></div>
+
+                    <div>
+                      <h3 className="text-gray-400 mb-3">Allergies</h3>
+                      {profileData?.allergies?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {profileData?.allergies?.map((allergy: string, index: number) => (
+                            <Badge key={index} variant="secondary">
+                              {allergy}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No allergies recorded</p>
+                      )}
+                    </div>
+
+                    <div className="h-px bg-gray-800 my-8"></div>
+
+                    <div>
+                      <h3 className="text-gray-400 mb-3">Medical Conditions</h3>
+                      {profileData?.diseases?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.diseases.map((disease: string, index: number) => (
+                            <Badge key={index} variant="secondary">
+                              {disease}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No medical conditions recorded</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                // Edit mode
+              </div>
+            ) : (
+              // Edit mode
+              <CardContent className="p-6">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
@@ -566,8 +612,8 @@ export default function PatientProfilePage() {
                     </div>
                   </form>
                 </Form>
-              )}
-            </CardContent>
+              </CardContent>
+            )}
           </div>
         )}
       </div>
