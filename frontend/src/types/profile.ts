@@ -9,7 +9,6 @@ export interface ProfileResponse<T> {
 }
 
 // Patient Profile Types
-// Update the PatientProfileData interface to match the new API response
 export interface PatientProfileData {
   user?: {
     fullName?: string
@@ -32,12 +31,13 @@ export interface PatientProfileData {
 export type PatientProfileResponse = ProfileResponse<PatientProfileData>
 
 // Doctor Profile Types
-// Update the DoctorProfileData interface to remove availableFrom and availableTo
+// Updated to match the new API response structure
 export interface DoctorProfileData {
   user?: {
-    firstName?: string
-    lastName?: string
+    fullName?: string
     email?: string
+    phone?: string
+    dob?: string
     profilePicture?: string
   }
   id?: string
