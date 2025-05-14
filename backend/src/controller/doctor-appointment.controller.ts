@@ -408,18 +408,20 @@ export const getAppointmentDetails = async (
             lastName: true,
             email: true,
             phone: true,
+            profilePicture: true, // 👈 Added patient image
           },
         },
         doctor: {
           select: {
+            specialization: true,
             user: {
               select: {
                 firstName: true,
                 lastName: true,
                 email: true,
+                profilePicture: true, // 👈 Added doctor image
               },
             },
-            specialization: true,
           },
         },
       },
@@ -441,12 +443,14 @@ export const getAppointmentDetails = async (
         patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
         patientEmail: appointment.patient.email,
         patientPhone: appointment.patient.phone,
+        patientImage: appointment.patient.profilePicture, // ✅ Included in response
         appointmentTime: appointment.appointmentTime,
         status: appointment.status,
-        meetLink: appointment.meetLink ?? "Not Available", // 👈 Added this!
+        meetLink: appointment.meetLink ?? "Not Available",
         doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
         doctorSpecialization: appointment.doctor.specialization,
         doctorEmail: appointment.doctor.user.email,
+        doctorImage: appointment.doctor.user.profilePicture, // ✅ Included in response
         createdAt: appointment.createdAt,
         updatedAt: appointment.updatedAt,
       },
