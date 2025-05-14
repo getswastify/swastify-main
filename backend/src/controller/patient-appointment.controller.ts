@@ -702,14 +702,15 @@ export const searchDoctors = async (
     });
 
     const formattedDoctors = doctors.map((doc) => ({
-      id: doc.id,
+      userId: doc.id,
       name: `${doc.firstName} ${doc.lastName}`,
       specialty: doc.doctorProfile?.specialization || "",
       experience:
         new Date().getFullYear() -
-        new Date(
-          doc.doctorProfile?.startedPracticeOn ?? new Date()
-        ).getFullYear(),
+        new Date(doc.doctorProfile?.startedPracticeOn ?? new Date()).getFullYear(),
+      profilePicture: doc.profilePicture || null,
+      consultationFee: doc.doctorProfile?.consultationFee || null,
+      clinicAddress: doc.doctorProfile?.clinicAddress || "",
     }));
 
     return res.status(200).json({ doctors: formattedDoctors });
