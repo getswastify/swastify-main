@@ -561,10 +561,10 @@ export const getPatientAppointmentDetail = async (
       include: {
         doctor: {
           include: {
-            user: true,
+            user: true, // 👈 this works because doctor is DoctorProfile and has `user`
           },
         },
-        patient: true,
+        patient: true, // 👈 this is already a User model, so no need for `.user`
         AppointmentStatusLog: {
           orderBy: {
             changedAt: 'asc',
@@ -580,7 +580,6 @@ export const getPatientAppointmentDetail = async (
       });
     }
 
-    // Build timeline entries
     const timeline = appointment.AppointmentStatusLog.map((log, index) => ({
       id: index + 1,
       title: getTimelineTitle(log.status),
@@ -594,14 +593,22 @@ export const getPatientAppointmentDetail = async (
       appointmentTime: appointment.appointmentTime,
       status: appointment.status,
       meetLink: appointment.meetLink,
+
+      // Doctor details
       doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
-      doctorEmail:appointment.doctor.googleEmail,
+      doctorEmail: appointment.doctor.googleEmail,
+      doctorImage: appointment.doctor.user.profilePicture,
       clinicAddress: appointment.doctor.clinicAddress,
       doctorSpecialization: appointment.doctor.specialization,
       experience: calculateExperience(appointment.doctor.startedPracticeOn.toISOString()),
+
+      // Patient details
       patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
       patientEmail: appointment.patient.email,
       patientPhone: appointment.patient.phone,
+      patientImage: appointment.patient.profilePicture,
+
+      // Meta
       createdAt: appointment.createdAt,
       updatedAt: appointment.updatedAt,
       timeline,
@@ -619,6 +626,7 @@ export const getPatientAppointmentDetail = async (
     });
   }
 };
+
 
 // Helper: Timeline title
 const getTimelineTitle = (status: string) => {
@@ -713,7 +721,6 @@ export const searchDoctors = async (
       .json({ error: "Something went wrong while searching for doctors." });
   }
 };
-
 
 export const cancelAppointment = async (
   req: Request,

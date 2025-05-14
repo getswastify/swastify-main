@@ -5,7 +5,19 @@ import { useParams, useRouter } from "next/navigation"
 import { RoleGuard } from "@/components/role-guard"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Calendar, Clock, Phone, Mail, Video, ArrowLeft, CheckCircle, AlertCircle, XCircle, Clock3 } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  Phone,
+  Mail,
+  Video,
+  ArrowLeft,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Clock3,
+  MapPin,
+} from "lucide-react"
 import api from "@/lib/axios"
 import { toast } from "sonner"
 
@@ -22,12 +34,16 @@ interface AppointmentDetail {
   patientName: string
   patientEmail: string
   patientPhone: string
+  patientImage?: string
   appointmentTime: string
   status: string
   meetLink: string
   doctorName: string
   doctorSpecialization: string
   doctorEmail: string
+  doctorImage?: string
+  clinicAddress?: string
+  experience?: string
   createdAt: string
   updatedAt: string
   timeline: TimelineEvent[]
@@ -282,12 +298,25 @@ const AppointmentDetails = () => {
                       <h2 className="text-lg font-medium text-gray-400 mb-2">Doctor Information</h2>
                       <div className="bg-[#1f2b42] rounded-lg p-4">
                         <div className="flex items-center gap-4 mb-4">
-                          <div className="bg-[#10b981]/20 h-12 w-12 rounded-full flex items-center justify-center">
-                            <span className="text-[#10b981] font-bold text-lg">{appointment.doctorName.charAt(0)}</span>
-                          </div>
+                          {appointment.doctorImage ? (
+                            <img
+                              src={appointment.doctorImage || "/placeholder.svg"}
+                              alt={appointment.doctorName}
+                              className="h-12 w-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="bg-[#10b981]/20 h-12 w-12 rounded-full flex items-center justify-center">
+                              <span className="text-[#10b981] font-bold text-lg">
+                                {appointment.doctorName.charAt(0)}
+                              </span>
+                            </div>
+                          )}
                           <div>
                             <h3 className="text-lg font-semibold text-white">{appointment.doctorName}</h3>
                             <p className="text-[#10b981]">{appointment.doctorSpecialization}</p>
+                            {appointment.experience && (
+                              <p className="text-gray-400 text-sm">{appointment.experience} experience</p>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -295,6 +324,12 @@ const AppointmentDetails = () => {
                             <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
                             <span className="break-all">{appointment.doctorEmail}</span>
                           </div>
+                          {appointment.clinicAddress && (
+                            <div className="flex items-center gap-2 text-gray-300">
+                              <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <span>{appointment.clinicAddress}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -303,9 +338,19 @@ const AppointmentDetails = () => {
                       <h2 className="text-lg font-medium text-gray-400 mb-2">Patient Information</h2>
                       <div className="bg-[#1f2b42] rounded-lg p-4">
                         <div className="flex items-center gap-4 mb-4">
-                          <div className="bg-blue-500/20 h-12 w-12 rounded-full flex items-center justify-center">
-                            <span className="text-blue-400 font-bold text-lg">{appointment.patientName.charAt(0)}</span>
-                          </div>
+                          {appointment.patientImage ? (
+                            <img
+                              src={appointment.patientImage || "/placeholder.svg"}
+                              alt={appointment.patientName}
+                              className="h-12 w-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="bg-blue-500/20 h-12 w-12 rounded-full flex items-center justify-center">
+                              <span className="text-blue-400 font-bold text-lg">
+                                {appointment.patientName.charAt(0)}
+                              </span>
+                            </div>
+                          )}
                           <div>
                             <h3 className="text-lg font-semibold text-white">{appointment.patientName}</h3>
                           </div>

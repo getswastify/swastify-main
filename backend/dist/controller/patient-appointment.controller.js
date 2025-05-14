@@ -455,7 +455,7 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
             include: {
                 doctor: {
                     include: {
-                        user: true,
+                        user: true, // 👈 this works because doctor is DoctorProfile and has `user`
                     },
                 },
                 patient: true,
@@ -472,7 +472,6 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
                 message: "Appointment not found or unauthorized.",
             });
         }
-        // Build timeline entries
         const timeline = appointment.AppointmentStatusLog.map((log, index) => ({
             id: index + 1,
             title: getTimelineTitle(log.status),
@@ -485,14 +484,19 @@ const getPatientAppointmentDetail = (req, res) => __awaiter(void 0, void 0, void
             appointmentTime: appointment.appointmentTime,
             status: appointment.status,
             meetLink: appointment.meetLink,
+            // Doctor details
             doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
             doctorEmail: appointment.doctor.googleEmail,
+            doctorImage: appointment.doctor.user.profilePicture,
             clinicAddress: appointment.doctor.clinicAddress,
             doctorSpecialization: appointment.doctor.specialization,
             experience: (0, CalculateExperience_1.calculateExperience)(appointment.doctor.startedPracticeOn.toISOString()),
+            // Patient details
             patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
             patientEmail: appointment.patient.email,
             patientPhone: appointment.patient.phone,
+            patientImage: appointment.patient.profilePicture,
+            // Meta
             createdAt: appointment.createdAt,
             updatedAt: appointment.updatedAt,
             timeline,

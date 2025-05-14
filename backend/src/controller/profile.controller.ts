@@ -436,11 +436,6 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
         diseases: true,
         user: {
           select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            dob: true,
             profilePicture: true,
           },
         },
@@ -459,31 +454,17 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
       });
     }
 
-    const { user, ...restProfile } = profile;
-
     const isProfileComplete =
-      !!restProfile.bloodGroup &&
-      !!restProfile.address &&
-      restProfile.height > 0 &&
-      restProfile.weight > 0 &&
-      !!user.firstName &&
-      !!user.lastName &&
-      !!user.email &&
-      !!user.phone &&
-      !!user.dob;
+      !!profile.bloodGroup &&
+      !!profile.address &&
+      profile.height > 0 &&
+      profile.weight > 0;
 
     return res.status(200).json({
       status: true,
       message: "Patient profile retrieved successfully",
       data: {
-        ...restProfile,
-        user: {
-          fullName: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          phone: user.phone,
-          dob: user.dob,
-          profilePicture: user.profilePicture,
-        },
+        ...profile,
         isProfileComplete,
       },
     });
@@ -526,11 +507,6 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
         status: true,
         user: {
           select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            dob: true,
             profilePicture: true,
           },
         },
@@ -548,30 +524,19 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
       });
     }
 
-    const { user, status, ...rest } = profile;
+    const { status, user, ...rest } = profile;
 
     const isProfileComplete =
       !!profile.specialization &&
       !!profile.clinicAddress &&
-      !!profile.consultationFee &&
-      !!user.firstName &&
-      !!user.lastName &&
-      !!user.email &&
-      !!user.phone &&
-      !!user.dob;
+      !!profile.consultationFee;
 
     return res.status(200).json({
       status: true,
       message: 'Doctor profile retrieved successfully',
       data: {
         ...rest,
-        user: {
-          fullName: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          phone: user.phone,
-          dob: user.dob,
-          profilePicture: user.profilePicture,
-        },
+        user, // ✅ includes { profilePicture: "..." }
         isVerified: status,
         startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0],
         isProfileComplete,
@@ -589,7 +554,6 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
     });
   }
 };
-
 
   
 

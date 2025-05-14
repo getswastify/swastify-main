@@ -346,18 +346,20 @@ const getAppointmentDetails = (req, res) => __awaiter(void 0, void 0, void 0, fu
                         lastName: true,
                         email: true,
                         phone: true,
+                        profilePicture: true, // 👈 Added patient image
                     },
                 },
                 doctor: {
                     select: {
+                        specialization: true,
                         user: {
                             select: {
                                 firstName: true,
                                 lastName: true,
                                 email: true,
+                                profilePicture: true, // 👈 Added doctor image
                             },
                         },
-                        specialization: true,
                     },
                 },
             },
@@ -377,12 +379,14 @@ const getAppointmentDetails = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
                 patientEmail: appointment.patient.email,
                 patientPhone: appointment.patient.phone,
+                patientImage: appointment.patient.profilePicture,
                 appointmentTime: appointment.appointmentTime,
                 status: appointment.status,
                 meetLink: (_f = appointment.meetLink) !== null && _f !== void 0 ? _f : "Not Available",
                 doctorName: `${appointment.doctor.user.firstName} ${appointment.doctor.user.lastName}`,
                 doctorSpecialization: appointment.doctor.specialization,
                 doctorEmail: appointment.doctor.user.email,
+                doctorImage: appointment.doctor.user.profilePicture,
                 createdAt: appointment.createdAt,
                 updatedAt: appointment.updatedAt,
             },
