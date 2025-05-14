@@ -702,15 +702,14 @@ export const searchDoctors = async (
     });
 
     const formattedDoctors = doctors.map((doc) => ({
-      userId: doc.id,
+      id: doc.id,
       name: `${doc.firstName} ${doc.lastName}`,
       specialty: doc.doctorProfile?.specialization || "",
       experience:
         new Date().getFullYear() -
-        new Date(doc.doctorProfile?.startedPracticeOn ?? new Date()).getFullYear(),
-      profilePicture: doc.profilePicture || null,
-      consultationFee: doc.doctorProfile?.consultationFee || null,
-      clinicAddress: doc.doctorProfile?.clinicAddress || "",
+        new Date(
+          doc.doctorProfile?.startedPracticeOn ?? new Date()
+        ).getFullYear(),
     }));
 
     return res.status(200).json({ doctors: formattedDoctors });
@@ -721,7 +720,6 @@ export const searchDoctors = async (
       .json({ error: "Something went wrong while searching for doctors." });
   }
 };
-
 
 export const cancelAppointment = async (
   req: Request,
