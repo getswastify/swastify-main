@@ -1,0 +1,1 @@
+console.log("Current date is:", new Date());
