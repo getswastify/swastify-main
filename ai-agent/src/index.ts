@@ -1,6 +1,5 @@
 import * as readline from "readline";
 import { ChatOpenAI } from "@langchain/openai";
-import { pull } from "langchain/hub";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { DynamicTool } from "@langchain/core/tools";
 import { createReactAgent, AgentExecutor } from "langchain/agents";
