@@ -1,439 +1,287 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import axios from "axios";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+import { ChatOpenAI } from "@langchain/openai";
+// import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { AzureChatOpenAI } from "@langchain/openai";
+import { config } from "dotenv";
 import readlineSync from "readline-sync";
+import axios from "axios"
+import { MemorySaver } from "@langchain/langgraph";
+import { getAvailableTimeSlots } from "./tools/tools";
 
-const API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "meta-llama/llama-3-8b-instruct";
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
-const AUTH_TOKEN = process.env.AUTH_TOKEN!;
+const checkpointer = new MemorySaver();
 
-interface Message {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-}
+config();
+const authToken = process.env.AUTH_TOKEN
 
-interface AvailableSlot {
-  startTime: string;
-  endTime: string;
-  displayTime: string;
-}
+const searchDoctors = tool(
+  async (input: { search?: string; specialty?: string }) => {
+    try {
+      const params: Record<string, string> = {};
+      if (input.search) params.search = input.search;
+      if (input.specialty) params.specialty = input.specialty;
 
-interface AppointmentResponse {
-  message: string;
-  appointment: any;
-}
-
-async function askLlama(messages: Message[]): Promise<string> {
-  try {
-    const response = await axios.post(
-      API_URL,
-      {
-        model: MODEL,
-        messages,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost",
-          "X-Title": "SwastifyAgent",
+      const res = await axios.get(`${process.env.API_URL}/patient/get-doctors`, {
+        params,
+         headers: {
+          Cookie: `auth_token=${authToken}`,
         },
+      });
+
+      const data = res.data;
+
+      if (!data.doctors || data.doctors.length === 0) {
+        return "No doctors matched your search criteria.";
       }
-    );
-    return response.data.choices[0].message.content;
-  } catch (err: any) {
-    console.error("❌ Error:", err.response?.data || err.message);
-    return "Oops, something went wrong.";
-  }
-}
 
-async function getDoctorsFromSwastify(params: { search?: string; specialty?: string }): Promise<string> {
-  try {
-    const query = new URLSearchParams(params).toString();
-    const response = await axios.get(
-      `https://api.swastify.life/patient/get-doctors?${query}`,
-      {
-        headers: {
-          Cookie: `auth_token=${AUTH_TOKEN}`,
-        },
+     const doctorsList = data.doctors
+  .map(
+    (doc: any, i: number) =>
+      `${i + 1}. Dr. ${doc.name} (ID: ${doc.userId}) - ${doc.specialty} (${doc.experience} years), Fee: ₹${doc.consultationFee}, Clinic: ${doc.clinicAddress}`
+  )
+  .join("\n");
+
+
+      return `Here are the doctors I found:\n\n${doctorsList}`;
+    } catch (error) {
+      console.error("Error searching doctors:", error);
+      return "Sorry, I couldn't search doctors right now. Try again later.";
+    }
+  },
+  {
+    name: "searchDoctors",
+    description: "Search doctors by name and/or specialty.",
+    schema: z.object({
+      search: z.string().optional().describe("Doctor name to search for"),
+      specialty: z.string().optional().describe("Specialty to filter doctors"),
+    }),
+  }
+);
+
+const getAvailableDatesForMonth = tool(
+  async (input: { doctorId: string; year: number; month: number }) => {
+    try {
+      const { doctorId, year, month } = input;
+
+      
+
+      const res = await axios.get(
+        `${process.env.API_URL}/patient/available-dates`, // put the actual endpoint URL here
+        {
+          params: { doctorId, year, month },
+          headers: {
+            Cookie: `auth_token=${authToken}`,
+          },
+        }
+      );
+
+      const data = res.data;
+
+      if (!data.availableDates || data.availableDates.length === 0) {
+        return `No available dates found for doctor ${doctorId} in ${month}/${year}.`;
       }
-    );
 
-    const doctors = response.data.doctors;
-    if (!doctors.length) return "No doctors found, Bhau 😔";
+      const datesList = data.availableDates.join(", ");
 
-    return doctors
-      .map((doc: any, i: number) => {
-        return `${i + 1}. ${doc.name} — ${doc.specialty}, ${doc.experience} yrs exp, Fee: ₹${doc.consultationFee}, Clinic: ${doc.clinicAddress}`;
-      })
-      .join("\n");
-  } catch (err: any) {
-    console.error("❌ Doctor fetch failed:", err.response?.data || err.message);
-    return "Unable to fetch doctors right now.";
+      return `Available dates for doctor ${doctorId} in ${month}/${year} are:\n${datesList}`;
+    } catch (error) {
+      console.error("Error fetching available dates:", error);
+      return "Sorry, I couldn't fetch available dates right now. Try again later.";
+    }
+  },
+  {
+    name: "getAvailableDatesForMonth",
+    description: "Get available appointment dates for a doctor in a specific month and year.",
+    schema: z.object({
+      doctorId: z.string().describe("The ID of the doctor"),
+      year: z.number().int().describe("Year as a 4-digit number, e.g., 2025"),
+      month: z.number().int().min(1).max(12).describe("Month as a number between 1 and 12"),
+    }),
   }
-}
+);
 
-async function getAvailableDates(params: { doctorId: string; year?: number; month?: number }): Promise<string> {
-  try {
-    // Proper fallback for year and month
-    const now = new Date();
-    const year = params.year ?? now.getFullYear();
-    const month = params.month ?? now.getMonth() + 1; // month is 1-based for API
+const getCurrentDate = tool(
+  async () => {
+    const today = new Date();
 
-    // Validate doctorId presence
-    if (!params.doctorId) {
-      return "Doctor ID missing for fetching available dates.";
-    }
+    const format = (date: Date) =>
+      date.toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
 
-    const query = new URLSearchParams({
-      doctorId: params.doctorId,
-      year: year.toString(),
-      month: month.toString(),
-    }).toString();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
-    const response = await axios.get(`https://api.swastify.life/patient/available-dates?${query}`, {
-      headers: {
-        Cookie: `auth_token=${AUTH_TOKEN}`,
-      },
-    });
+    const dayAfter = new Date(today);
+    dayAfter.setDate(today.getDate() + 2);
 
-    const availableDates = response.data.availableDates as string[];
-
-    if (!availableDates || availableDates.length === 0) {
-      return `No available dates found for the doctor in ${month}/${year}, Bhau 😔`;
-    }
-
-    return `Available dates for the doctor in ${month}/${year} are:\n${availableDates.join(", ")}`;
-  } catch (err: any) {
-    console.error("❌ Fetching available dates failed:", err.response?.data || err.message);
-    return "Unable to fetch available dates right now.";
+    return `🗓️ Dates are as follows:
+- Today: ${format(today)}
+- Tomorrow: ${format(tomorrow)}
+- Day after tomorrow: ${format(dayAfter)}`;
+  },
+  {
+    name: "getCurrentDate",
+    description: "Get today's, tomorrow's, and day after tomorrow's date in DD/MM/YYYY format.",
+    schema: z.object({}),
   }
-}
+);
 
-async function getAvailableSlots(params: { doctorId: string; date: string }): Promise<string> {
-  try {
-    if (!params.doctorId || !params.date) {
-      return "doctorId or date missing for fetching available slots.";
-    }
-
-    const response = await axios.post(
-      "https://api.swastify.life/patient/available-slots",
-      {
-        doctorId: params.doctorId,
-        date: params.date,
-      },
-      {
-        headers: {
-          Cookie: `auth_token=${AUTH_TOKEN}`,
-        },
-      }
-    );
-
-    const availableSlots: AvailableSlot[] = response.data.availableSlots;
-
-    if (!availableSlots || availableSlots.length === 0) {
-      return `No available appointment slots found for the doctor on ${params.date}, Bhau 😔`;
-    }
-
-    return (
-      `Available appointment slots on ${params.date} are:\n` +
-      availableSlots.map((slot, i) => `${i + 1}. ${slot.displayTime}`).join("\n")
-    );
-  } catch (err: any) {
-    console.error("❌ Fetching available slots failed:", err.response?.data || err.message);
-    return "Unable to fetch available appointment slots right now.";
-  }
-}
-
-async function bookAppointment(params: {
-  patientId: string;
+type SlotInput = {
   doctorId: string;
-  appointmentTime: string; // ISO UTC string
-}): Promise<string> {
-  try {
-    const response = await axios.post<AppointmentResponse>(
-      "https://api.swastify.life/patient/book-appointment",
-      {
-        patientId: params.patientId,
-        doctorId: params.doctorId,
-        appointmentTime: params.appointmentTime,
-      },
-      {
-        headers: {
-          Cookie: `auth_token=${AUTH_TOKEN}`,
-        },
-      }
-    );
+  date: string; // YYYY-MM-DD
+};
 
-    return `✅ Appointment booked successfully for ${new Date(params.appointmentTime).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour12: true,
-      dateStyle: "medium",
-      timeStyle: "short",
-    })}! The doctor will be notified.`;
-  } catch (err: any) {
-    console.error("❌ Booking appointment failed:", err.response?.data || err.message);
+const getAvailableTimeSlotsTool = tool(
+  async (input: SlotInput) => {
+    const { doctorId, date } = input;
+    const slots = await getAvailableTimeSlots({ doctorId, date });
 
-    if (err.response?.data?.error) {
-      return `Booking failed: ${err.response.data.error}`;
+    if (slots.length === 0) {
+      return `No available slots for doctor ${doctorId} on ${date} 😔`;
     }
-    return "Something went wrong while booking your appointment. Try again later.";
+
+    return `Available slots for ${date}:\n${slots.map((s: any) => s.displayTime).join(", ")}`;
+  },
+  {
+    name: "getAvailableTimeSlots",
+    description: "Get 30-minute available appointment time slots for a doctor on a specific date.",
+    schema: z.object({
+      doctorId: z.string().describe("The ID of the doctor"),
+      date: z.string().describe("The date in YYYY-MM-DD format"),
+    }),
   }
-}
+);
 
-// Parse tool calls from LLM replies with strict JSON parsing
-function parseToolCall(content: string): { tool: string; params: any } | null {
-  const regex = /\[\[CALL_TOOL:\s*(getDoctors|getAvailableDates|getAvailableSlots|bookAppointment)\s*(\{[\s\S]*?\})\s*\]\]/;
-  const match = content.match(regex);
-  if (!match) return null;
-  try {
-    const tool = match[1];
-    const params = JSON.parse(match[2]);
-    return { tool, params };
-  } catch (err) {
-    console.error("❌ Failed to parse tool params:", err);
-    return null;
-  }
-}
 
-async function main(): Promise<void> {
-  console.log("\n🧠 Swastify AI Agent ready! Type 'exit' to stop.");
 
-  const messages: Message[] = [
-    {
-      role: "system",
-      content: `
-You are Gundu Bhaai — a chill, respectful AI assistant for Swastify healthcare.
+// const llm = new ChatOpenAI({
+//   openAIApiKey: process.env.OPENAI_API_KEY!,
+//   modelName: "gpt-4.1-mini", // ← this one works perfectly with tools
+//   temperature: 0.2,
+//   verbose:true
+// });
 
-✅ Tools you can use (ONLY these):
+const llm = new AzureChatOpenAI({
+  openAIApiKey: process.env.AZURE_OPENAI_API_KEY,
+  azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME,
+  openAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+  azureOpenAIBasePath: process.env.AZURE_OPENAI_BASE_PATH,
+  temperature: 0.2,
+});
 
-1. getDoctors({ "search"?: string, "specialty"?: string }) → Find doctors by name or specialty.
-2. getAvailableDates({ "doctorId": string, "year"?: number, "month"?: number }) → Get doctor's free dates.
-3. getAvailableSlots({ "doctorId": string, "date": string }) → Get appointment time slots for a doctor on a date.
-4. bookAppointment({ "patientId": string, "doctorId": string, "appointmentTime": string }) → Book an appointment.
+// const llm = new ChatGoogleGenerativeAI({
+//   model: "gemini-2.0-flash", // You can also use "gemini-1.5-pro" if you got access
+//   temperature: 0.2,
+//   apiKey: process.env.GEMINI_API_KEY!,
+//   verbose:true // Add this to your .env
+// });
 
-🚀 Appointment Booking Workflow (Follow this order, bro):
+// const llm = new ChatOpenAI({
+//   modelName: "meta-llama/llama-3-70b-instruct",
+//   temperature: 0.2,
+//   openAIApiKey: process.env.OPENROUTER_API_KEY!,
+//   configuration: {
+//     baseURL: "https://openrouter.ai/api/v1",
+//   },
+// });
 
-1. First, find the doc using getDoctors by name or specialty.
-2. Extract the doctorId and full name from the results.
-3. Then check if doc is free by calling getAvailableDates with that doctorId plus the year and month user wants.
-4. Show the user available dates and ask them to pick one.
-5. Next, get available time slots for the chosen date using getAvailableSlots with doctorId and date.
-6. Show time slots to user and ask them to pick a slot.
-7. Before booking, confirm ALL details with user:
-   - Doctor full name
-   - Appointment date (YYYY-MM-DD)
-   - Time slot (IST, 24-hour format)
-   - Patient info (patientId is assumed known)
-8. Ask for user confirmation (yes/no).
-9. ONLY after user says yes, call bookAppointment with patientId, doctorId, and appointmentTime.
-10. If no, cancel booking and offer to help again.
 
-🚨 IMPORTANT:
-- NEVER hallucinate results, always call tools to get info.
-- NEVER book without explicit user confirmation.
-- ALWAYS respond like a desi GenZ bro — chill, clear, respectful.
+const agent = createReactAgent({
+  llm,
+  tools: [
+    searchDoctors,
+    getAvailableDatesForMonth,
+    getCurrentDate,
+    getAvailableTimeSlotsTool,
+  ],
+  prompt: `
+You are Gundu, a helpful, Gen-Z style Medical Assistant working for Swastify 😎.
 
-HOW TO CALL TOOLS:
-Reply with [[CALL_TOOL: toolName { JSON_OBJECT }]] exactly, where:
+You’ve got access to 4 tools:
+- 🧑‍⚕️ searchDoctors: Use this when the user gives a name or specialty to find matching doctors and get their doctorId.
+- 📅 getAvailableDatesForMonth: Use this once you have doctorId to fetch available dates for a specific month (skip past dates).
+- ⏰ getAvailableTimeSlots: Use this after you know doctorId AND date to fetch 30-minute time slots (skip past times).
+- 🗓️ getCurrentDate: Use this to convert "today", "tomorrow", or "day after tomorrow" into real dates.
 
-- JSON_OBJECT is strict JSON:
-  - All keys and string values DOUBLE-quoted.
-  - No placeholders like <DOCTOR ID> — use actual values or ask user.
-  - No question marks or optional keys in output; always include keys.
-  - Dates in ISO format, e.g., "2025-05-17".
-  - Numeric values as numbers, no quotes.
+💡 Tool Usage Rules:
+- Do **NOT** call the same tool multiple times with the same input.
+- If a tool returns no useful data or fails, do **not** repeat the call.
+- If you’re stuck or can’t proceed, just ask the user for more info and stop.
 
-Example:
-User: “Find a skin specialist named Raj”  
-Gundu Bhaai: [[CALL_TOOL: getDoctors { "search": "Raj", "specialty": "skin" }]]
+🧠 Workflow Tips:
+- To find slots for a date like "Tuesday", first get the real date with getCurrentDate.
+- Then searchDoctors by name to get doctorId.
+- Then getAvailableTimeSlots with that doctorId + real date.
+- Use **only 2 tool calls max per user message**, unless you’re sure it’s progressing.
 
-      `.trim(),
-    },
-  ];
+🧍 Personality:
+You're chill, smart, and helpful. Keep responses short, friendly, and vibey 🤙🏽.
+Say things like "Lemme check that for you..." or "Hold up, pulling those deets real quick 🧠"
 
-  let lastDoctorList = "";
-  let lastDoctorId = "";
-  let lastDoctorName = "";
-  let lastAvailableDates = "";
-  let lastSelectedDate = "";
-  let lastAvailableSlots = "";
+If you ever feel stuck or the info isn’t enough, just say “Yo, I need a lil more info to help you out 😅”
 
-  // Patient ID can be static or ask user for more flexibility
-  const patientId = "b46f45d6-cc80-4fb9-a070-f189ebf01a62";
+`,  
+  checkpointer,
+});
+
+
+const chat = async () => {
+  const messages: { role: "user" | "assistant", content: string }[] = [];
+
+  
+
+  console.log('👋 Yo! Gundu is here. Ask me anything bro...\n');
 
   while (true) {
-    const input = readlineSync.question("\n👤 You: ");
-    if (input.toLowerCase() === "exit") break;
+    const userInput = readlineSync.question('🧍 You: ');
 
-    messages.push({ role: "user", content: input });
-
-    const llamaReply = await askLlama(messages);
-    const toolCall = parseToolCall(llamaReply);
-
-    if (toolCall) {
-      switch (toolCall.tool) {
-        case "getDoctors":
-          console.log("🛠️ Tool Triggered: getDoctors");
-          const doctorsResult = await getDoctorsFromSwastify(toolCall.params);
-          lastDoctorList = doctorsResult;
-
-          // Fetch doctor list again to safely extract ID & name (important fix)
-          try {
-            const response = await axios.get(
-              `https://api.swastify.life/patient/get-doctors?${new URLSearchParams(toolCall.params).toString()}`,
-              {
-                headers: {
-                  Cookie: `auth_token=${AUTH_TOKEN}`,
-                },
-              }
-            );
-            const doctors = response.data.doctors;
-            if (doctors.length === 1) {
-              lastDoctorId = doctors[0].id;
-              lastDoctorName = doctors[0].name;
-            } else {
-              // If multiple or none, reset
-              lastDoctorId = "";
-              lastDoctorName = "";
-            }
-          } catch (err) {
-            console.error("❌ Failed to extract doctorId:", err);
-            lastDoctorId = "";
-            lastDoctorName = "";
-          }
-
-          messages.push({ role: "assistant", content: llamaReply });
-          messages.push({
-            role: "tool",
-            content: `Result from getDoctors tool:\n${doctorsResult}`,
-          });
-          console.log(`\n📋 Doctors found:\n${doctorsResult}`);
-          break;
-
-        case "getAvailableDates":
-          console.log("🛠️ Tool Triggered: getAvailableDates");
-
-          // Use doctorId from params or fallback to lastDoctorId
-          if (!toolCall.params.doctorId) {
-            if (lastDoctorId) {
-              toolCall.params.doctorId = lastDoctorId;
-            } else {
-              console.log("❌ Doctor ID not provided and no previous doctor selected.");
-              messages.push({ role: "assistant", content: "Doctor ID missing for available dates." });
-              break;
-            }
-          }
-
-          const datesResult = await getAvailableDates(toolCall.params);
-          lastAvailableDates = datesResult;
-
-          messages.push({ role: "assistant", content: llamaReply });
-          messages.push({
-            role: "tool",
-            content: `Result from getAvailableDates tool:\n${datesResult}`,
-          });
-          console.log(`\n📅 ${datesResult}`);
-          break;
-
-        case "getAvailableSlots":
-          console.log("🛠️ Tool Triggered: getAvailableSlots");
-
-          // Validate params
-          if (!toolCall.params.doctorId) {
-            if (lastDoctorId) {
-              toolCall.params.doctorId = lastDoctorId;
-            } else {
-              console.log("❌ Doctor ID missing for available slots.");
-              messages.push({ role: "assistant", content: "Doctor ID missing for available slots." });
-              break;
-            }
-          }
-          if (!toolCall.params.date) {
-            if (lastSelectedDate) {
-              toolCall.params.date = lastSelectedDate;
-            } else {
-              console.log("❌ Date missing for available slots.");
-              messages.push({ role: "assistant", content: "Date missing for available slots." });
-              break;
-            }
-          } else {
-            lastSelectedDate = toolCall.params.date;
-          }
-
-          const slotsResult = await getAvailableSlots(toolCall.params);
-          lastAvailableSlots = slotsResult;
-
-          messages.push({ role: "assistant", content: llamaReply });
-          messages.push({
-            role: "tool",
-            content: `Result from getAvailableSlots tool:\n${slotsResult}`,
-          });
-          console.log(`\n⏰ ${slotsResult}`);
-          break;
-
-        case "bookAppointment":
-          console.log("🛠️ Tool Triggered: bookAppointment");
-
-          // Validate required params and ask for confirmation before booking
-
-          if (!toolCall.params.doctorId) {
-            if (lastDoctorId) toolCall.params.doctorId = lastDoctorId;
-            else {
-              console.log("❌ doctorId missing for booking.");
-              messages.push({ role: "assistant", content: "doctorId missing for booking appointment." });
-              break;
-            }
-          }
-          if (!toolCall.params.appointmentTime) {
-            console.log("❌ appointmentTime missing for booking.");
-            messages.push({ role: "assistant", content: "appointmentTime missing for booking appointment." });
-            break;
-          }
-
-          // Show confirmation prompt before booking
-          const apptDateTime = new Date(toolCall.params.appointmentTime);
-          const apptDateStr = apptDateTime.toISOString().slice(0, 10);
-          const apptTimeStr = apptDateTime.toLocaleTimeString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            hour12: false,
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-
-          const confirmation = readlineSync.question(
-            `📝 Confirm booking appointment with:\n- Doctor: ${lastDoctorName || "Unknown"}\n- Date: ${apptDateStr}\n- Time: ${apptTimeStr} IST\nConfirm? (yes/no): `
-          );
-
-          if (confirmation.toLowerCase() === "yes") {
-            const bookingResult = await bookAppointment({
-              patientId,
-              doctorId: toolCall.params.doctorId,
-              appointmentTime: toolCall.params.appointmentTime,
-            });
-
-            messages.push({ role: "assistant", content: llamaReply });
-            messages.push({ role: "tool", content: `Booking result: ${bookingResult}` });
-            console.log(`\n✅ ${bookingResult}`);
-          } else {
-            console.log("❌ Booking cancelled by user.");
-            messages.push({ role: "assistant", content: "Booking cancelled." });
-          }
-          break;
-
-        default:
-          console.log("❌ Unknown tool called.");
-          messages.push({ role: "assistant", content: "Unknown tool call." });
-          break;
-      }
-    } else {
-      // No tool call, just reply normally
-      messages.push({ role: "assistant", content: llamaReply });
-      console.log(`\n🤖 Gundu Bhaai: ${llamaReply}`);
+    if (userInput.toLowerCase() === 'exit') {
+      console.log('👋 Bye from Gundu! Peace out ✌️');
+      break;
     }
-  }
-}
 
-main();
+    // Push user message
+    messages.push({ role: 'user', content: userInput });
+
+const threadId = "gundu-main-thread"
+    
+const response = await agent.invoke({
+  messages,
+}, {
+  configurable: {
+    thread_id: threadId,
+  },
+});
+
+
+    // Extract latest assistant message
+    const assistantMsg = response.messages[response.messages.length - 1];
+
+    // Push assistant reply
+    const assistantContent =
+      typeof assistantMsg.content === "string"
+        ? assistantMsg.content
+        : Array.isArray(assistantMsg.content)
+        ? assistantMsg.content.map((c: any) => (typeof c === "string" ? c : c.text ?? "")).join(" ")
+        : "";
+
+    messages.push({
+      role: 'assistant',
+      content: assistantContent,
+    });
+
+
+    
+
+    // Show assistant response
+    console.log(`🤖 Gundu: ${assistantContent}\n`);
+  }
+};
+
+chat();
+
+
