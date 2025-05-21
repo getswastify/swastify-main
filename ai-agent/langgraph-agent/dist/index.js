@@ -1,5 +1,4 @@
 "use strict";
-// src/server.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,7 +9,10 @@ const cors_1 = __importDefault(require("cors"));
 const agent_1 = require("./core/agent");
 const app = (0, express_1.default)();
 const PORT = 3002;
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: "http://localhost:3000",
+    credentials: true, // if you're using cookies or auth headers
+}));
 app.use(body_parser_1.default.json());
 app.post('/api/message', async (req, res) => {
     const userInput = req.body.message;

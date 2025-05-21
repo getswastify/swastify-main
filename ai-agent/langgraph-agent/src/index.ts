@@ -3,11 +3,15 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { handleUserMessage } from './core/agent';
 
-
 const app = express();
 const PORT = 3002;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000", // your frontend URL
+    credentials: true, // if you're using cookies or auth headers
+  })
+);
 app.use(bodyParser.json());
 
 app.post('/api/message', async (req, res) : Promise<any> => {
