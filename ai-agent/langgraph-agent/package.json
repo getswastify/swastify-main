@@ -1,0 +1,33 @@
+{
+  "name": "langgraph-agent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "dev": "pnpm build && pnpm start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/community": "^0.3.43",
+    "@langchain/core": "^0.3.56",
+    "@langchain/google-genai": "^0.2.9",
+    "@langchain/langgraph": "^0.2.72",
+    "@langchain/langgraph-checkpoint": "^0.0.17",
+    "@langchain/openai": "^0.5.10",
+    "@langchain/tavily": "^0.1.1",
+    "@types/readline-sync": "^1.4.8",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "langchain": "^0.3.26",
+    "microsoft-cognitiveservices-speech-sdk": "^1.44.0",
+    "readline-sync": "^1.4.10",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}
