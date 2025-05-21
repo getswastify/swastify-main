@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAvailableTimeSlots = getAvailableTimeSlots;
+exports.getAvailableTimeSlots = void 0;
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
 (0, dotenv_1.config)();
@@ -21,3 +21,4 @@ async function getAvailableTimeSlots({ doctorId, date }) {
         return [];
     }
 }
+exports.getAvailableTimeSlots = getAvailableTimeSlots;
