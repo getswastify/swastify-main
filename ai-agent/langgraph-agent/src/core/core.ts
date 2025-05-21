@@ -1,14 +1,13 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { ChatOpenAI } from "@langchain/openai";
+// import { ChatOpenAI } from "@langchain/openai";
 // import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AzureChatOpenAI } from "@langchain/openai";
 import { config } from "dotenv";
-import readlineSync from "readline-sync";
 import axios from "axios"
 import { MemorySaver } from "@langchain/langgraph";
-import { getAvailableTimeSlots } from "./tools/tools";
+import { getAvailableTimeSlots } from "../tools/tools";
 
 const checkpointer = new MemorySaver();
 
@@ -156,6 +155,50 @@ const getAvailableTimeSlotsTool = tool(
   }
 );
 
+const bookAppointmentTool = tool(
+  async (input: { doctorId: string; date: string; time: string }) => {
+    try {
+      const { doctorId, date, time } = input;
+
+      const patientId = process.env.PATIENT_ID;
+      if (!patientId) throw new Error("Missing PATIENT_ID in environment variables");
+
+      const toAppointmentTime = (date: string, time: string): string => {
+        const dateTimeString = `${date} ${time}`;
+        const dateObj = new Date(dateTimeString); // local time
+        return dateObj.toISOString(); // backend expects UTC ISO
+      };
+
+      const appointmentTime = toAppointmentTime(date, time);
+
+      const res = await axios.post(`${process.env.API_URL}/patient/book-appointment`, {
+        doctorId,
+        patientId,
+        appointmentTime,
+      }, {
+        headers: {
+          Cookie: `auth_token=${authToken}`,
+        },
+      });
+
+      return `✅ Appointment booked with doctor ${doctorId} for ${date} at ${time} (IST)!`;
+    } catch (error: any) {
+      console.error("Error booking appointment:", error?.response?.data || error.message);
+      return `❌ Failed to book the appointment. Try again later or check your input.`;
+    }
+  },
+  {
+    name: "bookAppointment",
+    description: "Book an appointment for a patient with a doctor on a specific date and time.",
+    schema: z.object({
+      doctorId: z.string().describe("The ID of the doctor"),
+      date: z.string().describe("The date of the appointment in YYYY-MM-DD format"),
+      time: z.string().describe("The time of the appointment in HH:MM AM/PM format (IST)"),
+    }),
+  }
+);
+
+
 
 
 // const llm = new ChatOpenAI({
@@ -190,98 +233,56 @@ const llm = new AzureChatOpenAI({
 // });
 
 
-const agent = createReactAgent({
+export const agent = createReactAgent({
   llm,
   tools: [
     searchDoctors,
     getAvailableDatesForMonth,
     getCurrentDate,
     getAvailableTimeSlotsTool,
+    bookAppointmentTool,
   ],
-  prompt: `
-You are Gundu, a helpful, Gen-Z style Medical Assistant working for Swastify 😎.
+prompt: `
+You are Gundu, a helpful, Gen-Z style Medical Assistant working for Swastify .
 
-You’ve got access to 4 tools:
-- 🧑‍⚕️ searchDoctors: Use this when the user gives a name or specialty to find matching doctors and get their doctorId.
-- 📅 getAvailableDatesForMonth: Use this once you have doctorId to fetch available dates for a specific month (skip past dates).
-- ⏰ getAvailableTimeSlots: Use this after you know doctorId AND date to fetch 30-minute time slots (skip past times).
-- 🗓️ getCurrentDate: Use this to convert "today", "tomorrow", or "day after tomorrow" into real dates.
+You’ve got access to 5 tools:
+-  searchDoctors: Use this when the user gives a name or specialty to find matching doctors and get their doctorId and you can also use this to list the doctors without passing any params.
 
-💡 Tool Usage Rules:
+-  getAvailableDatesForMonth: Use this once you have doctorId to fetch available dates for a specific month (skip past dates).
+-  getAvailableTimeSlots: Use this after you know doctorId AND date to fetch 30-minute time slots (skip past times).
+-  getCurrentDate: Use this to convert "today", "tomorrow", or "day after tomorrow" into real dates.
+-  bookAppointment: Use this when you have doctorId, date, and time. You don’t need to ask for patientId — it’s already handled internally.
+
+ Tool Usage Rules:
 - Do **NOT** call the same tool multiple times with the same input.
 - If a tool returns no useful data or fails, do **not** repeat the call.
 - If you’re stuck or can’t proceed, just ask the user for more info and stop.
 
-🧠 Workflow Tips:
+ Booking Flow Rule:
+Once you know the doctor, date, and time — **before** calling bookAppointment, show the user a short summary like:
+> “Cool! So you’re seeing Dr. Sharma on Tuesday at 4PM. The consultation fee is ₹500. Should I go ahead and lock it in? ”
+Only book the appointment if the user confirms.
+
+If the consultation fee is available from slot data or doctor info, include it in the message. If not, you can skip it or just say “I couldn’t find the fee info ”.
+
+ Workflow Tips:
 - To find slots for a date like "Tuesday", first get the real date with getCurrentDate.
-- Then searchDoctors by name to get doctorId.
+- Then use searchDoctors by name or specialty to get doctorId.
+- Then getAvailableDatesForMonth with that doctorId.
 - Then getAvailableTimeSlots with that doctorId + real date.
+- Finally, confirm with the user before using bookAppointment.
 - Use **only 2 tool calls max per user message**, unless you’re sure it’s progressing.
 
-🧍 Personality:
-You're chill, smart, and helpful. Keep responses short, friendly, and vibey 🤙🏽.
-Say things like "Lemme check that for you..." or "Hold up, pulling those deets real quick 🧠"
+ Personality:
+You're chill, smart, and helpful. Keep responses short, friendly, and vibey .
+Say things like "Lemme check that for you..." or "Hold up, pulling those deets real quick "
+If you ever feel stuck or the info isn’t enough, just say “Yo, I need a lil more info to help you out ”
+`,
 
-If you ever feel stuck or the info isn’t enough, just say “Yo, I need a lil more info to help you out 😅”
-
-`,  
+ 
   checkpointer,
 });
 
 
-const chat = async () => {
-  const messages: { role: "user" | "assistant", content: string }[] = [];
-
-  
-
-  console.log('👋 Yo! Gundu is here. Ask me anything bro...\n');
-
-  while (true) {
-    const userInput = readlineSync.question('🧍 You: ');
-
-    if (userInput.toLowerCase() === 'exit') {
-      console.log('👋 Bye from Gundu! Peace out ✌️');
-      break;
-    }
-
-    // Push user message
-    messages.push({ role: 'user', content: userInput });
-
-const threadId = "gundu-main-thread"
-    
-const response = await agent.invoke({
-  messages,
-}, {
-  configurable: {
-    thread_id: threadId,
-  },
-});
-
-
-    // Extract latest assistant message
-    const assistantMsg = response.messages[response.messages.length - 1];
-
-    // Push assistant reply
-    const assistantContent =
-      typeof assistantMsg.content === "string"
-        ? assistantMsg.content
-        : Array.isArray(assistantMsg.content)
-        ? assistantMsg.content.map((c: any) => (typeof c === "string" ? c : c.text ?? "")).join(" ")
-        : "";
-
-    messages.push({
-      role: 'assistant',
-      content: assistantContent,
-    });
-
-
-    
-
-    // Show assistant response
-    console.log(`🤖 Gundu: ${assistantContent}\n`);
-  }
-};
-
-chat();
 
 
