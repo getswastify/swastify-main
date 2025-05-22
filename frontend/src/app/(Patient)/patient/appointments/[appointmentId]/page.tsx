@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import api from "@/lib/axios"
 import { toast } from "sonner"
+import Image from "next/image"
 
 interface TimelineEvent {
   id: number
@@ -299,9 +300,11 @@ const AppointmentDetails = () => {
                       <div className="bg-[#1f2b42] rounded-lg p-4">
                         <div className="flex items-center gap-4 mb-4">
                           {appointment.doctorImage ? (
-                            <img
+                            <Image
                               src={appointment.doctorImage || "/placeholder.svg"}
                               alt={appointment.doctorName}
+                              height={48}
+                              width={48}
                               className="h-12 w-12 rounded-full object-cover"
                             />
                           ) : (
@@ -339,9 +342,11 @@ const AppointmentDetails = () => {
                       <div className="bg-[#1f2b42] rounded-lg p-4">
                         <div className="flex items-center gap-4 mb-4">
                           {appointment.patientImage ? (
-                            <img
+                            <Image
                               src={appointment.patientImage || "/placeholder.svg"}
                               alt={appointment.patientName}
+                              height={48}
+                              width={48}
                               className="h-12 w-12 rounded-full object-cover"
                             />
                           ) : (

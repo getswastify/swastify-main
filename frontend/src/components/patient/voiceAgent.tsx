@@ -9,11 +9,14 @@ import {
   ResultReason,
   CancellationReason,
 } from "microsoft-cognitiveservices-speech-sdk";
+import api from "@/lib/axios";
+
+// This component is a voice agent that uses Azure's Speech SDK to recognize speech and synthesize speech.
+
+
 
 export default function VoiceAgent() {
   const [isListening, setIsListening] = useState(false);
-  const [userText, setUserText] = useState("");
-  const [agentText, setAgentText] = useState("");
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
@@ -123,20 +126,17 @@ export default function VoiceAgent() {
 
   const handleAgentResponse = async (text: string) => {
     try {
-      setUserText(text);
       setMessages((prev) => [...prev, { role: "user", content: text }]);
 
-      const response = await fetch("http://localhost:3001/ai/voice-book", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+      const response = await api.post("http://localhost:3001/ai/voice-book", {
+
+        message: text,
       });
 
-      const data = await response.json();
+      const data = await response.data;
       const agentReply = data.reply || "Sorry, I didn’t get that.";
 
       setMessages((prev) => [...prev, { role: "assistant", content: agentReply }]);
-      setAgentText(agentReply);
 
       speak(agentReply, () => {
         toggleListening();
@@ -149,7 +149,7 @@ export default function VoiceAgent() {
   };
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-black to-gray-900 text-gray-100 p-6 font-sans flex flex-col">
+    <div className="w-full h-[90vh] bg-gradient-to-br from-black to-gray-900 text-gray-100 p-6 font-sans flex flex-col">
       <h2 className="text-4xl font-bold mb-6 text-blue-400 text-center">🧠 Gundu Voice Agent</h2>
 
       <div className="flex justify-center gap-6 mb-6">

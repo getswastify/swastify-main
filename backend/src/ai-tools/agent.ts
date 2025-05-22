@@ -2,12 +2,13 @@ import { agent } from "./core"
 
 
 const threadId = "gundu-main-thread";
-
+let patientId = null;
 const globalMessages: { role: "user" | "assistant"; content: string }[] = [];
 
-export async function handleUserMessage(userInput: string): Promise<string> {
+export async function handleUserMessage(userInput: string ,userId:string): Promise<string> {
   // Push user message
   globalMessages.push({ role: 'user', content: userInput });
+  patientId = userId;
 
   const response = await agent.invoke(
     {

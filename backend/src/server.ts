@@ -10,6 +10,7 @@ import { availabilityRoutes } from './routes/availability.route';
 import { patientAppointmentRoutes } from './routes/patient-appointment.route';
 import { doctorAppointmentRoutes } from './routes/doctor-appointment.route';
 import { settingsRoute } from './routes/settings.route';
+import { aiRoutes } from './routes/ai.route';
 
 
 dotenv.config();
@@ -41,6 +42,8 @@ app.use("/patient", patientAppointmentRoutes);
 app.use("/availability", availabilityRoutes);
 app.use("/doctor", doctorAppointmentRoutes);
 app.use("/settings", settingsRoute);
+app.use("/ai", aiRoutes);
+
 
 
 
