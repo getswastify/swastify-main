@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -b",
     "start": "node dist/server.js",
-    "dev": "npm run build && npm run start",
+    "dev": "pnpm run build && pnpm run start",
     "seed": "tsx src/scripts/seed.ts"
   },
   "repository": {
