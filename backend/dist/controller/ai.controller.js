@@ -12,17 +12,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.voiceBook = void 0;
 const agent_1 = require("../ai-tools/agent");
 const voiceBook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const userInput = req.body.message;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
     if (!userInput) {
         return res.status(400).json({ error: 'Message is required' });
     }
-    if (!userId) {
-        return res.status(400).json({ error: 'Not Authenticated! User ID is required' });
-    }
     try {
-        const reply = yield (0, agent_1.handleUserMessage)(userInput, userId);
+        const authToken = req.cookies.auth_token;
+        if (!authToken) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const reply = yield (0, agent_1.handleUserMessage)(userInput, authToken);
         res.json({ reply });
     }
     catch (err) {
