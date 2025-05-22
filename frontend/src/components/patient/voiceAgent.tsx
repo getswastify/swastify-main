@@ -11,10 +11,6 @@ import {
 } from "microsoft-cognitiveservices-speech-sdk";
 import api from "@/lib/axios";
 
-// This component is a voice agent that uses Azure's Speech SDK to recognize speech and synthesize speech.
-
-
-
 export default function VoiceAgent() {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +22,7 @@ export default function VoiceAgent() {
   const synthesizerRef = useRef<SpeechSynthesizer | null>(null);
   const isSpeakingRef = useRef(false);
   const speechConfigRef = useRef<SpeechConfig | null>(null);
+  const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const speechKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
@@ -49,6 +46,10 @@ export default function VoiceAgent() {
       synthesizerRef.current?.close();
     };
   }, []);
+
+  useEffect(() => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const stopSpeaking = () => {
     if (synthesizerRef.current && isSpeakingRef.current) {
@@ -129,7 +130,6 @@ export default function VoiceAgent() {
       setMessages((prev) => [...prev, { role: "user", content: text }]);
 
       const response = await api.post("http://localhost:3001/ai/voice-book", {
-
         message: text,
       });
 
@@ -149,49 +149,50 @@ export default function VoiceAgent() {
   };
 
   return (
-    <div className="w-full h-[90vh] bg-gradient-to-br from-black to-gray-900 text-gray-100 p-6 font-sans flex flex-col">
-      <h2 className="text-4xl font-bold mb-6 text-blue-400 text-center">🧠 Gundu Voice Agent</h2>
-
-      <div className="flex justify-center gap-6 mb-6">
-        <button
-          onClick={toggleListening}
-          className={`px-6 py-3 rounded-lg text-lg font-semibold shadow-lg transition-all duration-300 ${
-            isListening
-              ? "bg-red-600 hover:bg-red-500 text-white"
-              : "bg-blue-600 hover:bg-blue-500 text-white"
-          }`}
-        >
-          {isListening ? "🛑 Stop Listening" : "🎙️ Talk to Gundu"}
-        </button>
-
-        <button
-          onClick={() => speak("Hello from your voice agent!")}
-          className="px-6 py-3 rounded-lg text-lg font-semibold bg-green-600 hover:bg-green-500 text-white shadow-lg transition-all duration-300"
-        >
-          🔊 Test Voice
-        </button>
+    <div className="w-full h-screen bg-[#0f0f0f] text-white flex flex-col items-center justify-between p-4">
+      {/* Header */}
+      <div className="w-full max-w-3xl text-center py-3 sticky top-0 z-10 bg-[#0f0f0f]">
+        <h2 className="text-3xl font-extrabold">🧠 Voice Assistant</h2>
+        <p className="text-sm text-gray-400 mt-1">Powered by Azure & Gundu Bhai</p>
       </div>
 
-      {error && <p className="text-red-400 font-semibold mb-4 text-center">{error}</p>}
-
-      <div className="flex-1 overflow-y-auto bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-inner">
-        <div className="flex flex-col gap-4">
+      {/* Message container */}
+      <div className="flex-1 w-full max-w-3xl overflow-y-auto bg-[#1a1a1a] rounded-2xl p-4 shadow-inner">
+        <div className="flex flex-col space-y-3">
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`p-4 rounded-2xl max-w-[75%] text-base whitespace-pre-line ${
+              className={`rounded-xl px-4 py-3 text-sm max-w-[80%] ${
                 msg.role === "user"
-                  ? "bg-blue-700 text-blue-100 self-end ml-auto shadow-md"
-                  : "bg-gray-700 text-gray-100 shadow-md"
+                  ? "bg-blue-600 text-white self-end text-right"
+                  : "bg-gray-700 text-white self-start"
               }`}
             >
-              <span className="font-semibold block mb-1">
-                {msg.role === "user" ? "🧍 You" : "🤖 Gundu"}:
-              </span>
-              <p>{msg.content}</p>
+              <div className="text-xs font-semibold opacity-70 mb-1">
+                {msg.role === "user" ? "You" : "Swasthy"}
+              </div>
+              <div className="whitespace-pre-wrap">{msg.content}</div>
             </div>
           ))}
+          <div ref={endOfMessagesRef} />
         </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="w-full max-w-3xl pt-4">
+        {error && (
+          <div className="text-red-400 text-center mb-2 text-sm font-medium">
+            {error}
+          </div>
+        )}
+        <button
+          onClick={toggleListening}
+          className={`w-full py-3 rounded-full text-lg font-semibold transition ${
+            isListening ? "bg-red-600" : "bg-green-600"
+          } hover:opacity-90`}
+        >
+          {isListening ? "🛑 Stop Listening" : "🎙️ Start Talking"}
+        </button>
       </div>
     </div>
   );
