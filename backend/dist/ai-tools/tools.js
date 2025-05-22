@@ -17,15 +17,23 @@ const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
 const tools_1 = require("@langchain/core/tools");
 const zod_1 = require("zod");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const agent_1 = require("./agent"); // Import the function to get the current auth token
 (0, dotenv_1.config)();
-const authToken = process.env.AUTH_TOKEN;
 function getAvailableTimeSlots({ doctorId, date }) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            // Get the auth token from the current context
+            const auth_token = (0, agent_1.getCurrentAuthToken)();
+            console.log("Using auth token for time slots:", auth_token); // Log the token being used
             const response = yield axios_1.default.post(`${process.env.API_URL}/patient/available-slots`, {
                 doctorId,
                 date,
+            }, {
+                headers: {
+                    Cookie: `auth_token=${auth_token}`,
+                },
             });
             return response.data.availableSlots;
         }
@@ -36,17 +44,23 @@ function getAvailableTimeSlots({ doctorId, date }) {
     });
 }
 exports.getAvailableTimeSlots = getAvailableTimeSlots;
+// Update the searchDoctors tool to get the auth token from the current context
 exports.searchDoctors = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const { search, specialty } = input;
+        // Get the auth token from the current context
+        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        console.log("Searching doctors with params:", { search, specialty });
+        console.log("Using auth token for search:", auth_token); // Log the token being used
         const params = {};
-        if (input.search)
-            params.search = input.search;
-        if (input.specialty)
-            params.specialty = input.specialty;
+        if (search)
+            params.search = search;
+        if (specialty)
+            params.specialty = specialty;
         const res = yield axios_1.default.get(`${process.env.API_URL}/patient/get-doctors`, {
             params,
             headers: {
-                Cookie: `auth_token=${authToken}`,
+                Cookie: `auth_token=${auth_token}`, // Use the actual token
             },
         });
         const data = res.data;
@@ -73,11 +87,13 @@ exports.searchDoctors = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, v
 exports.getAvailableDatesForMonth = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { doctorId, year, month } = input;
-        const res = yield axios_1.default.get(`${process.env.API_URL}/patient/available-dates`, // put the actual endpoint URL here
-        {
+        // Get the auth token from the current context
+        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        console.log("Using auth token for dates:", auth_token); // Log the token being used
+        const res = yield axios_1.default.get(`${process.env.API_URL}/patient/available-dates`, {
             params: { doctorId, year, month },
             headers: {
-                Cookie: `auth_token=${authToken}`,
+                Cookie: `auth_token=${auth_token}`,
             },
         });
         const data = res.data;
@@ -101,27 +117,40 @@ exports.getAvailableDatesForMonth = (0, tools_1.tool)((input) => __awaiter(void 
     }),
 });
 exports.getCurrentDate = (0, tools_1.tool)(() => __awaiter(void 0, void 0, void 0, function* () {
-    const today = new Date();
+    const now = new Date();
+    now.setSeconds(0, 0); // Clean up time
     const format = (date) => date.toLocaleDateString("en-IN", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
     });
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     const dayAfter = new Date(today);
     dayAfter.setDate(today.getDate() + 2);
-    return `🗓️ Dates are as follows:
-- Today: ${format(today)}
-- Tomorrow: ${format(tomorrow)}
-- Day after tomorrow: ${format(dayAfter)}`;
+    // If today is already passed (like it's 11PM and system logic skips it), skip it
+    const results = [];
+    const nowHour = now.getHours();
+    const nowMinute = now.getMinutes();
+    // 🧠 Add 'today' only if we're before 11PM — adjust threshold if needed
+    if (nowHour < 23) {
+        results.push(`- Today: ${format(today)}`);
+    }
+    results.push(`- Tomorrow: ${format(tomorrow)}`);
+    results.push(`- Day after tomorrow: ${format(dayAfter)}`);
+    return `🗓️ Dates are as follows:\n${results.join("\n")}`;
 }), {
     name: "getCurrentDate",
-    description: "Get today's, tomorrow's, and day after tomorrow's date in DD/MM/YYYY format.",
+    description: "Get today's, tomorrow's, and day after tomorrow's date in DD/MM/YYYY format. Skips today if it's too late.",
     schema: zod_1.z.object({}),
 });
 exports.getAvailableTimeSlotsTool = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, void 0, function* () {
     const { doctorId, date } = input;
+    // Get the auth token from the current context
+    const auth_token = (0, agent_1.getCurrentAuthToken)();
+    console.log("Using auth token for time slots tool:", auth_token); // Log the token being used
     const slots = yield getAvailableTimeSlots({ doctorId, date });
     if (slots.length === 0) {
         return `No available slots for doctor ${doctorId} on ${date} `;
@@ -135,13 +164,30 @@ exports.getAvailableTimeSlotsTool = (0, tools_1.tool)((input) => __awaiter(void 
         date: zod_1.z.string().describe("The date in YYYY-MM-DD format"),
     }),
 });
+// Update the bookAppointmentTool to get the auth token from the current context
 exports.bookAppointmentTool = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
+        let patientId = null;
         const { doctorId, date, time } = input;
-        const patientId = process.env.PATIENT_ID;
+        // Get the auth token from the current context
+        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        console.log("Using auth token for booking:", auth_token); // Log the token being used
+        jsonwebtoken_1.default.verify(auth_token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                console.error("JWT verification error:", err);
+                throw new Error("Invalid auth token");
+            }
+            // console.log("Decoded JWT:", decoded);
+            patientId = decoded.userId; // Extract patientId from the decoded token
+        });
+        console.log("Booking appointment with params:", { doctorId, date, time, patientId });
+        if (!doctorId)
+            throw new Error("Missing doctorId in input");
+        if (!date)
+            throw new Error("Missing date in input");
         if (!patientId)
-            throw new Error("Missing PATIENT_ID in environment variables");
+            throw new Error("Missing patientId in input");
         const toAppointmentTime = (date, time) => {
             const dateTimeString = `${date} ${time}`;
             const dateObj = new Date(dateTimeString); // local time
@@ -154,13 +200,13 @@ exports.bookAppointmentTool = (0, tools_1.tool)((input) => __awaiter(void 0, voi
             appointmentTime,
         }, {
             headers: {
-                Cookie: `auth_token=${authToken}`,
+                Cookie: `auth_token=${auth_token}`, // Use the actual token
             },
         });
-        return ` Appointment booked with doctor ${doctorId} for ${date} at ${time} (IST)!`;
+        return `✅ Appointment booked with doctor ${doctorId} for ${date} at ${time} (IST)!`;
     }
     catch (error) {
-        console.error("Error booking appointment:", ((_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+        console.error("❌ Error booking appointment:", ((_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
         return `❌ Failed to book the appointment. Try again later or check your input.`;
     }
 }), {
