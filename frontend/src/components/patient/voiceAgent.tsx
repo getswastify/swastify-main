@@ -149,11 +149,11 @@ export default function VoiceAgent() {
   };
 
   return (
-    <div className="w-full h-screen bg-[#0f0f0f] text-white flex flex-col items-center justify-between p-4">
+    <div className="w-full h-[90vh] bg-[#0f0f0f] text-white flex flex-col items-center justify-between p-4">
       {/* Header */}
       <div className="w-full max-w-3xl text-center py-3 sticky top-0 z-10 bg-[#0f0f0f]">
-        <h2 className="text-3xl font-extrabold">🧠 Voice Assistant</h2>
-        <p className="text-sm text-gray-400 mt-1">Powered by Azure & Gundu Bhai</p>
+        <h2 className="text-3xl font-extrabold"> Swasthy</h2>
+        <p className="text-sm text-gray-400 mt-1">Powered by Swastify</p>
       </div>
 
       {/* Message container */}
