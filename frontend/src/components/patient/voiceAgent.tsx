@@ -129,7 +129,7 @@ export default function VoiceAgent() {
     try {
       setMessages((prev) => [...prev, { role: "user", content: text }]);
 
-      const response = await api.post(`h${process.env.NEXT_PUBLIC_API_URL}/ai/voice-book`, {
+      const response = await api.post(`${process.env.NEXT_PUBLIC_API_URL}/ai/voice-book`, {
         message: text,
       });
 
