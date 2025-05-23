@@ -7,12 +7,12 @@ import {
   SpeechRecognizer,
   SpeechSynthesizer,
   ResultReason,
-  CancellationReason,
 } from "microsoft-cognitiveservices-speech-sdk";
 import api from "@/lib/axios";
 
 export default function VoiceAgent() {
   const [isListening, setIsListening] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
@@ -20,16 +20,16 @@ export default function VoiceAgent() {
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const synthesizerRef = useRef<SpeechSynthesizer | null>(null);
-  const isSpeakingRef = useRef(false);
   const speechConfigRef = useRef<SpeechConfig | null>(null);
+  const isSpeakingRef = useRef(false);
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
 
+  // Initialize Azure Speech SDK
   useEffect(() => {
-    const speechKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
-    const serviceRegion = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION;
+    const speechKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY!;
+    const serviceRegion = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION!;
 
     if (!speechKey || !serviceRegion) {
-      console.error("Azure Speech config missing");
       setError("Azure Speech key or region missing.");
       return;
     }
@@ -47,6 +47,7 @@ export default function VoiceAgent() {
     };
   }, []);
 
+  // Auto-scroll to latest message
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -54,17 +55,19 @@ export default function VoiceAgent() {
   const stopSpeaking = () => {
     if (synthesizerRef.current && isSpeakingRef.current) {
       synthesizerRef.current.close();
-      synthesizerRef.current = null;
+      isSpeakingRef.current = false;
+      // Re-initialize synthesizer for further use
       if (speechConfigRef.current) {
         synthesizerRef.current = new SpeechSynthesizer(speechConfigRef.current);
       }
-      isSpeakingRef.current = false;
     }
   };
 
   const toggleListening = async () => {
+    if (!recognizerRef.current) return;
+
     if (isListening) {
-      recognizerRef.current?.stopContinuousRecognitionAsync();
+      recognizerRef.current.stopContinuousRecognitionAsync();
       setIsListening(false);
       return;
     }
@@ -72,79 +75,81 @@ export default function VoiceAgent() {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      recognizerRef.current?.startContinuousRecognitionAsync();
       setIsListening(true);
 
-      recognizerRef.current!.recognized = async (s, e) => {
-        if (
-          e.result.reason === ResultReason.RecognizedSpeech &&
-          e.result.text.trim()
-        ) {
+      recognizerRef.current.startContinuousRecognitionAsync();
+
+      recognizerRef.current.recognized = async (_, e) => {
+        const resultText = e.result.text.trim();
+        if (e.result.reason === ResultReason.RecognizedSpeech && resultText) {
           stopSpeaking();
           recognizerRef.current?.stopContinuousRecognitionAsync();
           setIsListening(false);
-          handleAgentResponse(e.result.text);
+          await handleAgentResponse(resultText);
         }
       };
 
-      recognizerRef.current!.canceled = (s, e) => {
-        if (e.reason === CancellationReason.Error) {
-          console.error("Recognition canceled: ", e.errorDetails);
-          setError("Speech recognition error: " + e.errorDetails);
-          setIsListening(false);
-        }
+      recognizerRef.current.canceled = (_, e) => {
+        setError(`Speech recognition error: ${e.errorDetails}`);
+        setIsListening(false);
       };
     } catch {
-      setError("Please allow microphone access in your browser.");
+      setError("Mic access denied. Please allow microphone permissions.");
     }
   };
 
   const speak = (text: string, onDone?: () => void) => {
-    if (synthesizerRef.current) {
-      isSpeakingRef.current = true;
-      const ssml = `
-        <speak version='1.0' xml:lang='en-US'>
-          <voice xml:lang='en-US' xml:gender='Female' name='en-US-JennyNeural'>
-            ${text}
-          </voice>
-        </speak>`;
+    if (!synthesizerRef.current) return;
 
-      synthesizerRef.current.speakSsmlAsync(
-        ssml,
-        () => {
-          isSpeakingRef.current = false;
-          setTimeout(() => {
-            onDone?.();
-          }, 400);
-        },
-        (err) => {
-          console.error("Speak error:", err);
-          isSpeakingRef.current = false;
-        }
-      );
-    }
+    isSpeakingRef.current = true;
+
+    const ssml = `
+      <speak version='1.0' xml:lang='en-US'>
+        <voice xml:lang='en-US' xml:gender='Female' name='en-US-JennyNeural'>
+          ${text}
+        </voice>
+      </speak>`;
+
+    synthesizerRef.current.speakSsmlAsync(
+      ssml,
+      () => {
+        isSpeakingRef.current = false;
+        onDone?.();
+      },
+      (err) => {
+        console.error("Speech synthesis failed:", err);
+        isSpeakingRef.current = false;
+        setError("Something went wrong while speaking.");
+      }
+    );
   };
 
   const handleAgentResponse = async (text: string) => {
     try {
       setMessages((prev) => [...prev, { role: "user", content: text }]);
+      setIsLoading(true);
 
-      const response = await api.post(`${process.env.NEXT_PUBLIC_API_URL}/ai/voice-book`, {
-        message: text,
-      });
+      const { data } = await api.post(
+        `${process.env.NEXT_PUBLIC_API_URL}ai/voice-book`,
+        { message: text }
+      );
 
-      const data = await response.data;
       const agentReply = data.reply || "Sorry, I didn’t get that.";
 
-      setMessages((prev) => [...prev, { role: "assistant", content: agentReply }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: agentReply },
+      ]);
 
       speak(agentReply, () => {
-        toggleListening();
+        setIsLoading(false);
+        toggleListening(); // Auto-resume listening
       });
     } catch (err) {
-      console.error(err);
-      setError("Failed to contact agent.");
-      speak("Sorry, I couldn’t talk to the server. Try again?");
+      console.error("Agent fetch error:", err);
+      setError("Couldn't talk to the server. Try again?");
+      speak("Oops, I had trouble reaching the server.");
+      setIsLoading(false);
     }
   };
 
@@ -152,20 +157,20 @@ export default function VoiceAgent() {
     <div className="w-full h-[90vh] bg-[#0f0f0f] text-white flex flex-col items-center justify-between p-4">
       {/* Header */}
       <div className="w-full max-w-3xl text-center py-3 sticky top-0 z-10 bg-[#0f0f0f]">
-        <h2 className="text-3xl font-extrabold"> Swasthy</h2>
-        <p className="text-sm text-gray-400 mt-1">Powered by Swastify</p>
+        <h2 className="text-3xl font-extrabold">Swasthy</h2>
+        <p className="text-sm text-gray-400 mt-1">Powered by Swastify ✨</p>
       </div>
 
-      {/* Message container */}
+      {/* Chat Window */}
       <div className="flex-1 w-full max-w-3xl overflow-y-auto bg-[#1a1a1a] rounded-2xl p-4 shadow-inner">
         <div className="flex flex-col space-y-3">
-          {messages.map((msg, index) => (
+          {messages.map((msg, i) => (
             <div
-              key={index}
+              key={i}
               className={`rounded-xl px-4 py-3 text-sm max-w-[80%] ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white self-end text-right"
-                  : "bg-gray-700 text-white self-start"
+                  ? "bg-blue-600 self-end text-right"
+                  : "bg-gray-700 self-start"
               }`}
             >
               <div className="text-xs font-semibold opacity-70 mb-1">
@@ -174,11 +179,19 @@ export default function VoiceAgent() {
               <div className="whitespace-pre-wrap">{msg.content}</div>
             </div>
           ))}
+
+          {isLoading && (
+            <div className="bg-gray-700 text-white text-sm px-4 py-3 rounded-xl max-w-[80%] self-start animate-pulse">
+              <div className="text-xs font-semibold opacity-70 mb-1">Swasthy</div>
+              Thinking...
+            </div>
+          )}
+
           <div ref={endOfMessagesRef} />
         </div>
       </div>
 
-      {/* Bottom Controls */}
+      {/* Footer / Controls */}
       <div className="w-full max-w-3xl pt-4">
         {error && (
           <div className="text-red-400 text-center mb-2 text-sm font-medium">

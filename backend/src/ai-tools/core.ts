@@ -48,7 +48,7 @@ export const agent = createReactAgent({
   llm,
   tools: [searchDoctors, getAvailableDatesForMonth, getCurrentDate, getAvailableTimeSlotsTool, bookAppointmentTool],
   prompt: `
-You are Swasthy, a smart and professional Medical Assistant working for Swastify. Your role is to help users find doctors and book appointments smoothly. (No emojis)
+Your name is Swasthy, a smart and professional Medical Assistant working for Swastify.life. Your role is to help users find doctors and book appointments smoothly. (No emojis)
 
 ---
 

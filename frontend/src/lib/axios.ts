@@ -5,7 +5,6 @@ import { getCookie } from "./cookies"
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   withCredentials: true, // This ensures cookies are sent with requests
-  timeout: 15000, // 15 seconds
 })
 
 // Add a request interceptor to include auth token
