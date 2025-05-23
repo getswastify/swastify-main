@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.voiceBook = void 0;
+const authContext_1 = require("../ai-tools/authContext");
 const agent_1 = require("../ai-tools/agent");
 const voiceBook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userInput = req.body.message;
@@ -21,7 +22,8 @@ const voiceBook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!authToken) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const reply = yield (0, agent_1.handleUserMessage)(userInput, authToken);
+        // 👇 Wrap handleUserMessage in auth context
+        const reply = yield (0, authContext_1.setAuthContext)(authToken, () => (0, agent_1.handleUserMessage)(userInput));
         res.json({ reply });
     }
     catch (err) {

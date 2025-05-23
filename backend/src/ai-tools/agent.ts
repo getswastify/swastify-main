@@ -1,51 +1,40 @@
 import { agent } from "./core"
+import { getCurrentAuthToken } from "./authContext"
 
-// Store messages with their auth tokens
-const globalMessages: { role: "user" | "assistant"; content: string; auth_token?: string }[] = []
+const userConversations: Record<string, {
+  messages: { role: "user" | "assistant"; content: string }[]
+}> = {}
 
-// Store the current auth token for tool execution
-let currentAuthToken = ""
+export async function handleUserMessage(userInput: string): Promise<string> {
+  if (!userInput) throw new Error("Message is required")
 
-// Update the handleUserMessage function
-export async function handleUserMessage(userInput: string, authToken: string): Promise<string> {
-  if (!userInput) {
-    throw new Error("Message is required")
+  const authToken = getCurrentAuthToken()
+  if (!authToken) throw new Error("Auth token not found in context")
+
+  if (!userConversations[authToken]) {
+    userConversations[authToken] = { messages: [] }
   }
 
-  // Store the auth token for tool execution
-  currentAuthToken = authToken
+  const userState = userConversations[authToken]
 
-  // Add the user message (without modifying it)
-  globalMessages.push({
+  userState.messages.push({
     role: "user",
     content: userInput,
-    auth_token: authToken, // Store for reference, but AI won't use this directly
   })
 
-  // Log the messages going to the LLM
-  console.log("--- Input Messages to LLM ---")
-  console.log(JSON.stringify(globalMessages, null, 2))
-  console.log("Current auth token:", currentAuthToken)
+  console.log(`--- LLM Input for User ${authToken} ---`)
+  console.log(JSON.stringify(userState.messages, null, 2))
 
-  // Call the agent
   const response = await agent.invoke(
-    {
-      messages: globalMessages.map((msg) => ({ role: msg.role, content: msg.content })), // Only pass role and content
-    },
+    { messages: userState.messages },
     {
       configurable: {
-        thread_id: authToken,
+        thread_id: authToken, // still use token to separate convos
       },
-    },
+    }
   )
 
-  // Log the full response from the LLM/agent
-  console.log("--- LLM Response ---")
-  console.log(JSON.stringify(response, null, 2))
-
-  // Extract latest assistant message
   const assistantMsg = response.messages[response.messages.length - 1]
-
   const assistantContent =
     typeof assistantMsg.content === "string"
       ? assistantMsg.content
@@ -53,8 +42,7 @@ export async function handleUserMessage(userInput: string, authToken: string): P
         ? assistantMsg.content.map((c: any) => (typeof c === "string" ? c : (c.text ?? ""))).join(" ")
         : ""
 
-  // Push assistant reply
-  globalMessages.push({
+  userState.messages.push({
     role: "assistant",
     content: assistantContent,
   })
@@ -62,7 +50,7 @@ export async function handleUserMessage(userInput: string, authToken: string): P
   return assistantContent
 }
 
-// Export the function to get the current auth token
-export function getCurrentAuthToken(): string {
-  return currentAuthToken
+export function getConversation(): { role: "user" | "assistant"; content: string }[] {
+  const authToken = getCurrentAuthToken()
+  return userConversations[authToken]?.messages ?? []
 }

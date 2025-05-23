@@ -3,7 +3,7 @@ import { config } from "dotenv"
 import { tool } from "@langchain/core/tools"
 import { z } from "zod"
 import jwt from "jsonwebtoken"
-import { getCurrentAuthToken } from "./agent" // Import the function to get the current auth token
+import { getCurrentAuthToken } from "./authContext" // Import the function to get the current auth token
 
 config()
 

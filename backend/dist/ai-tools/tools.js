@@ -18,14 +18,14 @@ const dotenv_1 = require("dotenv");
 const tools_1 = require("@langchain/core/tools");
 const zod_1 = require("zod");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const agent_1 = require("./agent"); // Import the function to get the current auth token
+const authContext_1 = require("./authContext"); // Import the function to get the current auth token
 (0, dotenv_1.config)();
 function getAvailableTimeSlots({ doctorId, date }) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Get the auth token from the current context
-            const auth_token = (0, agent_1.getCurrentAuthToken)();
+            const auth_token = (0, authContext_1.getCurrentAuthToken)();
             console.log("Using auth token for time slots:", auth_token); // Log the token being used
             const response = yield axios_1.default.post(`${process.env.API_URL}/patient/available-slots`, {
                 doctorId,
@@ -49,7 +49,7 @@ exports.searchDoctors = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, v
     try {
         const { search, specialty } = input;
         // Get the auth token from the current context
-        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        const auth_token = (0, authContext_1.getCurrentAuthToken)();
         console.log("Searching doctors with params:", { search, specialty });
         console.log("Using auth token for search:", auth_token); // Log the token being used
         const params = {};
@@ -88,7 +88,7 @@ exports.getAvailableDatesForMonth = (0, tools_1.tool)((input) => __awaiter(void 
     try {
         const { doctorId, year, month } = input;
         // Get the auth token from the current context
-        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        const auth_token = (0, authContext_1.getCurrentAuthToken)();
         console.log("Using auth token for dates:", auth_token); // Log the token being used
         const res = yield axios_1.default.get(`${process.env.API_URL}/patient/available-dates`, {
             params: { doctorId, year, month },
@@ -149,7 +149,7 @@ exports.getCurrentDate = (0, tools_1.tool)(() => __awaiter(void 0, void 0, void 
 exports.getAvailableTimeSlotsTool = (0, tools_1.tool)((input) => __awaiter(void 0, void 0, void 0, function* () {
     const { doctorId, date } = input;
     // Get the auth token from the current context
-    const auth_token = (0, agent_1.getCurrentAuthToken)();
+    const auth_token = (0, authContext_1.getCurrentAuthToken)();
     console.log("Using auth token for time slots tool:", auth_token); // Log the token being used
     const slots = yield getAvailableTimeSlots({ doctorId, date });
     if (slots.length === 0) {
@@ -171,7 +171,7 @@ exports.bookAppointmentTool = (0, tools_1.tool)((input) => __awaiter(void 0, voi
         let patientId = null;
         const { doctorId, date, time } = input;
         // Get the auth token from the current context
-        const auth_token = (0, agent_1.getCurrentAuthToken)();
+        const auth_token = (0, authContext_1.getCurrentAuthToken)();
         console.log("Using auth token for booking:", auth_token); // Log the token being used
         jsonwebtoken_1.default.verify(auth_token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
