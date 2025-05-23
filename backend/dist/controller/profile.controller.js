@@ -448,7 +448,12 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 status: true,
                 user: {
                     select: {
+                        firstName: true,
+                        lastName: true,
                         profilePicture: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
                     },
                 },
             },
@@ -467,10 +472,18 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
         const isProfileComplete = !!profile.specialization &&
             !!profile.clinicAddress &&
             !!profile.consultationFee;
+        const fullName = `${user.firstName} ${user.lastName}`;
+        const formattedDob = user.dob ? user.dob.toISOString().split('T')[0] : null;
         return res.status(200).json({
             status: true,
             message: 'Doctor profile retrieved successfully',
-            data: Object.assign(Object.assign({}, rest), { user, isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0], isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { user: {
+                    fullName,
+                    profilePicture: user.profilePicture,
+                    email: user.email,
+                    phone: user.phone,
+                    dob: formattedDob,
+                }, isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0], isProfileComplete }),
         });
     }
     catch (error) {

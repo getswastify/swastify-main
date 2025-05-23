@@ -507,7 +507,12 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
         status: true,
         user: {
           select: {
+            firstName: true,
+            lastName: true,
             profilePicture: true,
+            email: true,
+            phone: true,
+            dob: true,
           },
         },
       },
@@ -531,12 +536,21 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
       !!profile.clinicAddress &&
       !!profile.consultationFee;
 
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const formattedDob = user.dob ? user.dob.toISOString().split('T')[0] : null;
+
     return res.status(200).json({
       status: true,
       message: 'Doctor profile retrieved successfully',
       data: {
         ...rest,
-        user, // ✅ includes { profilePicture: "..." }
+        user: {
+          fullName,
+          profilePicture: user.profilePicture,
+          email: user.email,
+          phone: user.phone,
+          dob: formattedDob,
+        },
         isVerified: status,
         startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0],
         isProfileComplete,
@@ -555,7 +569,7 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
   }
 };
 
-  
+
 
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     try {
