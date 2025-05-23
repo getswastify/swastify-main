@@ -436,6 +436,11 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
         diseases: true,
         user: {
           select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            dob: true,
             profilePicture: true,
           },
         },
@@ -460,11 +465,20 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
       profile.height > 0 &&
       profile.weight > 0;
 
+    const { user, ...rest } = profile;
+
     return res.status(200).json({
       status: true,
       message: "Patient profile retrieved successfully",
       data: {
-        ...profile,
+        ...rest,
+        user: {
+          profilePicture: user.profilePicture,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phone: user.phone,
+          dob: user.dob ? user.dob.toISOString().split("T")[0] : null,
+        },
         isProfileComplete,
       },
     });
@@ -480,6 +494,7 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
     });
   }
 };
+
 
   
 export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
