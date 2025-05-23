@@ -329,7 +329,7 @@ export const updateAppointmentStatus = async (
       if (!isConnected) {
         return res.status(400).json({
           status: false,
-          message: "Please connect your Google Calendar to confirm appointments.",
+          message: "Please connect your Google Calendar in your settings to confirm appointments.",
           data: { error: "Google Calendar is not connected." },
         });
       }

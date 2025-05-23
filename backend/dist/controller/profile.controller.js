@@ -385,6 +385,11 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 diseases: true,
                 user: {
                     select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
                         profilePicture: true,
                     },
                 },
@@ -405,10 +410,17 @@ const getPatientProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
             !!profile.address &&
             profile.height > 0 &&
             profile.weight > 0;
+        const { user } = profile, rest = __rest(profile, ["user"]);
         return res.status(200).json({
             status: true,
             message: "Patient profile retrieved successfully",
-            data: Object.assign(Object.assign({}, profile), { isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { user: {
+                    profilePicture: user.profilePicture,
+                    fullName: `${user.firstName} ${user.lastName}`,
+                    email: user.email,
+                    phone: user.phone,
+                    dob: user.dob ? user.dob.toISOString().split("T")[0] : null,
+                }, isProfileComplete }),
         });
     }
     catch (error) {
@@ -448,7 +460,12 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 status: true,
                 user: {
                     select: {
+                        firstName: true,
+                        lastName: true,
                         profilePicture: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
                     },
                 },
             },
@@ -467,10 +484,18 @@ const getDoctorProfile = (req, res) => __awaiter(void 0, void 0, void 0, functio
         const isProfileComplete = !!profile.specialization &&
             !!profile.clinicAddress &&
             !!profile.consultationFee;
+        const fullName = `${user.firstName} ${user.lastName}`;
+        const formattedDob = user.dob ? user.dob.toISOString().split('T')[0] : null;
         return res.status(200).json({
             status: true,
             message: 'Doctor profile retrieved successfully',
-            data: Object.assign(Object.assign({}, rest), { user, isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0], isProfileComplete }),
+            data: Object.assign(Object.assign({}, rest), { user: {
+                    fullName,
+                    profilePicture: user.profilePicture,
+                    email: user.email,
+                    phone: user.phone,
+                    dob: formattedDob,
+                }, isVerified: status, startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0], isProfileComplete }),
         });
     }
     catch (error) {

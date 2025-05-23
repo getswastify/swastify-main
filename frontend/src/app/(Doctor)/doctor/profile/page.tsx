@@ -33,7 +33,7 @@ export default function DoctorProfilePage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [profileData, setProfileData] = useState<{
     user?: {
-      fullName?: string
+      fullName?: string 
       email?: string
       phone?: string
       dob?: string

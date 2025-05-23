@@ -436,6 +436,11 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
         diseases: true,
         user: {
           select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            dob: true,
             profilePicture: true,
           },
         },
@@ -460,11 +465,20 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
       profile.height > 0 &&
       profile.weight > 0;
 
+    const { user, ...rest } = profile;
+
     return res.status(200).json({
       status: true,
       message: "Patient profile retrieved successfully",
       data: {
-        ...profile,
+        ...rest,
+        user: {
+          profilePicture: user.profilePicture,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phone: user.phone,
+          dob: user.dob ? user.dob.toISOString().split("T")[0] : null,
+        },
         isProfileComplete,
       },
     });
@@ -480,6 +494,7 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
     });
   }
 };
+
 
   
 export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
@@ -507,7 +522,12 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
         status: true,
         user: {
           select: {
+            firstName: true,
+            lastName: true,
             profilePicture: true,
+            email: true,
+            phone: true,
+            dob: true,
           },
         },
       },
@@ -531,12 +551,21 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
       !!profile.clinicAddress &&
       !!profile.consultationFee;
 
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const formattedDob = user.dob ? user.dob.toISOString().split('T')[0] : null;
+
     return res.status(200).json({
       status: true,
       message: 'Doctor profile retrieved successfully',
       data: {
         ...rest,
-        user, // ✅ includes { profilePicture: "..." }
+        user: {
+          fullName,
+          profilePicture: user.profilePicture,
+          email: user.email,
+          phone: user.phone,
+          dob: formattedDob,
+        },
         isVerified: status,
         startedPracticeOn: profile.startedPracticeOn.toISOString().split('T')[0],
         isProfileComplete,
@@ -555,7 +584,7 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
   }
 };
 
-  
+
 
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     try {

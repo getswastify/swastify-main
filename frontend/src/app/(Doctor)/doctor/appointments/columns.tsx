@@ -47,8 +47,12 @@ export const columns: ColumnDef<DoctorAppointment>[] = [
           toast.success("Status updated successfully!")
           // Optional: refetch data after update
         } catch (error) {
-          console.error("Error updating status:", error)
-          toast.error("Failed to update status.")
+         console.error("Error updating status:", error)
+      const errorMessage =
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as { message?: string }).message
+          : "An unknown error occurred";
+      toast.error("Failed to update status.", { description: errorMessage as string });
         }
       }
 
