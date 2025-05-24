@@ -305,7 +305,7 @@ export default function BookAppointmentPage() {
                               <Check className="h-3 w-3 text-white" />
                             </div>
                             <span className="text-sm text-gray-300">
-                              Initial consultation typically lasts 30-45 minutes
+                              consultation typically lasts 30 minutes
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
@@ -316,12 +316,7 @@ export default function BookAppointmentPage() {
                               Please arrive 15 minutes before your appointment
                             </span>
                           </li>
-                          <li className="flex items-start gap-2">
-                            <div className="rounded-full bg-[#10b981] p-1 mt-0.5 flex-shrink-0">
-                              <Check className="h-3 w-3 text-white" />
-                            </div>
-                            <span className="text-sm text-gray-300">Bring your insurance card and ID</span>
-                          </li>
+                          
                         </ul>
 
                         <div className="flex items-start gap-2 mt-4 bg-[#1a2236] p-3 rounded-lg">
@@ -424,7 +419,7 @@ export default function BookAppointmentPage() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-300">Duration</p>
-                            <p className="text-white">30-45 minutes</p>
+                            <p className="text-white">30 minutes</p>
                           </div>
                         </div>
 
