@@ -163,29 +163,7 @@ export default function DoctorSettingsPage() {
                 )}
               </CardFooter>
             </Card>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <ShieldAlert className="mr-2 h-5 w-5" />
-              Security
-            </h2>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Password & Authentication</CardTitle>
-                <CardDescription>Manage your password and security settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  It is a good practice to use a strong password and change it periodically.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline">Change Password</Button>
-              </CardFooter>
-            </Card>
-          </section>
+          </section> 
         </div>
       </div>
     </RoleGuard>
