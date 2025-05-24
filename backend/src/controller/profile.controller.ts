@@ -496,7 +496,6 @@ export const getPatientProfile = async (req: Request, res: Response): Promise<an
 };
 
 
-  
 export const getDoctorProfile = async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.user?.userId;
@@ -585,7 +584,6 @@ export const getDoctorProfile = async (req: Request, res: Response): Promise<any
 };
 
 
-
 export const getHospitalProfile = async (req: Request, res: Response): Promise<any> => {
     try {
       const userId = req.user?.userId;
@@ -641,4 +639,3 @@ export const getHospitalProfile = async (req: Request, res: Response): Promise<a
       });
     }
   };
-  
