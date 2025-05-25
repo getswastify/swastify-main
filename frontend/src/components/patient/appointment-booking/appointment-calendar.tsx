@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { getAvailableDates } from "@/actions/appointments"
 import { toast } from "sonner"
@@ -15,61 +15,35 @@ interface AppointmentCalendarProps {
 export function AppointmentCalendar({ doctorId, onDateSelect, selectedDate }: AppointmentCalendarProps) {
   const [availableDates, setAvailableDates] = useState<Date[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
+  const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date())
 
-  // Use a ref to track if we're already processing a month change
-  const isProcessingMonthChange = useRef(false)
-  const lastProcessedMonth = useRef<string>(`${new Date().getMonth()}-${new Date().getFullYear()}`)
-
-  // Function to fetch available dates when month changes
-  const fetchAvailableDates = useCallback(
-    async (year: number, month: number) => {
-      if (!doctorId) return
-
-      setIsLoading(true)
-      try {
-        const response = await getAvailableDates(doctorId, year, month)
-        const dates = response.availableDates.map((dateStr) => new Date(dateStr))
-        setAvailableDates(dates)
-      } catch (error) {
-        console.error("Error fetching available dates:", error)
-        toast.error("Failed to load available dates")
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [doctorId], // dependency for useCallback
-  )
-
-  // Fetch available dates when month changes or doctor changes
+  // Fetch available dates when currentMonth or doctorId changes
   useEffect(() => {
-    // Skip if we don't have a doctor ID
     if (!doctorId) return
 
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth() + 1
 
-    // Create a key for the current month to avoid duplicate processing
-    const monthKey = `${month}-${year}`
+    setIsLoading(true)
+    getAvailableDates(doctorId, year, month)
+      .then((response) => {
+        const dates = response.availableDates.map((d) => new Date(d))
+        setAvailableDates(dates)
+      })
+      .catch((err) => {
+        console.error("Failed to fetch dates:", err)
+        toast.error("Failed to load available dates")
+      })
+      .finally(() => setIsLoading(false))
+  }, [currentMonth, doctorId])
 
-    // Skip if we've already processed this month
-    if (monthKey === lastProcessedMonth.current) return
-
-    // Update the last processed month
-    lastProcessedMonth.current = monthKey
-
-    // Fetch available dates
-    fetchAvailableDates(year, month)
-  }, [currentMonth, fetchAvailableDates, doctorId])
-
-  // Custom function to disable dates that are not available
+  // Disable dates not in availableDates or in the past
   const isDateDisabled = (date: Date) => {
-    // Disable dates in the past
-    if (date < new Date(new Date().setHours(0, 0, 0, 0))) {
-      return true
-    }
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
-    // Check if the date is in the available dates
+    if (date < today) return true
+
     return !availableDates.some(
       (availableDate) =>
         availableDate.getDate() === date.getDate() &&
@@ -78,22 +52,24 @@ export function AppointmentCalendar({ doctorId, onDateSelect, selectedDate }: Ap
     )
   }
 
-  // Handle month change with debouncing to prevent infinite loops
+  // Handle month change - update currentMonth to the first day of the new month
   const handleMonthChange = (date: Date) => {
-    // Skip if we're already processing a month change
-    if (isProcessingMonthChange.current) return
-
-    // Set the processing flag
-    isProcessingMonthChange.current = true
-
-    // Update the current month
-    setCurrentMonth(date)
-
-    // Reset the processing flag after a short delay
-    setTimeout(() => {
-      isProcessingMonthChange.current = false
-    }, 100)
+    setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1))
   }
+
+  // Handle date selection
+  const handleSelect = (date: Date | undefined) => {
+    onDateSelect(date)
+  }
+
+  // Sync currentMonth with selectedDate when it changes from parent (optional)
+  useEffect(() => {
+    if (!selectedDate) return
+    const newMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+    if (newMonth.getTime() !== currentMonth.getTime()) {
+      setCurrentMonth(newMonth)
+    }
+  }, [selectedDate,currentMonth])
 
   return (
     <div className="flex justify-center">
@@ -105,9 +81,10 @@ export function AppointmentCalendar({ doctorId, onDateSelect, selectedDate }: Ap
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={onDateSelect}
+          onSelect={handleSelect}
           disabled={isDateDisabled}
           onMonthChange={handleMonthChange}
+          defaultMonth={currentMonth}
           className="rounded-md border border-gray-700"
         />
       )}

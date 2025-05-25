@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { AlertCircle, Calendar, CheckCircle, Info, LinkIcon, Settings, ShieldAlert, Unlink } from "lucide-react"
+import { AlertCircle, Calendar, CheckCircle, Info, LinkIcon, Settings, Unlink } from "lucide-react"
 import api from "@/lib/axios"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
