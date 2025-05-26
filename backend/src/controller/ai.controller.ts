@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { setAuthContext } from "../ai-tools/authContext";
 import { handleUserMessage } from "../ai-tools/agent";
+import axios from "axios";
 
 export const voiceBook = async (req: Request, res: Response): Promise<any> => {
   const userInput = req.body.message;
@@ -23,5 +24,39 @@ export const voiceBook = async (req: Request, res: Response): Promise<any> => {
   } catch (err) {
     console.error('💥 Error:', err);
     res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+export const voiceTTS = async (req: Request, res: Response): Promise<any> => {
+  const { message, voice = "alloy" } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: "Text is required" });
+  }
+
+  try {
+    const response = await axios.post(
+      "https://shash-mb58ygyd-northcentralus.cognitiveservices.azure.com/openai/deployments/tts/audio/speech?api-version=2025-03-01-preview",
+      {
+        model: "tts",
+        input: message,
+        voice: voice,
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${process.env.AZURE_AI_FOUNDRY_KEY}`,
+          "Content-Type": "application/json",
+        },
+        responseType: "arraybuffer",
+      }
+    );
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(response.data);
+  } catch (err: any) {
+    console.log(err);
+    
+    console.error("💥 Azure TTS Error:", err?.response?.data || err.message);
+    res.status(500).json({ error: "TTS generation failed" });
   }
 };
