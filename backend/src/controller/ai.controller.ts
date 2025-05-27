@@ -28,7 +28,7 @@ export const voiceBook = async (req: Request, res: Response): Promise<any> => {
 };
 
 export const voiceTTS = async (req: Request, res: Response): Promise<any> => {
-  const { message, voice = "alloy" } = req.body;
+  const { message, voice = "onyx" } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: "Text is required" });

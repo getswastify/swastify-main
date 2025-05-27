@@ -38,7 +38,7 @@ const voiceBook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.voiceBook = voiceBook;
 const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { message, voice = "alloy" } = req.body;
+    const { message, voice = "onyx" } = req.body;
     if (!message) {
         return res.status(400).json({ error: "Text is required" });
     }
