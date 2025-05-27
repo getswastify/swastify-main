@@ -1,211 +1,241 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import {
-  SpeechConfig,
   AudioConfig,
-  SpeechRecognizer,
-  SpeechSynthesizer,
   ResultReason,
+  SpeechConfig,
+  SpeechRecognizer,
 } from "microsoft-cognitiveservices-speech-sdk";
+import { Mic, SendHorizontal, Square } from "lucide-react";
 import api from "@/lib/axios";
 
 export default function VoiceAgent() {
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [textInput, setTextInput] = useState("");
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
-  const synthesizerRef = useRef<SpeechSynthesizer | null>(null);
   const speechConfigRef = useRef<SpeechConfig | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isSpeakingRef = useRef(false);
-  const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
+  const userInterruptedRef = useRef(false);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
-  // Initialize Azure Speech SDK
+  const stopSpeaking = useCallback(() => {
+    if (audioSourceRef.current) {
+      audioSourceRef.current.stop();
+      isSpeakingRef.current = false;
+      userInterruptedRef.current = true;
+    }
+  }, []);
+
+  const playAudio = useCallback(async (audioBuffer: AudioBuffer) => {
+    stopSpeaking();
+    const source = audioContextRef.current!.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContextRef.current!.destination);
+    source.onended = () => (isSpeakingRef.current = false);
+    audioSourceRef.current = source;
+    isSpeakingRef.current = true;
+    userInterruptedRef.current = false;
+    source.start();
+  }, [stopSpeaking]);
+
+  const stopListening = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      recognizerRef.current?.stopContinuousRecognitionAsync(() => {
+        setIsListening(false);
+        resolve();
+      });
+    });
+  }, []);
+
+  const startListening = useCallback(async () => {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    recognizerRef.current?.startContinuousRecognitionAsync();
+    setIsListening(true);
+  }, []);
+
+  const handleMessage = useCallback(
+    async (text: string, isVoiceInput = false) => {
+      setMessages((prev) => [...prev, { role: "user", content: text }]);
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const { data } = await api.post("/ai/voice-book", { message: text });
+        const reply = data.reply ?? "Sorry, I didn’t get that.";
+
+        if (isVoiceInput) {
+          const res = await api.post(
+            "/ai/tts",
+            { message: reply },
+            { responseType: "arraybuffer" }
+          );
+          const buffer = await audioContextRef.current!.decodeAudioData(
+            res.data
+          );
+          await playAudio(buffer);
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: reply },
+        ]);
+
+        if (isVoiceInput && !userInterruptedRef.current) {
+          await startListening();
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Something went wrong.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [playAudio, startListening]
+  );
+
   useEffect(() => {
-    const speechKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY!;
-    const serviceRegion = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION!;
-
-    if (!speechKey || !serviceRegion) {
-      setError("Azure Speech key or region missing.");
+    const key = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY!;
+    const region = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION!;
+    if (!key || !region) {
+      setError("Missing Azure credentials");
       return;
     }
 
-    const speechConfig = SpeechConfig.fromSubscription(speechKey, serviceRegion);
-    const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
+    const config = SpeechConfig.fromSubscription(key, region);
+    const audioInput = AudioConfig.fromDefaultMicrophoneInput();
+    recognizerRef.current = new SpeechRecognizer(config, audioInput);
+    speechConfigRef.current = config;
+    audioContextRef.current = new AudioContext();
 
-    speechConfigRef.current = speechConfig;
-    recognizerRef.current = new SpeechRecognizer(speechConfig, audioConfig);
-    synthesizerRef.current = new SpeechSynthesizer(speechConfig);
+    recognizerRef.current.recognized = async (_, e) => {
+      if (
+        e.result.reason === ResultReason.RecognizedSpeech &&
+        e.result.text.trim()
+      ) {
+        await stopListening();
+        await handleMessage(e.result.text.trim(), true);
+      }
+    };
+
+    recognizerRef.current.canceled = (_, e) => {
+      console.error("Speech error:", e.errorDetails);
+      setError("Speech recognition failed");
+      setIsListening(false);
+    };
 
     return () => {
       recognizerRef.current?.close();
-      synthesizerRef.current?.close();
+      audioContextRef.current?.close();
     };
-  }, []);
+  }, [handleMessage, stopListening]);
 
-  // Auto-scroll to latest message
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
-  const stopSpeaking = () => {
-    if (synthesizerRef.current && isSpeakingRef.current) {
-      synthesizerRef.current.close();
-      isSpeakingRef.current = false;
-      // Re-initialize synthesizer for further use
-      if (speechConfigRef.current) {
-        synthesizerRef.current = new SpeechSynthesizer(speechConfigRef.current);
-      }
-    }
+  const handleTextSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+
+    stopSpeaking();
+    await stopListening();
+
+    const input = textInput.trim();
+    setTextInput("");
+
+    await handleMessage(input);
   };
 
-  const toggleListening = async () => {
-    if (!recognizerRef.current) return;
+  // ✅ FIXED ESLINT RULE - changed ternary into if/else
+  const toggleMic = async () => {
+    if (isSpeakingRef.current) stopSpeaking();
 
     if (isListening) {
-      recognizerRef.current.stopContinuousRecognitionAsync();
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      setIsListening(true);
-
-      recognizerRef.current.startContinuousRecognitionAsync();
-
-      recognizerRef.current.recognized = async (_, e) => {
-        const resultText = e.result.text.trim();
-        if (e.result.reason === ResultReason.RecognizedSpeech && resultText) {
-          stopSpeaking();
-          recognizerRef.current?.stopContinuousRecognitionAsync();
-          setIsListening(false);
-          await handleAgentResponse(resultText);
-        }
-      };
-
-      recognizerRef.current.canceled = (_, e) => {
-        setError(`Speech recognition error: ${e.errorDetails}`);
-        setIsListening(false);
-      };
-    } catch {
-      setError("Mic access denied. Please allow microphone permissions.");
-    }
-  };
-
-  const speak = (text: string, onDone?: () => void) => {
-    if (!synthesizerRef.current) return;
-
-    isSpeakingRef.current = true;
-
-    const ssml = `
-      <speak version='1.0' xml:lang='en-US'>
-        <voice xml:lang='en-US' xml:gender='Female' name='en-US-JennyNeural'>
-          ${text}
-        </voice>
-      </speak>`;
-
-    synthesizerRef.current.speakSsmlAsync(
-      ssml,
-      () => {
-        isSpeakingRef.current = false;
-        onDone?.();
-      },
-      (err) => {
-        console.error("Speech synthesis failed:", err);
-        isSpeakingRef.current = false;
-        setError("Something went wrong while speaking.");
-      }
-    );
-  };
-
-  const handleAgentResponse = async (text: string) => {
-    try {
-      setMessages((prev) => [...prev, { role: "user", content: text }]);
-      setIsLoading(true);
-
-      const { data } = await api.post(
-        `${process.env.NEXT_PUBLIC_API_URL}ai/voice-book`,
-        { message: text }
-      );
-
-      const agentReply = data.reply || "Sorry, I didn’t get that.";
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: agentReply },
-      ]);
-
-      speak(agentReply, () => {
-        setIsLoading(false);
-        toggleListening(); // Auto-resume listening
-      });
-    } catch (err) {
-      console.error("Agent fetch error:", err);
-      setError("Couldn't talk to the server. Try again?");
-      speak("Oops, I had trouble reaching the server.");
-      setIsLoading(false);
+      await stopListening();
+    } else {
+      await startListening();
     }
   };
 
   return (
-    <div className="w-full h-[90vh] bg-[#0f0f0f] text-white flex flex-col items-center justify-between p-4">
-      {/* Header */}
-      <div className="w-full max-w-3xl text-center py-3 sticky top-0 z-10 bg-[#0f0f0f]">
-        <h2 className="text-3xl font-extrabold">Swasthy</h2>
-        <p className="text-sm text-gray-400 mt-1">Powered by Swastify ✨</p>
-      </div>
-
-      {/* Chat Window */}
-      <div className="flex-1 w-full max-w-3xl overflow-y-auto bg-[#1a1a1a] rounded-2xl p-4 shadow-inner">
-        <div className="flex flex-col space-y-3">
-          {messages.map((msg, i) => (
+    <div className="w-full h-[93vh] bg-[#0C1120] text-white flex flex-col">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 max-w-2xl w-full mx-auto">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`mb-4 flex ${
+              msg.role === "user" ? "justify-end" : "justify-start"
+            }`}
+          >
             <div
-              key={i}
-              className={`rounded-xl px-4 py-3 text-sm max-w-[80%] ${
+              className={`max-w-sm px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap ${
                 msg.role === "user"
-                  ? "bg-blue-600 self-end text-right"
-                  : "bg-gray-700 self-start"
+                  ? "bg-blue-600 text-white rounded-br-none"
+                  : "bg-[#1f1f1f] text-gray-100 rounded-bl-none"
               }`}
             >
-              <div className="text-xs font-semibold opacity-70 mb-1">
-                {msg.role === "user" ? "You" : "Swasthy"}
-              </div>
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              {msg.content}
             </div>
-          ))}
+          </div>
+        ))}
 
-          {isLoading && (
-            <div className="bg-gray-700 text-white text-sm px-4 py-3 rounded-xl max-w-[80%] self-start animate-pulse">
-              <div className="text-xs font-semibold opacity-70 mb-1">Swasthy</div>
-              Thinking...
+        {isLoading && (
+          <div className="mb-4 flex justify-start">
+            <div className="bg-[#1f1f1f] text-gray-300 px-4 py-3 text-sm rounded-2xl rounded-bl-none animate-pulse">
+              Swasthy is thinking...
             </div>
-          )}
-
-          <div ref={endOfMessagesRef} />
-        </div>
-      </div>
-
-      {/* Footer / Controls */}
-      <div className="w-full max-w-3xl pt-4">
-        {error && (
-          <div className="text-red-400 text-center mb-2 text-sm font-medium">
-            {error}
           </div>
         )}
-        <button
-          onClick={toggleListening}
-          className={`w-full py-3 rounded-full text-lg font-semibold transition ${
-            isListening ? "bg-red-600" : "bg-green-600"
-          } hover:opacity-90`}
-        >
-          {isListening ? "🛑 Stop Listening" : "🎙️ Start Talking"}
-        </button>
+
+        <div ref={endRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="border-t border-gray-700 bg-[#0C1120] p-4 w-full max-w-2xl mx-auto">
+        <form onSubmit={handleTextSubmit} className="flex items-center gap-2">
+          <input
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+            placeholder="Type your message here..."
+            className="flex-1 px-4 py-3 bg-[#1a1a1a] text-white rounded-full outline-none text-sm"
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white p-3 rounded-full hover:opacity-90 flex items-center justify-center"
+          >
+            <SendHorizontal className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleMic}
+            className={`ml-2 p-2 rounded-full transition hover:opacity-90 ${
+              isListening ? "bg-red-600" : "bg-green-600"
+            }`}
+            title={isListening ? "Stop Listening" : "Start Talking"}
+          >
+            {isListening ? (
+              <Square className="w-5 h-5 text-white" />
+            ) : (
+              <Mic className="w-5 h-5 text-white" />
+            )}
+          </button>
+        </form>
+        {error && <div className="text-red-400 mt-2 text-sm">{error}</div>}
       </div>
     </div>
   );
