@@ -5,9 +5,9 @@ const prebuilt_1 = require("@langchain/langgraph/prebuilt");
 // import { ChatOpenAI } from "@langchain/openai";
 // import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 const openai_1 = require("@langchain/openai");
-// import { MemorySaver } from "@langchain/langgraph"
+const langgraph_1 = require("@langchain/langgraph");
 const tools_1 = require("./tools");
-// const checkpointer = new MemorySaver()
+const checkpointer = new langgraph_1.MemorySaver();
 // const llm = new ChatOpenAI({
 //   openAIApiKey: process.env.OPENAI_API_KEY!,
 //   modelName: "gpt-4.1-mini", // ← this one works perfectly with tools
@@ -152,5 +152,5 @@ Your role is to help users find doctors and book appointments smoothly. (No emoj
 
 Always rely on tool outputs. Don’t guess or invent info. If you’re missing info or results, politely let the user know or ask for clarification.  
 `,
-    // checkpointer,
+    checkpointer,
 });
