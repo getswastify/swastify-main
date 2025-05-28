@@ -11,7 +11,7 @@ import {
   searchDoctors,
 } from "./tools"
 
-const checkpointer = new MemorySaver()
+// const checkpointer = new MemorySaver()
 
 // const llm = new ChatOpenAI({
 //   openAIApiKey: process.env.OPENAI_API_KEY!,
@@ -162,6 +162,6 @@ Your role is to help users find doctors and book appointments smoothly. (No emoj
 Always rely on tool outputs. Don’t guess or invent info. If you’re missing info or results, politely let the user know or ask for clarification.  
 `,
 
-  checkpointer,
+  // checkpointer,
 })
 

@@ -1,58 +1,84 @@
 import { agent } from "./core"
 import { getCurrentAuthToken } from "./authContext"
 import { getUserId } from "../utils/getUserId";
+import { prisma } from "../utils/prismaConnection";
 
-const userConversations: Record<string, {
-  messages: { role: "user" | "assistant"; content: string }[]
-}> = {}
+const userConversations: Record<string, { messages: { role: "user" | "assistant"; content: string }[] }> = {}
+
 
 export async function handleUserMessage(userInput: string): Promise<string> {
   if (!userInput) throw new Error("Message is required")
 
   const authToken = getCurrentAuthToken()
-  if (!authToken) throw new Error("Auth token not found in context")
+  const userId = getUserId(authToken)
 
-  if (!userConversations[authToken]) {
-    userConversations[authToken] = { messages: [] }
+  if (!userId) throw new Error("No userId found")
+
+  // Fetch or init convo from DB
+  type Message = { role: "user" | "assistant"; content: string };
+
+  let convo = await prisma.conversation.findUnique({ where: { userId } })
+
+  if (!convo) {
+    convo = await prisma.conversation.create({
+      data: {
+        userId,
+        messages: [],
+      },
+    })
   }
 
-  const userState = userConversations[authToken]
-
-  userState.messages.push({
+  // Ensure convo.messages is typed correctly
+  const messagesArray: Message[] = Array.isArray(convo.messages)
+    ? (convo.messages as Message[])
+    : [];
+  const updatedMessages: Message[] = [...messagesArray, {
     role: "user",
-    content: userInput,
-  })
+    content: userInput
+  }]
 
-  console.log(`--- LLM Input for User ${authToken} ---`)
-  console.log(JSON.stringify(userState.messages, null, 2))
-  console.log(getUserId(authToken), "User ID from token")
-  console.log("--- End LLM Input ---");
-  
+  console.log(`--- LLM Input for User ${userId} ---`)
+  console.log(JSON.stringify(updatedMessages, null, 2))
+
+  // Convert messages to the expected BaseMessageLike[] format if needed
+  const formattedMessages = updatedMessages.map(msg => msg ? ({
+    role: msg.role,
+    content: msg.content,
+  }) : null).filter((msg): msg is { role: "user" | "assistant"; content: string } => msg !== null);
 
   const response = await agent.invoke(
-    { messages: userState.messages },
+    { messages: formattedMessages },
     {
       configurable: {
-        thread_id: getUserId(authToken), // still use token to separate convos
+        thread_id: userId,
       },
     }
   )
 
-  const assistantMsg = response.messages[response.messages.length - 1]
+  const assistantMsg = response.messages.at(-1)
   const assistantContent =
-    typeof assistantMsg.content === "string"
+    assistantMsg && typeof assistantMsg.content === "string"
       ? assistantMsg.content
-      : Array.isArray(assistantMsg.content)
+      : assistantMsg && Array.isArray(assistantMsg.content)
         ? assistantMsg.content.map((c: any) => (typeof c === "string" ? c : (c.text ?? ""))).join(" ")
         : ""
 
-  userState.messages.push({
+  updatedMessages.push({
     role: "assistant",
     content: assistantContent,
   })
 
+  // Save updated convo
+  await prisma.conversation.update({
+    where: { userId },
+    data: { messages: updatedMessages },
+  })
+
   return assistantContent
 }
+
+
+
 
 export function getConversation(): { role: "user" | "assistant"; content: string }[] {
   const authToken = getCurrentAuthToken()
