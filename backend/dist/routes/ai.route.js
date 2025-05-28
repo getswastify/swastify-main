@@ -7,4 +7,5 @@ const ai_controller_1 = require("../controller/ai.controller");
 const router = (0, express_1.Router)();
 router.post('/voice-book', (0, requireAuthAndRole_1.requireAuthAndRole)(['USER']), ai_controller_1.voiceBook);
 router.post('/tts', (0, requireAuthAndRole_1.requireAuthAndRole)(['USER']), ai_controller_1.voiceTTS);
+router.delete('/reset-conversation', (0, requireAuthAndRole_1.requireAuthAndRole)(['USER']), ai_controller_1.resetConversation);
 exports.aiRoutes = router;

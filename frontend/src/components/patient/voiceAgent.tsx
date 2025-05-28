@@ -12,8 +12,15 @@ import {
   SpeechConfig,
   SpeechRecognizer,
 } from "microsoft-cognitiveservices-speech-sdk";
-import { Mic, SendHorizontal, Square } from "lucide-react";
+import { Mic, SendHorizontal, Square,MoreVertical  } from "lucide-react";
 import api from "@/lib/axios";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 export default function VoiceAgent() {
   const [isListening, setIsListening] = useState(false);
@@ -31,6 +38,24 @@ export default function VoiceAgent() {
   const isSpeakingRef = useRef(false);
   const userInterruptedRef = useRef(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+
+
+const resetConversation = useCallback(async () => {
+    try {
+
+      await api.delete("/ai/reset-conversation");
+      setMessages([]);
+      setTextInput("");
+    } catch (error) {
+
+      console.error(error);
+    }
+  }, []);
+
+
+
+
+
 
   const stopSpeaking = useCallback(() => {
     if (audioSourceRef.current) {
@@ -173,6 +198,38 @@ export default function VoiceAgent() {
 
   return (
     <div className="w-full h-[93vh] bg-[#0C1120] text-white flex flex-col">
+     
+{/* Top Right Dropdown for Reset */}
+<div className="absolute lg:top-4 top-[4rem] right-4 z-20">
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      className="
+        p-2 rounded-full hover:bg-gray-700 transition
+        sm:p-3
+        focus:outline-none focus:ring-2 focus:ring-blue-500
+      "
+      aria-label="More options"
+    >
+      <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+    </DropdownMenuTrigger>
+    <DropdownMenuContent
+      align="end"
+      className="bg-[#1f1f1f] border border-gray-700 w-44 sm:w-52"
+      id="menu-dropdown"
+    >
+      <DropdownMenuItem
+        onClick={() => {
+          resetConversation();
+
+        }}
+        className="cursor-pointer text-red-500 hover:bg-red-600/30"
+      >
+        Reset Conversation
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+</div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 max-w-2xl w-full mx-auto">
         {messages.map((msg, i) => (
@@ -193,6 +250,7 @@ export default function VoiceAgent() {
             </div>
           </div>
         ))}
+
 
         {isLoading && (
           <div className="mb-4 flex justify-start">

@@ -12,33 +12,57 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.voiceTTS = exports.voiceBook = void 0;
+exports.voiceTTS = exports.resetConversation = exports.voiceBook = void 0;
 const authContext_1 = require("../ai-tools/authContext");
 const agent_1 = require("../ai-tools/agent");
 const axios_1 = __importDefault(require("axios"));
+const prismaConnection_1 = require("../utils/prismaConnection");
 const voiceBook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userInput = req.body.message;
     if (!userInput) {
-        return res.status(400).json({ error: 'Message is required' });
+        return res.status(400).json({ error: "Message is required" });
     }
     try {
         const authToken = req.cookies.auth_token;
         if (!authToken) {
-            return res.status(401).json({ error: 'Unauthorized' });
+            return res.status(401).json({ error: "Unauthorized" });
         }
         // 👇 Wrap handleUserMessage in auth context
         const reply = yield (0, authContext_1.setAuthContext)(authToken, () => (0, agent_1.handleUserMessage)(userInput));
         res.json({ reply });
     }
     catch (err) {
-        console.error('💥 Error:', err);
-        res.status(500).json({ error: 'Something went wrong' });
+        console.error("💥 Error:", err);
+        res.status(500).json({ error: "Something went wrong" });
     }
 });
 exports.voiceBook = voiceBook;
-const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const resetConversation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { message, voice = "onyx" } = req.body;
+    const authToken = req.cookies.auth_token;
+    if (!authToken) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        if (!userId) {
+            return res.status(400).json({ error: "User ID is required" });
+        }
+        // Reset the conversation for the user
+        yield prismaConnection_1.prisma.conversation.deleteMany({
+            where: { userId },
+        });
+        res.json({ message: "Conversation reset successfully" });
+    }
+    catch (err) {
+        console.error("💥 Error:", err);
+        res.status(500).json({ error: "Failed to reset conversation" });
+    }
+});
+exports.resetConversation = resetConversation;
+const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    const { message, voice = "nova" } = req.body;
     if (!message) {
         return res.status(400).json({ error: "Text is required" });
     }
@@ -49,7 +73,7 @@ const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             voice: voice,
         }, {
             headers: {
-                "Authorization": `Bearer ${process.env.AZURE_AI_FOUNDRY_KEY}`,
+                Authorization: `Bearer ${process.env.AZURE_AI_FOUNDRY_KEY}`,
                 "Content-Type": "application/json",
             },
             responseType: "arraybuffer",
@@ -59,7 +83,7 @@ const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
     catch (err) {
         console.log(err);
-        console.error("💥 Azure TTS Error:", ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.data) || err.message);
+        console.error("💥 Azure TTS Error:", ((_b = err === null || err === void 0 ? void 0 : err.response) === null || _b === void 0 ? void 0 : _b.data) || err.message);
         res.status(500).json({ error: "TTS generation failed" });
     }
 });

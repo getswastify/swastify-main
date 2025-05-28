@@ -173,3 +173,13 @@ enum PaymentStatus {
   PAID      // Payment has been completed
   FAILED    // Payment has failed
 }
+
+
+// prisma/schema.prisma
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  messages  Json     // save messages array here
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
