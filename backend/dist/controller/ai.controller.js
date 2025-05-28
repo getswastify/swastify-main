@@ -62,7 +62,7 @@ const resetConversation = (req, res) => __awaiter(void 0, void 0, void 0, functi
 exports.resetConversation = resetConversation;
 const voiceTTS = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _b;
-    const { message, voice = "onyx" } = req.body;
+    const { message, voice = "nova" } = req.body;
     if (!message) {
         return res.status(400).json({ error: "Text is required" });
     }

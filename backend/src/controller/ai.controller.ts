@@ -56,7 +56,7 @@ export const resetConversation = async (
 };
 
 export const voiceTTS = async (req: Request, res: Response): Promise<any> => {
-  const { message, voice = "onyx" } = req.body;
+  const { message, voice = "nova" } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: "Text is required" });
