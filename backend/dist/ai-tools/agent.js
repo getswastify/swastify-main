@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getConversation = exports.handleUserMessage = void 0;
 const core_1 = require("./core");
 const authContext_1 = require("./authContext");
+const getUserId_1 = require("../utils/getUserId");
 const userConversations = {};
 function handleUserMessage(userInput) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -30,9 +31,11 @@ function handleUserMessage(userInput) {
         });
         console.log(`--- LLM Input for User ${authToken} ---`);
         console.log(JSON.stringify(userState.messages, null, 2));
+        console.log((0, getUserId_1.getUserId)(authToken), "User ID from token");
+        console.log("--- End LLM Input ---");
         const response = yield core_1.agent.invoke({ messages: userState.messages }, {
             configurable: {
-                thread_id: authToken, // still use token to separate convos
+                thread_id: (0, getUserId_1.getUserId)(authToken), // still use token to separate convos
             },
         });
         const assistantMsg = response.messages[response.messages.length - 1];

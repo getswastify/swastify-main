@@ -1,5 +1,6 @@
 import { agent } from "./core"
 import { getCurrentAuthToken } from "./authContext"
+import { getUserId } from "../utils/getUserId";
 
 const userConversations: Record<string, {
   messages: { role: "user" | "assistant"; content: string }[]
@@ -24,12 +25,15 @@ export async function handleUserMessage(userInput: string): Promise<string> {
 
   console.log(`--- LLM Input for User ${authToken} ---`)
   console.log(JSON.stringify(userState.messages, null, 2))
+  console.log(getUserId(authToken), "User ID from token")
+  console.log("--- End LLM Input ---");
+  
 
   const response = await agent.invoke(
     { messages: userState.messages },
     {
       configurable: {
-        thread_id: authToken, // still use token to separate convos
+        thread_id: getUserId(authToken), // still use token to separate convos
       },
     }
   )
