@@ -1,10 +1,9 @@
-import VoiceAgent from '@/components/patient/voiceAgent'
-import React from 'react'
+import VoiceAgent from "@/components/patient/voiceAgent"
 
 const page = () => {
   return (
-    <div className='w-full'>
-        <VoiceAgent />
+    <div className="w-full h-full ">
+      <VoiceAgent />
     </div>
   )
 }
