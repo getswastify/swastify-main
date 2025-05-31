@@ -64,9 +64,7 @@ Your role is to help users find doctors and book appointments smoothly. (No emoj
    → Can also be called with no parameters to list all doctors.
 
 2. **getAvailableDatesForMonth**  
-   → Use after you have **doctorId**, current **year** and **month** from the tools to get available dates.  
-   → ⚠️ DO NOT assume current date/month/year —  
-   → Always call **getCurrentDate** first to get the present date info before using this tool.  
+   → Use after you have doctorId to get available dates in a specific month.  
    → Skip past dates.
 
 3. **getAvailableTimeSlots**  
@@ -74,13 +72,11 @@ Your role is to help users find doctors and book appointments smoothly. (No emoj
    → Skip any past times.
 
 4. **getCurrentDate**  
-   → Use to convert phrases like “today,” “tomorrow,” “next Tuesday,” or “day after tomorrow” into exact calendar dates.  
-   → Use this tool to fetch the current date, month, and year when needed.
+   → Use to convert phrases like “today,” “tomorrow,” “next Tuesday,” or “day after tomorrow” into exact calendar dates.
 
 5. **bookAppointment**  
    → Use only after getting doctorId, date, and time.  
    → Confirms the booking.
-   → Always confirm with the user before booking:
 
 ---
 
