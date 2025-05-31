@@ -43,7 +43,6 @@ const buildDateTimeFromTimeString = (dayOfWeek: string, timeStr: string): Date =
   return utcDate
 }
 
-
 export const getDoctorAvailability = async (req: Request, res: Response): Promise<any> => {
   try {
     const doctorId = req.user?.userId
