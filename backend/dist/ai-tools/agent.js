@@ -13,7 +13,7 @@ exports.getConversation = exports.handleUserMessage = void 0;
 const core_1 = require("./core");
 const authContext_1 = require("./authContext");
 const getUserId_1 = require("../utils/getUserId");
-const prismaConnection_1 = require("../utils/prismaConnection");
+// In-memory convo store per session (auth token based)
 const userConversations = {};
 function handleUserMessage(userInput) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -23,31 +23,19 @@ function handleUserMessage(userInput) {
         const userId = (0, getUserId_1.getUserId)(authToken);
         if (!userId)
             throw new Error("No userId found");
-        let convo = yield prismaConnection_1.prisma.conversation.findUnique({ where: { userId } });
-        if (!convo) {
-            convo = yield prismaConnection_1.prisma.conversation.create({
-                data: {
-                    userId,
-                    messages: [],
-                },
-            });
+        // Init convo if not there
+        if (!userConversations[authToken]) {
+            userConversations[authToken] = { messages: [] };
         }
-        // Ensure convo.messages is typed correctly
-        const messagesArray = Array.isArray(convo.messages)
-            ? convo.messages
-            : [];
-        const updatedMessages = [...messagesArray, {
-                role: "user",
-                content: userInput
-            }];
+        const sessionMessages = userConversations[authToken].messages;
+        // Add user message to convo
+        sessionMessages.push({
+            role: "user",
+            content: userInput,
+        });
         console.log(`--- LLM Input for User ${userId} ---`);
-        console.log(JSON.stringify(updatedMessages, null, 2));
-        // Convert messages to the expected BaseMessageLike[] format if needed
-        const formattedMessages = updatedMessages.map(msg => msg ? ({
-            role: msg.role,
-            content: msg.content,
-        }) : null).filter((msg) => msg !== null);
-        const response = yield core_1.agent.invoke({ messages: formattedMessages }, {
+        console.log(JSON.stringify(sessionMessages, null, 2));
+        const response = yield core_1.agent.invoke({ messages: sessionMessages }, {
             configurable: {
                 thread_id: userId,
             },
@@ -58,14 +46,10 @@ function handleUserMessage(userInput) {
             : assistantMsg && Array.isArray(assistantMsg.content)
                 ? assistantMsg.content.map((c) => { var _a; return (typeof c === "string" ? c : ((_a = c.text) !== null && _a !== void 0 ? _a : "")); }).join(" ")
                 : "";
-        updatedMessages.push({
+        // Add assistant reply to convo
+        sessionMessages.push({
             role: "assistant",
             content: assistantContent,
-        });
-        // Save updated convo
-        yield prismaConnection_1.prisma.conversation.update({
-            where: { userId },
-            data: { messages: updatedMessages },
         });
         return assistantContent;
     });
