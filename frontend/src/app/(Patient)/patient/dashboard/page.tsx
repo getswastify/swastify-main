@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { RoleGuard } from "@/components/role-guard"
 import { getPatientDashboard } from "@/actions/dashboard"
-import { AlertCircle, CheckCircle, User, Calendar, FileText, Bot } from "lucide-react"
+import { AlertCircle, CheckCircle, User, Calendar, Bot } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/context/auth-context"
 import Link from "next/link"
