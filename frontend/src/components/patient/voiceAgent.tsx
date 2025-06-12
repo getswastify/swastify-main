@@ -191,7 +191,7 @@ export default function VoiceAgent() {
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-white">Welcome to Swasthy AI</h2>
               <p className="text-gray-400 max-w-md">
-                I'm your AI-powered healthcare assistant. Ask me anything about your health, book appointments, or get
+                I&apos;m your AI-powered healthcare assistant. Ask me anything about your health, book appointments, or get
                 medical guidance.
               </p>
             </div>
