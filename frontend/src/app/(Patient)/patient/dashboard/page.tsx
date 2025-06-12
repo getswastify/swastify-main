@@ -109,22 +109,6 @@ export default function PatientDashboardPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-background">
-                <CardHeader className="pb-2">
-                  <CardTitle>Health Records</CardTitle>
-                  <CardDescription>Access your medical records</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex h-20 items-center justify-center rounded-md bg-purple-500/10">
-                    <FileText className="h-10 w-10 text-purple-500" />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                  <Button className="w-full" variant="outline">
-                    View Records
-                  </Button>
-                </CardFooter>
-              </Card>
 
               {/* AI Agent Card */}
               <Card className="overflow-hidden border-none shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/40 dark:to-background">
