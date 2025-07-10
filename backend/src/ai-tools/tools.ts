@@ -172,7 +172,7 @@ export const getCurrentDate = tool<any>(
   {
     name: "getCurrentDate",
     description:
-      "Get today's, tomorrow's, and day after tomorrow's date in DD/MM/YYYY format. Skips today if it's too late.",
+      "Get today's, tomorrow's, and day after tomorrow's date in DD/MM/YYYY format. Skips today if it's too late. You can get realtime Date month and year from this.",
     schema: z.object({}),
   },
 )
